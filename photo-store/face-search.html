@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>ค้นหาภาพด้วยใบหน้า</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: "class" };
+  </script>
+
+  <script src="https://static.line-scdn.net/liff/edge/versions/2.29.0/sdk.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+  <script src="js/config.js?v=new-supabase-005"></script>
+  <script src="js/liff-helper.js?v=new-supabase-005"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
+    img {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    body {
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    button,
+    select {
+      pointer-events: auto;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    select {
+      appearance: auto;
+      -webkit-appearance: menulist;
+    }
+
+    .safe-bottom {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .real-file-input {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      opacity: 0 !important;
+      overflow: hidden !important;
+      left: -9999px !important;
+    }
+
+    .custom-file-box {
+      width: 100%;
+      margin-top: 16px;
+    }
+
+    .custom-file-btn {
+      width: 100%;
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      pointer-events: auto;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .custom-file-name {
+      margin-top: 10px;
+      font-size: 13px;
+      word-break: break-all;
+    }
+
+    .photo-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .94);
+      z-index: 99999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .photo-modal.show {
+      display: flex;
+      animation: modalFadeIn .18s ease-out;
+    }
+
+    @keyframes modalFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .photo-modal-box {
+      position: relative;
+      width: 100%;
+      max-width: 920px;
+      max-height: 90vh;
+      overflow: hidden;
+      border-radius: 26px;
+      background: #020617;
+      box-shadow: 0 30px 90px rgba(0,0,0,.65);
+    }
+
+    .photo-modal-img {
+      width: 100%;
+      height: 100%;
+      max-height: 90vh;
+      object-fit: contain;
+      display: block;
+      filter: contrast(.9) saturate(.86) blur(.35px);
+      transform: scale(.995);
+    }
+
+    .photo-close {
+      position: fixed;
+      top: max(16px, env(safe-area-inset-top));
+      right: 16px;
+      z-index: 100000;
+      width: 52px;
+      height: 52px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.16);
+      color: white;
+      font-size: 24px;
+      font-weight: 900;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .photo-modal-info {
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      bottom: 14px;
+      z-index: 5;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      background: rgba(0,0,0,.55);
+      color: white;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 18px;
+      padding: 10px 12px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      font-size: 12px;
+    }
+
+    .watermark-layer {
+      position: absolute;
+      inset: -28%;
+      pointer-events: none;
+      z-index: 3;
+      transform: rotate(-24deg);
+      opacity: .30;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      gap: clamp(42px, 7vw, 92px);
+    }
+
+    .wm-row {
+      display: flex;
+      gap: clamp(58px, 9vw, 130px);
+      white-space: nowrap;
+      color: rgba(255,255,255,.92);
+      font-size: clamp(18px, 3vw, 42px);
+      font-weight: 900;
+      letter-spacing: .12em;
+      line-height: 1;
+      text-shadow: 0 2px 12px rgba(0,0,0,.78);
+    }
+
+    .wm-row:nth-child(even) {
+      transform: translateX(-12%);
+    }
+
+    .wm-row:nth-child(odd) {
+      transform: translateX(4%);
+    }
+
+    .watermark-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 4;
+      transform: rotate(-24deg);
+    }
+
+    .watermark-center span {
+      color: rgba(255,255,255,.28);
+      font-size: clamp(30px, 6vw, 78px);
+      font-weight: 950;
+      letter-spacing: .12em;
+      white-space: nowrap;
+      padding: .35em .7em;
+      border: 2px solid rgba(255,255,255,.22);
+      border-radius: 18px;
+      text-shadow: 0 4px 18px rgba(0,0,0,.75);
+      background: rgba(0,0,0,.08);
+    }
+
+    .preview-noise {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+      mix-blend-mode: overlay;
+      opacity: .08;
+      background-image:
+        repeating-radial-gradient(circle at center,
+        #fff 0px,
+        transparent 1px,
+        transparent 3px);
+    }
+
+    .preview-soft-mask {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      background:
+        linear-gradient(to bottom, rgba(0,0,0,.12), transparent 20%, transparent 70%, rgba(0,0,0,.42)),
+        linear-gradient(90deg, rgba(0,0,0,.16), transparent 18%, transparent 82%, rgba(0,0,0,.16));
+    }
+
+    .open-preview-btn {
+      pointer-events: auto;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-white transition safe-bottom">
+
+  <main class="max-w-5xl mx-auto p-4 pb-28">
+
+    <header class="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm mb-4 transition">
+      <div class="flex justify-between items-start gap-3">
+        <div class="min-w-0">
+          <p id="txtMiniApp" class="text-xs text-slate-500 dark:text-slate-400">LINE Mini App</p>
+          <h1 id="txtPageTitle" class="text-2xl font-black">ค้นหาภาพด้วยใบหน้า</h1>
+          <p id="eventText" class="text-sm text-slate-500 dark:text-slate-400 mt-1">กำลังโหลดข้อมูล...</p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-2 shrink-0">
+          <button
+            type="button"
+            onclick="goEvent()"
+            class="bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-full px-4 py-2 font-bold"
+          >
+            ← <span id="txtBack">กลับ</span>
+          </button>
+
+          <select
+            id="langSelect"
+            class="rounded-full bg-slate-100 dark:bg-slate-800 dark:text-white px-3 py-2 text-sm font-bold outline-none"
+          >
+            <option value="th">🇹🇭 TH</option>
+            <option value="en">🇺🇸 EN</option>
+            <option value="ru">🇷🇺 RU</option>
+          </select>
+
+          <button
+            type="button"
+            onclick="toggleDarkMode()"
+            id="darkBtn"
+            class="rounded-full bg-slate-100 dark:bg-slate-800 dark:text-white px-4 py-2 text-sm font-bold"
+          >
+            🌙 Dark
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <section class="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm mb-4 transition">
+      <h2 id="txtUploadTitle" class="font-bold text-lg">อัปโหลดรูปใบหน้า</h2>
+
+      <p id="txtUploadDesc" class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+        กรุณาใช้รูปที่เห็นใบหน้าชัดเจน
+      </p>
+
+      <div class="custom-file-box">
+        <input
+          id="faceInput"
+          type="file"
+          accept="image/*"
+          class="real-file-input"
+        />
+
+        <button
+          type="button"
+          onclick="openFaceFilePicker()"
+          class="custom-file-btn bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 font-bold"
+        >
+          📎 <span id="txtChooseFile">เลือกไฟล์</span>
+        </button>
+
+        <p
+          id="faceFileName"
+          class="custom-file-name text-slate-500 dark:text-slate-400"
+        >
+          ไม่ได้เลือกไฟล์ใด
+        </p>
+      </div>
+
+      <img
+        id="previewImage"
+        class="hidden mt-4 rounded-2xl w-full max-h-[420px] object-contain bg-slate-100 dark:bg-slate-800"
+        referrerpolicy="no-referrer"
+        alt="Face Preview"
+      />
+
+      <button
+        id="searchBtn"
+        type="button"
+        onclick="searchByFace()"
+        disabled
+        class="mt-4 w-full bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-2xl py-3 font-bold disabled:opacity-40"
+      >
+        ค้นหาภาพของฉัน
+      </button>
+
+      <p id="debugText" class="mt-3 text-xs text-slate-500 dark:text-slate-400 break-all"></p>
+    </section>
+
+    <section class="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm mb-4 transition">
+      <div class="flex justify-between items-center gap-3">
+        <div>
+          <p id="txtSearchResult" class="text-xs text-slate-500 dark:text-slate-400">ผลการค้นหา</p>
+          <p class="font-bold"><span id="resultCount">0</span> <span id="txtPhotoUnit">ภาพ</span></p>
+        </div>
+
+        <button
+          type="button"
+          onclick="goCart()"
+          class="bg-emerald-600 text-white rounded-2xl px-4 py-3 font-bold"
+        >
+          <span id="txtGoCart">ไปตะกร้า</span>
+        </button>
+      </div>
+    </section>
+
+    <section id="resultGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"></section>
+
+    <section id="emptyBox" class="hidden text-center py-16">
+      <p class="text-5xl">🙂</p>
+      <h2 id="txtNoResult" class="mt-3 text-lg font-bold">ยังไม่พบภาพ</h2>
+      <p id="txtNoResultDesc" class="text-sm text-slate-500 dark:text-slate-400 mt-1">ลองใช้รูปหน้าที่ชัดขึ้น</p>
+    </section>
+
+  </main>
+
+  <div id="photoModal" class="photo-modal" onclick="closePhotoModal()">
+    <button class="photo-close" onclick="closePhotoModal()" aria-label="Close">✕</button>
+
+    <div class="photo-modal-box" onclick="event.stopPropagation()">
+      <img
+        id="photoModalImg"
+        class="photo-modal-img"
+        src=""
+        alt="Photo Preview"
+        draggable="false"
+        referrerpolicy="no-referrer"
+      >
+
+      <div class="preview-soft-mask"></div>
+      <div class="preview-noise"></div>
+
+      <div class="watermark-layer" aria-hidden="true">
+        <div class="wm-row"><span>KEITA PHOTO CAMERA</span><span>KEITA PHOTO CAMERA</span><span>KEITA PHOTO CAMERA</span></div>
+        <div class="wm-row"><span>KEITA PHOTO CAMERA</span><span>KEITA PHOTO CAMERA</span><span>KEITA PHOTO CAMERA</span></div>
+        <div class="wm-row"><span>KEITA PHOTO CAMERA</span><span>KEITA PHOTO CAMERA</span><span>KEITA PHOTO CAMERA</span></div>
+        <div class="wm-row"><span>KEITA PHOTO CAMERA</span><span>KEITA PHOTO CAMERA</span><span>KEITA PHOTO CAMERA</span></div>
+        <div class="wm-row"><span>KEITA PHOTO CAMERA</span><span>KEITA PHOTO CAMERA</span><span>KEITA PHOTO CAMERA</span></div>
+      </div>
+
+      <div class="watermark-center"><span>KEITA PHOTO CAMERA</span></div>
+
+      <div class="photo-modal-info">
+        <div class="min-w-0">
+          <p class="font-bold truncate" id="photoModalName">-</p>
+          <p id="txtPreviewOnly" class="opacity-75">ตัวอย่างเท่านั้น · มีลายน้ำ</p>
+        </div>
+
+        <div class="font-bold shrink-0">฿<span id="photoModalPrice">0.00</span></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const db =
+      window.sb ||
+      window.supabaseClient ||
+      window.supabase.createClient(
+        CONFIG.SUPABASE_URL,
+        CONFIG.SUPABASE_ANON_KEY
+      );
+
+    let profile = null;
+    let eventId = null;
+    let eventData = null;
+    let selectedFile = null;
+    let results = [];
+
+    const LANG = {
+      th: {
+        miniApp: "LINE Mini App",
+        pageTitle: "ค้นหาภาพด้วยใบหน้า",
+        eventLoading: "กำลังโหลดข้อมูล...",
+        back: "กลับ",
+
+        uploadTitle: "อัปโหลดรูปใบหน้า",
+        uploadDesc: "กรุณาใช้รูปที่เห็นใบหน้าชัดเจน",
+        chooseFile: "เลือกไฟล์",
+        noFile: "ไม่ได้เลือกไฟล์ใด",
+        fileSelected: "เลือกไฟล์แล้ว",
+
+        searchBtn: "ค้นหาภาพของฉัน",
+        searchResult: "ผลการค้นหา",
+        photoUnit: "ภาพ",
+        goCart: "ไปตะกร้า",
+
+        noResult: "ยังไม่พบภาพ",
+        noResultDesc: "ลองใช้รูปหน้าที่ชัดขึ้น",
+
+        loadingFace: "กำลังวิเคราะห์ใบหน้า...",
+        loadingSearch: "กำลังค้นหารูป...",
+        loadingSystem: "กำลังโหลดระบบค้นหาใบหน้า...",
+
+        noFace: "ไม่พบใบหน้า",
+        noFaceDesc: "กรุณาใช้รูปที่เห็นใบหน้าชัดเจน",
+
+        addSuccess: "เพิ่มลงตะกร้าแล้ว",
+        goCartConfirm: "ไปตะกร้า",
+        continueSelect: "เลือกต่อ",
+
+        similarity: "ความใกล้เคียง",
+        viewPhoto: "ดูรูป",
+        addCart: "เพิ่มลงตะกร้า",
+
+        selectFileFirst: "กรุณาเลือกรูปก่อน",
+        errorTitle: "เกิดข้อผิดพลาด",
+        warningTitle: "แจ้งเตือน",
+        openPageFailed: "เปิดหน้าไม่สำเร็จ",
+        searchFailed: "ค้นหาไม่สำเร็จ",
+        noEventId: "ไม่พบ Event ID",
+        callFunctionFailed: "เรียก Edge Function ไม่สำเร็จ",
+
+        distance: "ระยะ",
+        previewOnly: "ตัวอย่างเท่านั้น · มีลายน้ำ",
+        photoFallback: "รูปภาพ",
+        previewFallback: "ตัวอย่าง",
+
+        darkLight: "☀️ Light",
+        darkDark: "🌙 Dark"
+      },
+
+      en: {
+        miniApp: "LINE Mini App",
+        pageTitle: "Face Search",
+        eventLoading: "Loading event...",
+        back: "Back",
+
+        uploadTitle: "Upload Face Photo",
+        uploadDesc: "Please use a clear face photo",
+        chooseFile: "Choose File",
+        noFile: "No file chosen",
+        fileSelected: "File selected",
+
+        searchBtn: "Search My Photos",
+        searchResult: "Search Results",
+        photoUnit: "photos",
+        goCart: "Go to Cart",
+
+        noResult: "No Photos Found",
+        noResultDesc: "Try using a clearer face image",
+
+        loadingFace: "Analyzing face...",
+        loadingSearch: "Searching photos...",
+        loadingSystem: "Loading face search system...",
+
+        noFace: "Face not found",
+        noFaceDesc: "Please use a clearer face photo",
+
+        addSuccess: "Added to cart",
+        goCartConfirm: "Go to Cart",
+        continueSelect: "Continue",
+
+        similarity: "Similarity",
+        viewPhoto: "View",
+        addCart: "Add to Cart",
+
+        selectFileFirst: "Please choose a photo first",
+        errorTitle: "Error",
+        warningTitle: "Warning",
+        openPageFailed: "Failed to open page",
+        searchFailed: "Search failed",
+        noEventId: "Event ID not found",
+        callFunctionFailed: "Failed to call Edge Function",
+
+        distance: "Distance",
+        previewOnly: "Preview only · Watermarked",
+        photoFallback: "Photo",
+        previewFallback: "Preview",
+
+        darkLight: "☀️ Light",
+        darkDark: "🌙 Dark"
+      },
+
+      ru: {
+        miniApp: "LINE Мини-приложение",
+        pageTitle: "Поиск по лицу",
+        eventLoading: "Загрузка события...",
+        back: "Назад",
+
+        uploadTitle: "Загрузить фото лица",
+        uploadDesc: "Пожалуйста, используйте чёткое фото лица",
+        chooseFile: "Выбрать файл",
+        noFile: "Файл не выбран",
+        fileSelected: "Файл выбран",
+
+        searchBtn: "Найти мои фото",
+        searchResult: "Результаты поиска",
+        photoUnit: "фото",
+        goCart: "В корзину",
+
+        noResult: "Фото не найдены",
+        noResultDesc: "Попробуйте использовать более чёткое фото",
+
+        loadingFace: "Анализ лица...",
+        loadingSearch: "Поиск фотографий...",
+        loadingSystem: "Загрузка системы поиска...",
+
+        noFace: "Лицо не найдено",
+        noFaceDesc: "Пожалуйста, используйте более чёткое фото",
+
+        addSuccess: "Добавлено в корзину",
+        goCartConfirm: "В корзину",
+        continueSelect: "Продолжить",
+
+        similarity: "Схожесть",
+        viewPhoto: "Просмотр",
+        addCart: "Добавить в корзину",
+
+        selectFileFirst: "Пожалуйста, выберите фото",
+        errorTitle: "Ошибка",
+        warningTitle: "Предупреждение",
+        openPageFailed: "Не удалось открыть страницу",
+        searchFailed: "Поиск не удался",
+        noEventId: "ID события не найден",
+        callFunctionFailed: "Не удалось вызвать Edge Function",
+
+        distance: "Расстояние",
+        previewOnly: "Только предпросмотр · С водяным знаком",
+        photoFallback: "Фото",
+        previewFallback: "Предпросмотр",
+
+        darkLight: "☀️ Светлая",
+        darkDark: "🌙 Тёмная"
+      }
+    };
+
+    let currentLang = localStorage.getItem("lang") || "th";
+
+    if (!LANG[currentLang]) {
+      currentLang = "th";
+      localStorage.setItem("lang", "th");
+    }
+
+    function t() {
+      return LANG[currentLang] || LANG.th;
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      try {
+        initDarkMode();
+        applyLanguage();
+        bindLanguageSelect();
+
+        eventId = getEventId();
+
+        if (!eventId) {
+          throw new Error(t().noEventId);
+        }
+
+        try {
+          if (window.AppLIFF) {
+            profile = await AppLIFF.init();
+          }
+        } catch (liffErr) {
+          console.warn("LIFF skipped:", liffErr);
+        }
+
+        if (!profile) {
+          profile = {
+            userId: localStorage.getItem("line_user_id") || "guest",
+            displayName: localStorage.getItem("line_display_name") || "Guest"
+          };
+        }
+
+        await loadModels();
+        await loadEvent();
+
+        const faceInput = document.getElementById("faceInput");
+        if (faceInput) {
+          faceInput.addEventListener("change", handleFile);
+        }
+
+      } catch (err) {
+        console.error(err);
+        Swal.fire(t().errorTitle, err.message || t().openPageFailed, "error");
+      }
+    });
+
+    function setText(id, value) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.textContent = value;
+      }
+    }
+
+    function applyLanguage() {
+      const x = t();
+
+      document.documentElement.lang = currentLang;
+
+      setText("txtMiniApp", x.miniApp);
+      setText("txtPageTitle", x.pageTitle);
+      setText("txtBack", x.back);
+
+      if (!eventData) {
+        setText("eventText", x.eventLoading);
+      }
+
+      setText("txtUploadTitle", x.uploadTitle);
+      setText("txtUploadDesc", x.uploadDesc);
+      setText("txtChooseFile", x.chooseFile);
+      updateFaceFileLabel();
+
+      setText("searchBtn", x.searchBtn);
+      setText("txtSearchResult", x.searchResult);
+      setText("txtPhotoUnit", x.photoUnit);
+      setText("txtGoCart", x.goCart);
+
+      setText("txtNoResult", x.noResult);
+      setText("txtNoResultDesc", x.noResultDesc);
+
+      setText("txtPreviewOnly", x.previewOnly);
+
+      const langSelect = document.getElementById("langSelect");
+      if (langSelect) {
+        langSelect.value = currentLang;
+      }
+
+      updateDarkButton();
+    }
+
+    function changeLanguage(lang) {
+      currentLang = LANG[lang] ? lang : "th";
+      localStorage.setItem("lang", currentLang);
+
+      applyLanguage();
+
+      if (results && results.length) {
+        renderResults();
+      } else {
+        setText("resultCount", "0");
+      }
+    }
+
+    window.changeLanguage = changeLanguage;
+
+    function bindLanguageSelect() {
+      const langSelect = document.getElementById("langSelect");
+      if (!langSelect) return;
+
+      langSelect.value = currentLang;
+
+      langSelect.addEventListener("change", function () {
+        changeLanguage(this.value);
+      });
+    }
+
+    function openFaceFilePicker() {
+      const input = document.getElementById("faceInput");
+      if (input) {
+        input.click();
+      }
+    }
+
+    function updateFaceFileLabel() {
+      const input = document.getElementById("faceInput");
+      const label = document.getElementById("faceFileName");
+
+      if (!label) return;
+
+      const file = input?.files?.[0];
+
+      if (file) {
+        label.textContent = `${t().fileSelected}: ${file.name}`;
+      } else {
+        label.textContent = t().noFile;
+      }
+    }
+
+    function getEventId() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("event") || params.get("event_id") || params.get("id");
+    }
+
+    async function loadModels() {
+      Swal.fire({
+        title: t().loadingSystem,
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => Swal.showLoading()
+      });
+
+      const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
+
+      await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+
+      Swal.close();
+    }
+
+    async function loadEvent() {
+      const { data, error } = await db
+        .from("events")
+        .select("*")
+        .eq("id", eventId)
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      eventData = data;
+
+      document.getElementById("eventText").textContent =
+        data.title || data.name || t().pageTitle;
+    }
+
+    function handleFile(e) {
+      const file = e.target.files?.[0];
+
+      updateFaceFileLabel();
+
+      if (!file) {
+        selectedFile = null;
+        document.getElementById("searchBtn").disabled = true;
+        document.getElementById("debugText").textContent = "";
+        return;
+      }
+
+      selectedFile = file;
+
+      const img = document.getElementById("previewImage");
+      img.src = URL.createObjectURL(file);
+      img.classList.remove("hidden");
+
+      document.getElementById("searchBtn").disabled = false;
+      document.getElementById("debugText").textContent =
+        `${t().fileSelected}: ${file.name}`;
+    }
+
+    async function searchByFace() {
+      try {
+        if (!selectedFile) {
+          Swal.fire(t().warningTitle, t().selectFileFirst, "warning");
+          return;
+        }
+
+        Swal.fire({
+          title: t().loadingFace,
+          allowOutsideClick: false,
+          showConfirmButton: false,
+          didOpen: () => Swal.showLoading()
+        });
+
+        const img = await faceapi.bufferToImage(selectedFile);
+
+        let detection = await faceapi
+          .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.18 }))
+          .withFaceLandmarks()
+          .withFaceDescriptor();
+
+        if (!detection) {
+          detection = await faceapi
+            .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({
+              inputSize: 512,
+              scoreThreshold: 0.12
+            }))
+            .withFaceLandmarks()
+            .withFaceDescriptor();
+        }
+
+        if (!detection) {
+          Swal.fire(t().noFace, t().noFaceDesc, "warning");
+          return;
+        }
+
+        const descriptor = Array.from(detection.descriptor);
+
+        Swal.update({
+          title: t().loadingSearch
+        });
+
+        const data = await callFaceSearchFunction({
+          event_id: eventId,
+          descriptor,
+          threshold: 0.55,
+          max_results: 99,
+          gap_limit: 0.18
+        });
+
+        results = normalizeResults(data.results || data.matches || []);
+
+        Swal.close();
+
+        renderResults();
+
+      } catch (err) {
+        console.error(err);
+        Swal.fire(t().errorTitle, err.message || t().searchFailed, "error");
+      }
+    }
+
+    async function callFaceSearchFunction(payload) {
+      const functionName = "face-search";
+      const url = `${CONFIG.SUPABASE_URL}/functions/v1/${functionName}`;
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: CONFIG.SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || data?.success === false) {
+        throw new Error(
+          data?.message ||
+          data?.error ||
+          `${t().callFunctionFailed}: ${functionName}`
+        );
+      }
+
+      return data || {};
+    }
+
+    function normalizeResults(items) {
+      return (items || []).map(item => {
+        if (item.photo) {
+          item.photo = normalizePhoto(item.photo);
+          return item;
+        }
+
+        const photo = normalizePhoto({
+          id: item.photo_id || item.id,
+          filename: item.filename,
+          price: item.price,
+          preview_url: item.preview_url || item.image_url || item.url,
+          watermark_url: item.watermark_url,
+          r2_preview_url: item.r2_preview_url,
+          r2_watermark_url: item.r2_watermark_url,
+          r2_key: item.r2_key
+        });
+
+        return {
+          ...item,
+          photo
+        };
+      });
+    }
+
+    function normalizePhoto(photo) {
+      return {
+        ...photo,
+        preview_url: normalizeImageUrl(
+          photo.r2_preview_url ||
+          photo.preview_url ||
+          photo.r2_watermark_url ||
+          photo.watermark_url ||
+          photo.image_url ||
+          photo.public_url ||
+          photo.url ||
+          photo.r2_key ||
+          photo.preview_path ||
+          photo.watermark_path ||
+          ""
+        )
+      };
+    }
+
+    function renderResults() {
+      const grid = document.getElementById("resultGrid");
+      const empty = document.getElementById("emptyBox");
+
+      grid.innerHTML = "";
+      document.getElementById("resultCount").textContent = results.length;
+
+      if (!results.length) {
+        empty.classList.remove("hidden");
+        return;
+      }
+
+      empty.classList.add("hidden");
+
+      results.forEach(item => {
+        const photo = item.photo || {};
+        const img = getSafePreviewUrl(photo);
+        const price = getPhotoPrice(photo);
+        const fileName = escapeHtml(photo.filename || photo.file_name || photo.name || photo.id || t().photoFallback);
+        const photoId = escapeAttribute(photo.id || "");
+
+        const card = document.createElement("article");
+        card.className =
+          "bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-sm transition border border-slate-100 dark:border-slate-800";
+
+        card.innerHTML = `
+          <div class="relative aspect-[3/4] bg-slate-200 dark:bg-slate-800">
+            <img
+              src="${escapeAttribute(img)}"
+              class="w-full h-full object-cover bg-slate-200 dark:bg-slate-800"
+              draggable="false"
+              referrerpolicy="no-referrer"
+              alt="${escapeAttribute(t().photoFallback)}"
+              onerror="this.onerror=null; this.src='https://placehold.co/600x800/111827/ffffff?text=NO+IMAGE';"
+            >
+
+            <button
+              type="button"
+              class="open-preview-btn absolute inset-0 z-10"
+              onclick="openPhotoModal('${photoId}')"
+              aria-label="${escapeAttribute(t().viewPhoto)}"
+            ></button>
+
+            <button
+              type="button"
+              class="open-preview-btn absolute top-2 left-2 z-30 bg-black/55 text-white rounded-full px-3 py-1 text-xs font-bold backdrop-blur"
+              onclick="openPhotoModal('${photoId}')"
+            >
+              🔍 ${escapeHtml(t().viewPhoto)}
+            </button>
+
+            <div class="absolute bottom-0 left-0 right-0 z-20 bg-black/50 text-white p-2 text-xs pointer-events-none truncate">
+              ${fileName}
+            </div>
+          </div>
+
+          <div class="p-3">
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+              ${escapeHtml(t().similarity)} : ${formatConfidence(item.confidence, item.distance)}
+            </p>
+
+            <p class="mt-1 font-bold text-emerald-600">
+              ฿${formatMoney(price)}
+            </p>
+
+            <button
+              type="button"
+              onclick="addToCart('${photoId}')"
+              class="mt-3 w-full bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-2xl py-3 font-bold text-sm"
+            >
+              ${escapeHtml(t().addCart)}
+            </button>
+          </div>
+        `;
+
+        grid.appendChild(card);
+      });
+    }
+
+    function formatConfidence(confidence, distance) {
+      if (confidence !== undefined && confidence !== null) {
+        const num = Number(confidence);
+
+        if (num <= 1) {
+          return `${Math.round(num * 100)}%`;
+        }
+
+        return `${Math.round(num)}%`;
+      }
+
+      if (distance !== undefined && distance !== null) {
+        return `${t().distance} ${Number(distance).toFixed(3)}`;
+      }
+
+      return "-";
+    }
+
+    function addToCart(photoId) {
+      const item = results.find(r => String(r.photo?.id) === String(photoId));
+
+      if (!item?.photo) return;
+
+      const photo = item.photo;
+      const price = getPhotoPrice(photo);
+
+      let cartKey = "photo_cart_guest";
+
+      if (window.AppLIFF && AppLIFF.getCartKey) {
+        cartKey = AppLIFF.getCartKey();
+      } else {
+        const userId = profile?.userId || localStorage.getItem("line_user_id") || "guest";
+        cartKey = `photo_cart_${userId}`;
+      }
+
+      let oldCart = [];
+
+      try {
+        oldCart = JSON.parse(localStorage.getItem(cartKey) || "[]");
+      } catch {
+        oldCart = [];
+      }
+
+      const map = new Map(oldCart.map(i => [String(i.photo_id), i]));
+
+      map.set(String(photo.id), {
+        event_id: eventId,
+        event_name: eventData?.title || eventData?.name || "",
+        photo_id: photo.id,
+        filename: photo.filename || photo.file_name || photo.name || "",
+        file_name: photo.filename || photo.file_name || photo.name || "",
+        preview_url: getSafePreviewUrl(photo),
+        price,
+        line_user_id: profile?.userId || "guest"
+      });
+
+      localStorage.setItem(cartKey, JSON.stringify([...map.values()]));
+
+      Swal.fire({
+        icon: "success",
+        title: t().addSuccess,
+        showCancelButton: true,
+        confirmButtonText: t().goCartConfirm,
+        cancelButtonText: t().continueSelect
+      }).then(result => {
+        if (result.isConfirmed) goCart();
+      });
+    }
+
+    function goEvent() {
+      window.location.href = `event.html?event=${encodeURIComponent(eventId || "")}`;
+    }
+
+    function goCart() {
+      window.location.href = `cart.html?event=${encodeURIComponent(eventId || "")}`;
+    }
+
+    function getPhotoPrice(photo) {
+      return Number(
+        photo.price ||
+        eventData?.price ||
+        eventData?.photo_price ||
+        CONFIG.DEFAULT_PHOTO_PRICE ||
+        0
+      );
+    }
+
+    function getSafePreviewUrl(photo) {
+      return normalizeImageUrl(
+        photo.preview_url ||
+        photo.r2_preview_url ||
+        photo.watermark_url ||
+        photo.r2_watermark_url ||
+        photo.thumbnail_url ||
+        photo.public_url ||
+        photo.url ||
+        photo.r2_key ||
+        `https://placehold.co/600x800/111827/ffffff?text=${encodeURIComponent(t().previewFallback)}`
+      );
+    }
+
+    function normalizeImageUrl(url) {
+      const cleanUrl = String(url || "").trim();
+
+      if (!cleanUrl) {
+        return `https://placehold.co/600x800/111827/ffffff?text=${encodeURIComponent(t().previewFallback)}`;
+      }
+
+      if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://")) {
+        return encodeURI(cleanUrl);
+      }
+
+      if (CONFIG.R2_WORKER_URL) {
+        const base = String(CONFIG.R2_WORKER_URL).replace(/\/+$/, "");
+        const key = cleanUrl.replace(/^\/+/, "");
+
+        return encodeURI(`${base}/file/${key}`);
+      }
+
+      if (CONFIG.R2_PUBLIC_BASE_URL) {
+        const base = String(CONFIG.R2_PUBLIC_BASE_URL).replace(/\/+$/, "");
+        const key = cleanUrl.replace(/^\/+/, "");
+        return encodeURI(`${base}/${key}`);
+      }
+
+      return encodeURI(cleanUrl);
+    }
+
+    function openPhotoModal(photoId) {
+      const item = results.find(r => String(r.photo?.id) === String(photoId));
+
+      if (!item?.photo) return;
+
+      const photo = item.photo;
+      const img = getSafePreviewUrl(photo);
+
+      document.getElementById("photoModalImg").src = img || "";
+      document.getElementById("photoModalName").textContent =
+        photo.filename || photo.file_name || photo.name || photo.id || t().photoFallback;
+
+      document.getElementById("photoModalPrice").textContent =
+        formatMoney(getPhotoPrice(photo));
+
+      document.getElementById("txtPreviewOnly").textContent = t().previewOnly;
+
+      document.getElementById("photoModal").classList.add("show");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closePhotoModal() {
+      document.getElementById("photoModal").classList.remove("show");
+      document.getElementById("photoModalImg").src = "";
+      document.body.style.overflow = "";
+    }
+
+    function formatMoney(value) {
+      return Number(value || 0).toLocaleString("th-TH", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+
+    function toggleDarkMode() {
+      const html = document.documentElement;
+      html.classList.toggle("dark");
+
+      const isDark = html.classList.contains("dark");
+      localStorage.setItem("darkMode", isDark ? "1" : "0");
+
+      updateDarkButton();
+    }
+
+    function updateDarkButton() {
+      const btn = document.getElementById("darkBtn");
+      if (!btn) return;
+
+      const isDark = document.documentElement.classList.contains("dark");
+      btn.innerHTML = isDark ? t().darkLight : t().darkDark;
+    }
+
+    function initDarkMode() {
+      const saved = localStorage.getItem("darkMode");
+
+      if (saved === "1") {
+        document.documentElement.classList.add("dark");
+      }
+
+      updateDarkButton();
+    }
+
+    function escapeHtml(text) {
+      return String(text ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function escapeAttribute(text) {
+      return String(text ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+    document.addEventListener("contextmenu", function(e) {
+      e.preventDefault();
+    });
+
+    document.addEventListener("dragstart", function(e) {
+      e.preventDefault();
+    });
+
+    document.addEventListener("keydown", function(e) {
+      const key = String(e.key || "").toLowerCase();
+
+      if (e.key === "Escape") closePhotoModal();
+
+      if (e.key === "F12") {
+        e.preventDefault();
+      }
+
+      if ((e.ctrlKey || e.metaKey) && key === "s") {
+        e.preventDefault();
+      }
+
+      if ((e.ctrlKey || e.metaKey) && key === "u") {
+        e.preventDefault();
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === "i") {
+        e.preventDefault();
+      }
+    });
+  </script>
+
+</body>
+</html>

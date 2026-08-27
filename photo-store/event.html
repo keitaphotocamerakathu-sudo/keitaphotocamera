@@ -1,0 +1,1923 @@
+<!-- <!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+
+  <title>Event Photos</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class"
+    };
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://static.line-scdn.net/liff/edge/versions/2.29.0/sdk.js"></script>
+
+  <script src="./js/config.js?v=new-supabase-006"></script>
+  <script src="./js/app-liff.js?v=new-supabase-006"></script>
+
+  <style>
+    html,
+    body {
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
+    body {
+      padding-bottom: 86px;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    .photo-card {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    img {
+      -webkit-user-drag: none;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    .protected-media {
+      position: relative;
+      display: block;
+      overflow: hidden;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .protected-media::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 8;
+      background: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .protected-img {
+      pointer-events: none;
+      -webkit-user-drag: none;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .watermark-layer {
+      position: absolute;
+      inset: -20%;
+      pointer-events: none;
+      overflow: hidden;
+      opacity: 0.26;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 28px;
+      transform: rotate(-24deg) scale(1.18);
+      z-index: 3;
+    }
+
+    .watermark-text {
+      color: white;
+      font-weight: 900;
+      font-size: clamp(18px, 3vw, 38px);
+      text-shadow: 0 2px 8px rgba(0,0,0,0.7);
+      white-space: nowrap;
+      letter-spacing: .08em;
+    }
+
+    .modal-soft-mask {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+      background:
+        linear-gradient(to bottom, rgba(0,0,0,.12), transparent 22%, transparent 70%, rgba(0,0,0,.45)),
+        linear-gradient(90deg, rgba(0,0,0,.18), transparent 20%, transparent 80%, rgba(0,0,0,.18));
+    }
+
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-950 text-white min-h-screen">
+
+  <header class="bg-slate-950 border-b border-white/10 sticky top-0 z-40">
+    <div class="max-w-5xl mx-auto px-4 py-4 flex items-start justify-between gap-4">
+
+      <div class="min-w-0">
+        <p class="text-xs text-slate-400">LINE Mini App</p>
+        <h1 id="eventTitle" class="text-2xl font-black leading-tight truncate">
+          Photo Store
+        </h1>
+        <p id="eventSubtitle" class="text-sm text-slate-400 mt-1">
+          เลือกรูปภาพที่ต้องการ
+        </p>
+      </div>
+
+      <div class="flex flex-col gap-2 shrink-0">
+        <button
+          onclick="toggleLang()"
+          id="langBtn"
+          class="bg-white/10 hover:bg-white/20 rounded-2xl px-4 py-2 font-bold text-sm"
+        >
+          🇹🇭 TH
+        </button>
+
+        <button
+          onclick="toggleDarkMode()"
+          id="darkBtn"
+          class="bg-white/10 hover:bg-white/20 rounded-2xl px-4 py-2 font-bold text-sm"
+        >
+          ☀️ Light
+        </button>
+
+        <button
+          onclick="goOrder()"
+          id="orderBtn"
+          class="bg-white text-slate-900 rounded-2xl px-4 py-2 font-bold text-sm"
+        >
+          ออเดอร์ของฉัน
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 py-5">
+
+    <section class="bg-white/5 border border-white/10 rounded-3xl p-4 mb-5">
+      <div class="flex items-center justify-between gap-3">
+        <div class="min-w-0">
+          <p id="photoCountText" class="text-sm text-slate-300">
+            กำลังโหลดรูปภาพ...
+          </p>
+          <p id="priceText" class="text-xs text-slate-500 mt-1"></p>
+          <p id="debugText" class="text-[10px] text-slate-600 mt-1 break-all"></p>
+        </div>
+
+        <button
+          onclick="goFaceSearch()"
+          class="bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl px-4 py-3 font-bold text-sm shrink-0"
+        >
+          🔍 ค้นหาใบหน้า
+        </button>
+      </div>
+    </section>
+
+    <div id="loadingBox" class="text-center py-16 text-slate-400">
+      กำลังโหลดรูปภาพ...
+    </div>
+
+    <div id="emptyBox" class="hidden text-center py-16 text-slate-400">
+      ยังไม่มีรูปภาพใน Event นี้
+    </div>
+
+    <section
+      id="photoGrid"
+      class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"
+    ></section>
+
+  </main>
+
+  <nav class="fixed bottom-0 left-0 right-0 z-50 bg-slate-950 border-t border-white/10">
+    <div class="max-w-5xl mx-auto grid grid-cols-3 text-center">
+
+      <button
+        onclick="goHome()"
+        class="py-3 text-slate-300 font-bold text-sm"
+      >
+        <div class="text-xl">🏠</div>
+        <div id="navHome">หน้าแรก</div>
+      </button>
+
+      <button
+        onclick="openCart()"
+        class="py-3 text-slate-300 font-bold text-sm relative"
+      >
+        <div class="text-xl">🛒</div>
+        <div id="navCart">ตะกร้า</div>
+        <span
+          id="cartBadge"
+          class="hidden absolute top-2 right-1/2 translate-x-8 bg-red-500 text-white text-xs rounded-full min-w-[22px] h-[22px] px-1 flex items-center justify-center"
+        >
+          0
+        </span>
+      </button>
+
+      <button
+        onclick="goOrder()"
+        class="py-3 text-slate-300 font-bold text-sm"
+      >
+        <div class="text-xl">🧾</div>
+        <div id="navOrder">ออเดอร์</div>
+      </button>
+
+    </div>
+  </nav>
+
+  <div
+    id="imageModal"
+    class="hidden fixed inset-0 bg-black/95 z-[100] items-center justify-center p-4"
+    onclick="closeImageModal()"
+  >
+    <button
+      onclick="closeImageModal()"
+      class="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white rounded-full w-12 h-12 text-3xl leading-none z-20"
+    >
+      ×
+    </button>
+
+    <div class="relative max-w-4xl w-full" onclick="event.stopPropagation()">
+      <div class="relative rounded-2xl overflow-hidden bg-black protected-media">
+        <img
+          id="modalImage"
+          src=""
+          class="w-full max-h-[78vh] object-contain select-none protected-img"
+          draggable="false"
+          referrerpolicy="no-referrer"
+          oncontextmenu="return false;"
+          onerror="this.onerror=null; this.src='https://placehold.co/1000x750/111827/ffffff?text=NO+IMAGE';"
+        />
+
+        <div class="modal-soft-mask"></div>
+
+        <div class="watermark-layer">
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+        </div>
+      </div>
+
+      <div class="mt-4 flex gap-3">
+        <button
+          id="modalAddBtn"
+          class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl px-4 py-3 font-bold"
+        >
+          เพิ่มลงตะกร้า
+        </button>
+
+        <button
+          onclick="closeImageModal()"
+          class="bg-white/10 hover:bg-white/20 text-white rounded-2xl px-5 py-3 font-bold"
+        >
+          ปิด
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const sb =
+      window.sb ||
+      window.supabaseClient ||
+      window.supabase.createClient(
+        CONFIG.SUPABASE_URL,
+        CONFIG.SUPABASE_ANON_KEY
+      );
+
+    let currentLang = localStorage.getItem("lang") || "th";
+    let currentEvent = null;
+    let photos = [];
+    let selectedPhoto = null;
+
+    const params = new URLSearchParams(window.location.search);
+    const eventId =
+      params.get("event") ||
+      params.get("event_id") ||
+      params.get("id");
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      initDarkMode();
+      updateLangUI();
+      protectImages();
+
+      try {
+        if (window.AppLIFF) {
+          await AppLIFF.init();
+        }
+      } catch (err) {
+        console.warn("LIFF init skipped:", err);
+      }
+
+      if (!eventId) {
+        Swal.fire("ไม่พบ Event", "กรุณาเลือก Event จากหน้าแรก", "warning")
+          .then(() => goHome());
+        return;
+      }
+
+      document.getElementById("debugText").textContent =
+        `Event ID: ${eventId}`;
+
+      await loadEvent();
+      await loadPhotos();
+      updateCartBadge();
+    });
+
+    async function loadEvent() {
+      const { data, error } = await sb
+        .from("events")
+        .select("*")
+        .eq("id", eventId)
+        .single();
+
+      if (error) {
+        console.error(error);
+        Swal.fire("เกิดข้อผิดพลาด", error.message, "error");
+        return;
+      }
+
+      currentEvent = data;
+
+      document.getElementById("eventTitle").textContent =
+        data.title || data.name || "Photo Store";
+
+      document.getElementById("eventSubtitle").textContent =
+        currentLang === "th"
+          ? "เลือกรูปภาพที่ต้องการ"
+          : "Choose your photos";
+
+      const price = Number(data.price || data.photo_price || CONFIG.DEFAULT_PHOTO_PRICE || 50);
+
+      document.getElementById("priceText").textContent =
+        currentLang === "th"
+          ? `ราคาเริ่มต้น ${formatMoney(price)} บาท / รูป`
+          : `Price from ${formatMoney(price)} THB / photo`;
+    }
+
+    async function loadPhotos() {
+      const loadingBox = document.getElementById("loadingBox");
+      const emptyBox = document.getElementById("emptyBox");
+      const grid = document.getElementById("photoGrid");
+
+      loadingBox.classList.remove("hidden");
+      emptyBox.classList.add("hidden");
+      grid.innerHTML = "";
+
+      const { data, error } = await sb
+        .from("photos")
+        .select("*")
+        .eq("event_id", eventId)
+        .eq("status", "active")
+        .order("created_at", { ascending: false });
+
+      loadingBox.classList.add("hidden");
+
+      if (error) {
+        console.error(error);
+        Swal.fire("โหลดรูปไม่สำเร็จ", error.message, "error");
+        return;
+      }
+
+      photos = (data || []).map(normalizePhoto);
+
+      document.getElementById("photoCountText").textContent =
+        currentLang === "th"
+          ? `พบรูปภาพ ${photos.length} รูป`
+          : `${photos.length} photos found`;
+
+      if (!photos.length) {
+        emptyBox.classList.remove("hidden");
+        return;
+      }
+
+      grid.innerHTML = photos.map(photo => renderPhotoCard(photo)).join("");
+      updateSelectedUI();
+      protectImages();
+    }
+
+    function normalizePhoto(photo) {
+      return {
+        ...photo,
+        display_url: getPhotoUrl(photo)
+      };
+    }
+
+    function renderPhotoCard(photo) {
+      const imgUrl = photo.display_url || getPhotoUrl(photo);
+      const price = Number(photo.price || currentEvent?.price || currentEvent?.photo_price || CONFIG.DEFAULT_PHOTO_PRICE || 50);
+      const isInCart = getCart().some(item => String(item.photo_id) === String(photo.id));
+
+      return `
+        <div
+          class="photo-card bg-white/5 border border-white/10 rounded-2xl overflow-hidden"
+          data-photo-id="${escapeAttr(photo.id)}"
+        >
+          <button
+            onclick="openImageModal('${escapeAttr(photo.id)}')"
+            class="block w-full aspect-square bg-slate-800 overflow-hidden protected-media"
+            oncontextmenu="return false;"
+          >
+            <img
+              src="${escapeAttr(imgUrl)}"
+              loading="lazy"
+              class="w-full h-full object-cover protected-img"
+              referrerpolicy="no-referrer"
+              draggable="false"
+              oncontextmenu="return false;"
+              onerror="this.onerror=null; this.src='https://placehold.co/600x600/111827/ffffff?text=No+Image';"
+            />
+          </button>
+
+          <div class="p-3">
+            <div class="text-xs text-slate-400 truncate mb-2">
+              ${escapeHtml(photo.filename || "photo")}
+            </div>
+
+            <div class="flex items-center justify-between gap-2">
+              <div class="font-bold text-sm">
+                ${formatMoney(price)} ฿
+              </div>
+
+              <button
+                onclick="toggleCart('${escapeAttr(photo.id)}')"
+                id="cartBtn-${escapeAttr(photo.id)}"
+                class="${isInCart ? "bg-red-500" : "bg-emerald-500"} text-white rounded-xl px-3 py-2 text-xs font-bold"
+              >
+                ${isInCart ? "ลบ" : "เลือก"}
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function getPhotoUrl(photo) {
+      const raw =
+        photo.r2_watermark_url ||
+        photo.r2_preview_url ||
+        photo.watermark_url ||
+        photo.preview_url ||
+        photo.image_url ||
+        photo.public_url ||
+        photo.url ||
+        "";
+
+      if (raw) {
+        return normalizeImageUrl(raw);
+      }
+
+      const key =
+        photo.r2_key ||
+        photo.r2_original_key ||
+        photo.preview_path ||
+        photo.watermark_path ||
+        photo.original_path ||
+        "";
+
+      if (key) {
+        return normalizeImageUrl(key);
+      }
+
+      return "https://placehold.co/600x600/111827/ffffff?text=No+Image";
+    }
+
+    function normalizeImageUrl(url) {
+      const cleanUrl = String(url || "").trim();
+
+      if (!cleanUrl) {
+        return "https://placehold.co/600x600/111827/ffffff?text=No+Image";
+      }
+
+      if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://")) {
+        return encodeURI(cleanUrl);
+      }
+
+      if (CONFIG.R2_WORKER_URL) {
+        const base = String(CONFIG.R2_WORKER_URL).replace(/\/+$/, "");
+        const key = cleanUrl.replace(/^\/+/, "");
+
+        if (key.startsWith("events/")) {
+          return encodeURI(`${base}/file/${key}`);
+        }
+
+        return encodeURI(`${base}/file/${key}`);
+      }
+
+      if (CONFIG.R2_PUBLIC_BASE_URL) {
+        const base = String(CONFIG.R2_PUBLIC_BASE_URL).replace(/\/+$/, "");
+        const key = cleanUrl.replace(/^\/+/, "");
+        return encodeURI(`${base}/${key}`);
+      }
+
+      return encodeURI(cleanUrl);
+    }
+
+    function getCartKey() {
+      if (window.AppLIFF && AppLIFF.getCartKey) {
+        return AppLIFF.getCartKey();
+      }
+
+      const userId = localStorage.getItem("line_user_id") || "guest";
+      return `photo_cart_${userId}`;
+    }
+
+    function getCart() {
+      try {
+        return JSON.parse(localStorage.getItem(getCartKey()) || "[]");
+      } catch {
+        return [];
+      }
+    }
+
+    function saveCart(cart) {
+      localStorage.setItem(getCartKey(), JSON.stringify(cart));
+      updateCartBadge();
+      updateSelectedUI();
+    }
+
+    function toggleCart(photoId) {
+      const photo = photos.find(p => String(p.id) === String(photoId));
+      if (!photo) return;
+
+      const cart = getCart();
+      const index = cart.findIndex(item => String(item.photo_id) === String(photoId));
+
+      if (index >= 0) {
+        cart.splice(index, 1);
+      } else {
+        const price = Number(photo.price || currentEvent?.price || currentEvent?.photo_price || CONFIG.DEFAULT_PHOTO_PRICE || 50);
+        const photoUrl = getPhotoUrl(photo);
+
+        cart.push({
+          photo_id: photo.id,
+          event_id: eventId,
+          event_name: currentEvent?.title || currentEvent?.name || "",
+          filename: photo.filename || "",
+          file_name: photo.filename || "",
+          photo_url: photoUrl,
+          preview_url: photoUrl,
+          watermark_url: photoUrl,
+          price: price
+        });
+      }
+
+      saveCart(cart);
+    }
+
+    function updateSelectedUI() {
+      const cart = getCart();
+
+      photos.forEach(photo => {
+        const btn = document.getElementById(`cartBtn-${photo.id}`);
+        if (!btn) return;
+
+        const isInCart = cart.some(item => String(item.photo_id) === String(photo.id));
+
+        btn.textContent = isInCart ? "ลบ" : "เลือก";
+        btn.className =
+          `${isInCart ? "bg-red-500" : "bg-emerald-500"} text-white rounded-xl px-3 py-2 text-xs font-bold`;
+      });
+    }
+
+    function updateCartBadge() {
+      const badge = document.getElementById("cartBadge");
+      const count = getCart().length;
+
+      badge.textContent = count;
+
+      if (count > 0) {
+        badge.classList.remove("hidden");
+      } else {
+        badge.classList.add("hidden");
+      }
+    }
+
+    function openCart() {
+      const cart = getCart();
+
+      if (!cart.length) {
+        Swal.fire(
+          currentLang === "th" ? "ตะกร้าว่าง" : "Cart is empty",
+          currentLang === "th" ? "กรุณาเลือกรูปก่อน" : "Please select photos first",
+          "info"
+        );
+        return;
+      }
+
+      window.location.href = `checkout.html?event=${encodeURIComponent(eventId)}`;
+    }
+
+    function openImageModal(photoId) {
+      const photo = photos.find(p => String(p.id) === String(photoId));
+      if (!photo) return;
+
+      selectedPhoto = photo;
+
+      document.getElementById("modalImage").src = getPhotoUrl(photo);
+      document.getElementById("imageModal").classList.remove("hidden");
+      document.getElementById("imageModal").classList.add("flex");
+
+      document.getElementById("modalAddBtn").onclick = () => {
+        toggleCart(photo.id);
+        closeImageModal();
+      };
+
+      document.body.style.overflow = "hidden";
+      protectImages();
+    }
+
+    function closeImageModal() {
+      document.getElementById("imageModal").classList.add("hidden");
+      document.getElementById("imageModal").classList.remove("flex");
+      document.getElementById("modalImage").src = "";
+      document.body.style.overflow = "";
+    }
+
+    function goHome() {
+      window.location.href = "index.html";
+    }
+
+    function goOrder() {
+      window.location.href = "order.html";
+    }
+
+    function goFaceSearch() {
+      window.location.href = `face-search.html?event=${encodeURIComponent(eventId)}`;
+    }
+
+    function toggleLang() {
+      currentLang = currentLang === "th" ? "en" : "th";
+      localStorage.setItem("lang", currentLang);
+      updateLangUI();
+
+      if (currentEvent) {
+        document.getElementById("eventSubtitle").textContent =
+          currentLang === "th"
+            ? "เลือกรูปภาพที่ต้องการ"
+            : "Choose your photos";
+
+        const price = Number(currentEvent.price || currentEvent.photo_price || CONFIG.DEFAULT_PHOTO_PRICE || 50);
+
+        document.getElementById("priceText").textContent =
+          currentLang === "th"
+            ? `ราคาเริ่มต้น ${formatMoney(price)} บาท / รูป`
+            : `Price from ${formatMoney(price)} THB / photo`;
+
+        document.getElementById("photoCountText").textContent =
+          currentLang === "th"
+            ? `พบรูปภาพ ${photos.length} รูป`
+            : `${photos.length} photos found`;
+      }
+    }
+
+    function updateLangUI() {
+      const btn = document.getElementById("langBtn");
+
+      btn.textContent = currentLang === "th" ? "🇹🇭 TH" : "🇬🇧 EN";
+
+      document.getElementById("navHome").textContent =
+        currentLang === "th" ? "หน้าแรก" : "Home";
+
+      document.getElementById("navCart").textContent =
+        currentLang === "th" ? "ตะกร้า" : "Cart";
+
+      document.getElementById("navOrder").textContent =
+        currentLang === "th" ? "ออเดอร์" : "Orders";
+
+      document.getElementById("orderBtn").textContent =
+        currentLang === "th" ? "ออเดอร์ของฉัน" : "My Orders";
+    }
+
+    function toggleDarkMode() {
+      const html = document.documentElement;
+      html.classList.toggle("dark");
+
+      const isDark = html.classList.contains("dark");
+      localStorage.setItem("darkMode", isDark ? "1" : "0");
+
+      updateDarkButton();
+    }
+
+    function updateDarkButton() {
+      const btn = document.getElementById("darkBtn");
+      const isDark = document.documentElement.classList.contains("dark");
+      btn.innerHTML = isDark ? "☀️ Light" : "🌙 Dark";
+    }
+
+    function initDarkMode() {
+      const saved = localStorage.getItem("darkMode");
+
+      if (saved === "1") {
+        document.documentElement.classList.add("dark");
+      }
+
+      updateDarkButton();
+    }
+
+    function formatMoney(value) {
+      return Number(value || 0).toLocaleString("th-TH", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      });
+    }
+
+    function escapeHtml(text) {
+      return String(text ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function escapeAttr(text) {
+      return escapeHtml(text);
+    }
+
+    /****************************************
+     * IMAGE / PAGE PROTECTION
+     * กันบันทึกรูปทั้งมือถือและคอม
+     ****************************************/
+
+    function protectImages() {
+      document.querySelectorAll("img").forEach(img => {
+        if (!img || img.dataset.protected === "1") return;
+
+        img.dataset.protected = "1";
+        img.classList.add("protected-img");
+        img.setAttribute("draggable", "false");
+        img.setAttribute("oncontextmenu", "return false;");
+        img.setAttribute("alt", img.getAttribute("alt") || "Protected Image");
+      });
+    }
+
+    const imageObserver = new MutationObserver(function () {
+      protectImages();
+    });
+
+    imageObserver.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+
+    document.addEventListener("contextmenu", function (e) {
+      e.preventDefault();
+      return false;
+    }, true);
+
+    document.addEventListener("dragstart", function (e) {
+      e.preventDefault();
+      return false;
+    }, true);
+
+    document.addEventListener("selectstart", function (e) {
+      const tag = String(e.target?.tagName || "").toLowerCase();
+
+      if (
+        tag === "input" ||
+        tag === "textarea" ||
+        tag === "select"
+      ) {
+        return true;
+      }
+
+      e.preventDefault();
+      return false;
+    }, true);
+
+    document.addEventListener("copy", function (e) {
+      e.preventDefault();
+      return false;
+    }, true);
+
+    document.addEventListener("cut", function (e) {
+      e.preventDefault();
+      return false;
+    }, true);
+
+    document.addEventListener("touchstart", function (e) {
+      if (e.target && e.target.tagName === "IMG") {
+        e.preventDefault();
+        return false;
+      }
+    }, {
+      passive: false,
+      capture: true
+    });
+
+    document.addEventListener("keydown", function (e) {
+      const key = String(e.key || "").toLowerCase();
+
+      if (e.key === "Escape") {
+        closeImageModal();
+      }
+
+      if (e.key === "F12") {
+        e.preventDefault();
+        return false;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && key === "s") {
+        e.preventDefault();
+        return false;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && key === "u") {
+        e.preventDefault();
+        return false;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && key === "p") {
+        e.preventDefault();
+        return false;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === "i") {
+        e.preventDefault();
+        return false;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === "j") {
+        e.preventDefault();
+        return false;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === "c") {
+        e.preventDefault();
+        return false;
+      }
+    }, true);
+  </script>
+
+</body>
+</html> -->
+
+
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+
+  <title>Event Photos</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class"
+    };
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://static.line-scdn.net/liff/edge/versions/2.29.0/sdk.js"></script>
+
+  <script src="./js/config.js?v=new-supabase-006"></script>
+  <script src="./js/app-liff.js?v=new-supabase-006"></script>
+
+  <style>
+    html,
+    body {
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
+    body {
+      padding-bottom: 86px;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    .photo-card {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    img {
+      -webkit-user-drag: none;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    .protected-media {
+      position: relative;
+      display: block;
+      overflow: hidden;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .protected-media::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 8;
+      background: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    .protected-img {
+      pointer-events: none;
+      -webkit-user-drag: none;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .watermark-layer {
+      position: absolute;
+      inset: -20%;
+      pointer-events: none;
+      overflow: hidden;
+      opacity: 0.26;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 28px;
+      transform: rotate(-24deg) scale(1.18);
+      z-index: 3;
+    }
+
+    .watermark-text {
+      color: white;
+      font-weight: 900;
+      font-size: clamp(18px, 3vw, 38px);
+      text-shadow: 0 2px 8px rgba(0,0,0,0.7);
+      white-space: nowrap;
+      letter-spacing: .08em;
+    }
+
+    .modal-soft-mask {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+      background:
+        linear-gradient(to bottom, rgba(0,0,0,.12), transparent 22%, transparent 70%, rgba(0,0,0,.45)),
+        linear-gradient(90deg, rgba(0,0,0,.18), transparent 20%, transparent 80%, rgba(0,0,0,.18));
+    }
+
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .lang-select {
+      color: #ffffff;
+      appearance: auto;
+      -webkit-appearance: menulist;
+    }
+
+    .lang-select option {
+      color: #0f172a;
+      background: #ffffff;
+      font-weight: 700;
+    }
+
+    .dark .lang-select option {
+      color: #ffffff;
+      background: #0f172a;
+    }
+
+    select,
+    button,
+    a {
+      pointer-events: auto;
+      -webkit-tap-highlight-color: transparent;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-950 text-white min-h-screen">
+
+  <header class="bg-slate-950 border-b border-white/10 sticky top-0 z-40">
+    <div class="max-w-5xl mx-auto px-4 py-4 flex items-start justify-between gap-4">
+
+      <div class="min-w-0">
+        <p id="appLabel" class="text-xs text-slate-400">LINE Mini App</p>
+
+        <h1 id="eventTitle" class="text-2xl font-black leading-tight truncate">
+          Photo Store
+        </h1>
+
+        <p id="eventSubtitle" class="text-sm text-slate-400 mt-1">
+          เลือกรูปภาพที่ต้องการ
+        </p>
+      </div>
+
+      <div class="flex flex-col gap-2 shrink-0">
+        <select
+          id="langSelect"
+          onchange="changeLang(this.value)"
+          class="lang-select bg-white/10 hover:bg-white/20 rounded-2xl px-4 py-2 font-bold text-sm outline-none"
+        >
+          <option value="th">🇹🇭 TH</option>
+          <option value="en">🇬🇧 EN</option>
+          <option value="ru">🇷🇺 RU</option>
+        </select>
+
+        <button
+          onclick="toggleDarkMode()"
+          id="darkBtn"
+          class="bg-white/10 hover:bg-white/20 rounded-2xl px-4 py-2 font-bold text-sm"
+        >
+          ☀️ Light
+        </button>
+
+        <button
+          onclick="goOrder()"
+          id="orderBtn"
+          class="bg-white text-slate-900 rounded-2xl px-4 py-2 font-bold text-sm"
+        >
+          ออเดอร์ของฉัน
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 py-5">
+
+    <section class="bg-white/5 border border-white/10 rounded-3xl p-4 mb-5">
+      <div class="flex items-center justify-between gap-3">
+        <div class="min-w-0">
+          <p id="photoCountText" class="text-sm text-slate-300">
+            กำลังโหลดรูปภาพ...
+          </p>
+
+          <p id="priceText" class="text-xs text-slate-500 mt-1"></p>
+
+          <p id="debugText" class="text-[10px] text-slate-600 mt-1 break-all"></p>
+        </div>
+
+        <button
+          onclick="goFaceSearch()"
+          id="faceSearchBtn"
+          class="bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl px-4 py-3 font-bold text-sm shrink-0"
+        >
+          🔍 ค้นหาใบหน้า
+        </button>
+      </div>
+    </section>
+
+    <div id="loadingBox" class="text-center py-16 text-slate-400">
+      กำลังโหลดรูปภาพ...
+    </div>
+
+    <div id="emptyBox" class="hidden text-center py-16 text-slate-400">
+      ยังไม่มีรูปภาพใน Event นี้
+    </div>
+
+    <section
+      id="photoGrid"
+      class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"
+    ></section>
+
+  </main>
+
+  <nav class="fixed bottom-0 left-0 right-0 z-50 bg-slate-950 border-t border-white/10">
+    <div class="max-w-5xl mx-auto grid grid-cols-3 text-center">
+
+      <button
+        onclick="goHome()"
+        class="py-3 text-slate-300 font-bold text-sm"
+      >
+        <div class="text-xl">🏠</div>
+        <div id="navHome">หน้าแรก</div>
+      </button>
+
+      <button
+        onclick="openCart()"
+        class="py-3 text-slate-300 font-bold text-sm relative"
+      >
+        <div class="text-xl">🛒</div>
+        <div id="navCart">ตะกร้า</div>
+
+        <span
+          id="cartBadge"
+          class="hidden absolute top-2 right-1/2 translate-x-8 bg-red-500 text-white text-xs rounded-full min-w-[22px] h-[22px] px-1 flex items-center justify-center"
+        >
+          0
+        </span>
+      </button>
+
+      <button
+        onclick="goOrder()"
+        class="py-3 text-slate-300 font-bold text-sm"
+      >
+        <div class="text-xl">🧾</div>
+        <div id="navOrder">ออเดอร์</div>
+      </button>
+
+    </div>
+  </nav>
+
+  <div
+    id="imageModal"
+    class="hidden fixed inset-0 bg-black/95 z-[100] items-center justify-center p-4"
+    onclick="closeImageModal()"
+  >
+    <button
+      onclick="closeImageModal()"
+      id="modalXBtn"
+      class="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white rounded-full w-12 h-12 text-3xl leading-none z-20"
+    >
+      ×
+    </button>
+
+    <div class="relative max-w-4xl w-full" onclick="event.stopPropagation()">
+      <div class="relative rounded-2xl overflow-hidden bg-black protected-media">
+        <img
+          id="modalImage"
+          src=""
+          class="w-full max-h-[78vh] object-contain select-none protected-img"
+          draggable="false"
+          referrerpolicy="no-referrer"
+          oncontextmenu="return false;"
+          onerror="this.onerror=null; this.src='https://placehold.co/1000x750/111827/ffffff?text=NO+IMAGE';"
+        />
+
+        <div class="modal-soft-mask"></div>
+
+        <div class="watermark-layer">
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+          <div class="watermark-text">KEITA PHOTO CAMERA</div>
+        </div>
+      </div>
+
+      <div class="mt-4 flex gap-3">
+        <button
+          id="modalAddBtn"
+          class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl px-4 py-3 font-bold"
+        >
+          เพิ่มลงตะกร้า
+        </button>
+
+        <button
+          onclick="closeImageModal()"
+          id="modalCloseBtn"
+          class="bg-white/10 hover:bg-white/20 text-white rounded-2xl px-5 py-3 font-bold"
+        >
+          ปิด
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const sb =
+      window.sb ||
+      window.supabaseClient ||
+      window.supabase.createClient(
+        CONFIG.SUPABASE_URL,
+        CONFIG.SUPABASE_ANON_KEY
+      );
+
+    let currentLang = localStorage.getItem("lang") || "th";
+    let currentEvent = null;
+    let photos = [];
+    let selectedPhoto = null;
+
+    const params = new URLSearchParams(window.location.search);
+    const eventId =
+      params.get("event") ||
+      params.get("event_id") ||
+      params.get("id");
+
+    const I18N = {
+      th: {
+        htmlLang: "th",
+        appLabel: "LINE Mini App",
+        photoStore: "Photo Store",
+        subtitle: "เลือกรูปภาพที่ต้องการ",
+        orderBtn: "ออเดอร์ของฉัน",
+
+        darkLight: "☀️ Light",
+        darkDark: "🌙 Dark",
+
+        loadingPhotos: "กำลังโหลดรูปภาพ...",
+        noPhotos: "ยังไม่มีรูปภาพใน Event นี้",
+        faceSearch: "🔍 ค้นหาใบหน้า",
+
+        navHome: "หน้าแรก",
+        navCart: "ตะกร้า",
+        navOrder: "ออเดอร์",
+
+        modalAdd: "เพิ่มลงตะกร้า",
+        modalClose: "ปิด",
+
+        select: "เลือก",
+        remove: "ลบ",
+        photoNameFallback: "รูปภาพ",
+
+        priceText: "ราคาเริ่มต้น {price} บาท / รูป",
+        photoCount: "พบรูปภาพ {count} รูป",
+
+        cartEmptyTitle: "ตะกร้าว่าง",
+        cartEmptyText: "กรุณาเลือกรูปก่อน",
+
+        noEventTitle: "ไม่พบ Event",
+        noEventText: "กรุณาเลือก Event จากหน้าแรก",
+
+        loadEventErrorTitle: "เกิดข้อผิดพลาด",
+        loadPhotoErrorTitle: "โหลดรูปไม่สำเร็จ",
+
+        noImage: "ไม่มีรูปภาพ"
+      },
+
+      en: {
+        htmlLang: "en",
+        appLabel: "LINE Mini App",
+        photoStore: "Photo Store",
+        subtitle: "Choose your photos",
+        orderBtn: "My Orders",
+
+        darkLight: "☀️ Light",
+        darkDark: "🌙 Dark",
+
+        loadingPhotos: "Loading photos...",
+        noPhotos: "No photos in this event yet",
+        faceSearch: "🔍 Face Search",
+
+        navHome: "Home",
+        navCart: "Cart",
+        navOrder: "Orders",
+
+        modalAdd: "Add to Cart",
+        modalClose: "Close",
+
+        select: "Select",
+        remove: "Remove",
+        photoNameFallback: "photo",
+
+        priceText: "Price from {price} THB / photo",
+        photoCount: "{count} photos found",
+
+        cartEmptyTitle: "Cart is empty",
+        cartEmptyText: "Please select photos first",
+
+        noEventTitle: "Event not found",
+        noEventText: "Please choose an event from the home page",
+
+        loadEventErrorTitle: "Error",
+        loadPhotoErrorTitle: "Failed to load photos",
+
+        noImage: "No Image"
+      },
+
+      ru: {
+        htmlLang: "ru",
+        appLabel: "LINE Mini App",
+        photoStore: "Photo Store",
+        subtitle: "Выберите нужные фотографии",
+        orderBtn: "Мои заказы",
+
+        darkLight: "☀️ Светлая",
+        darkDark: "🌙 Тёмная",
+
+        loadingPhotos: "Загрузка фотографий...",
+        noPhotos: "В этом событии пока нет фотографий",
+        faceSearch: "🔍 Поиск по лицу",
+
+        navHome: "Главная",
+        navCart: "Корзина",
+        navOrder: "Заказы",
+
+        modalAdd: "Добавить в корзину",
+        modalClose: "Закрыть",
+
+        select: "Выбрать",
+        remove: "Удалить",
+        photoNameFallback: "фото",
+
+        priceText: "Цена от {price} бат / фото",
+        photoCount: "Найдено фотографий: {count}",
+
+        cartEmptyTitle: "Корзина пуста",
+        cartEmptyText: "Сначала выберите фотографии",
+
+        noEventTitle: "Событие не найдено",
+        noEventText: "Пожалуйста, выберите событие на главной странице",
+
+        loadEventErrorTitle: "Ошибка",
+        loadPhotoErrorTitle: "Не удалось загрузить фотографии",
+
+        noImage: "Нет изображения"
+      }
+    };
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      initDarkMode();
+      updateLangUI();
+      protectImages();
+
+      try {
+        if (window.AppLIFF) {
+          await AppLIFF.init();
+        }
+      } catch (err) {
+        console.warn("LIFF init skipped:", err);
+      }
+
+      if (!eventId) {
+        Swal.fire(t("noEventTitle"), t("noEventText"), "warning")
+          .then(() => goHome());
+        return;
+      }
+
+      document.getElementById("debugText").textContent =
+        `Event ID: ${eventId}`;
+
+      await loadEvent();
+      await loadPhotos();
+      updateCartBadge();
+    });
+
+    function t(key) {
+      return (I18N[currentLang] && I18N[currentLang][key]) || I18N.th[key] || key;
+    }
+
+    function text(key, vars = {}) {
+      let value = t(key);
+
+      Object.keys(vars).forEach(k => {
+        value = value.replaceAll(`{${k}}`, vars[k]);
+      });
+
+      return value;
+    }
+
+    function changeLang(lang) {
+      currentLang = lang || "th";
+      localStorage.setItem("lang", currentLang);
+
+      updateLangUI();
+      updateEventTexts();
+      updatePhotoCountText();
+
+      if (photos && photos.length) {
+        renderPhotoGrid();
+        updateSelectedUI();
+        protectImages();
+      }
+    }
+
+    async function loadEvent() {
+      const { data, error } = await sb
+        .from("events")
+        .select("*")
+        .eq("id", eventId)
+        .single();
+
+      if (error) {
+        console.error(error);
+        Swal.fire(t("loadEventErrorTitle"), error.message, "error");
+        return;
+      }
+
+      currentEvent = data;
+
+      document.getElementById("eventTitle").textContent =
+        data.title || data.name || t("photoStore");
+
+      updateEventTexts();
+    }
+
+    async function loadPhotos() {
+      const loadingBox = document.getElementById("loadingBox");
+      const emptyBox = document.getElementById("emptyBox");
+      const grid = document.getElementById("photoGrid");
+
+      loadingBox.textContent = t("loadingPhotos");
+      emptyBox.textContent = t("noPhotos");
+
+      loadingBox.classList.remove("hidden");
+      emptyBox.classList.add("hidden");
+      grid.innerHTML = "";
+
+      const { data, error } = await sb
+        .from("photos")
+        .select("*")
+        .eq("event_id", eventId)
+        .eq("status", "active")
+        .order("created_at", { ascending: false });
+
+      loadingBox.classList.add("hidden");
+
+      if (error) {
+        console.error(error);
+        Swal.fire(t("loadPhotoErrorTitle"), error.message, "error");
+        return;
+      }
+
+      photos = (data || []).map(normalizePhoto);
+
+      updatePhotoCountText();
+
+      if (!photos.length) {
+        emptyBox.classList.remove("hidden");
+        return;
+      }
+
+      renderPhotoGrid();
+      updateSelectedUI();
+      protectImages();
+    }
+
+    function normalizePhoto(photo) {
+      return {
+        ...photo,
+        display_url: getPhotoUrl(photo)
+      };
+    }
+
+    function renderPhotoGrid() {
+      const grid = document.getElementById("photoGrid");
+      grid.innerHTML = photos.map(photo => renderPhotoCard(photo)).join("");
+    }
+
+    function renderPhotoCard(photo) {
+      const imgUrl = photo.display_url || getPhotoUrl(photo);
+      const price = Number(photo.price || currentEvent?.price || currentEvent?.photo_price || CONFIG.DEFAULT_PHOTO_PRICE || 50);
+      const isInCart = getCart().some(item => String(item.photo_id) === String(photo.id));
+
+      return `
+        <div
+          class="photo-card bg-white/5 border border-white/10 rounded-2xl overflow-hidden"
+          data-photo-id="${escapeAttr(photo.id)}"
+        >
+          <button
+            onclick="openImageModal('${escapeAttr(photo.id)}')"
+            class="block w-full aspect-square bg-slate-800 overflow-hidden protected-media"
+            oncontextmenu="return false;"
+          >
+            <img
+              src="${escapeAttr(imgUrl)}"
+              loading="lazy"
+              class="w-full h-full object-cover protected-img"
+              referrerpolicy="no-referrer"
+              draggable="false"
+              alt="${escapeAttr(t("photoNameFallback"))}"
+              oncontextmenu="return false;"
+              onerror="this.onerror=null; this.src='https://placehold.co/600x600/111827/ffffff?text=${encodeURIComponent(t("noImage"))}';"
+            />
+          </button>
+
+          <div class="p-3">
+            <div class="text-xs text-slate-400 truncate mb-2">
+              ${escapeHtml(photo.filename || t("photoNameFallback"))}
+            </div>
+
+            <div class="flex items-center justify-between gap-2">
+              <div class="font-bold text-sm">
+                ${formatMoney(price)} ฿
+              </div>
+
+              <button
+                onclick="toggleCart('${escapeAttr(photo.id)}')"
+                id="cartBtn-${escapeAttr(photo.id)}"
+                class="${isInCart ? "bg-red-500" : "bg-emerald-500"} text-white rounded-xl px-3 py-2 text-xs font-bold"
+              >
+                ${isInCart ? t("remove") : t("select")}
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function getPhotoUrl(photo) {
+      const raw =
+        photo.r2_watermark_url ||
+        photo.r2_preview_url ||
+        photo.watermark_url ||
+        photo.preview_url ||
+        photo.image_url ||
+        photo.public_url ||
+        photo.url ||
+        "";
+
+      if (raw) {
+        return normalizeImageUrl(raw);
+      }
+
+      const key =
+        photo.r2_key ||
+        photo.r2_original_key ||
+        photo.preview_path ||
+        photo.watermark_path ||
+        photo.original_path ||
+        "";
+
+      if (key) {
+        return normalizeImageUrl(key);
+      }
+
+      return `https://placehold.co/600x600/111827/ffffff?text=${encodeURIComponent(t("noImage"))}`;
+    }
+
+    function normalizeImageUrl(url) {
+      const cleanUrl = String(url || "").trim();
+
+      if (!cleanUrl) {
+        return `https://placehold.co/600x600/111827/ffffff?text=${encodeURIComponent(t("noImage"))}`;
+      }
+
+      if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://")) {
+        return encodeURI(cleanUrl);
+      }
+
+      if (CONFIG.R2_WORKER_URL) {
+        const base = String(CONFIG.R2_WORKER_URL).replace(/\/+$/, "");
+        const key = cleanUrl.replace(/^\/+/, "");
+        return encodeURI(`${base}/file/${key}`);
+      }
+
+      if (CONFIG.R2_PUBLIC_BASE_URL) {
+        const base = String(CONFIG.R2_PUBLIC_BASE_URL).replace(/\/+$/, "");
+        const key = cleanUrl.replace(/^\/+/, "");
+        return encodeURI(`${base}/${key}`);
+      }
+
+      return encodeURI(cleanUrl);
+    }
+
+    function getCartKey() {
+      if (window.AppLIFF && AppLIFF.getCartKey) {
+        return AppLIFF.getCartKey();
+      }
+
+      const userId = localStorage.getItem("line_user_id") || "guest";
+      return `photo_cart_${userId}`;
+    }
+
+    function getCart() {
+      try {
+        return JSON.parse(localStorage.getItem(getCartKey()) || "[]");
+      } catch {
+        return [];
+      }
+    }
+
+    function saveCart(cart) {
+      localStorage.setItem(getCartKey(), JSON.stringify(cart));
+      updateCartBadge();
+      updateSelectedUI();
+    }
+
+    function toggleCart(photoId) {
+      const photo = photos.find(p => String(p.id) === String(photoId));
+      if (!photo) return;
+
+      const cart = getCart();
+      const index = cart.findIndex(item => String(item.photo_id) === String(photoId));
+
+      if (index >= 0) {
+        cart.splice(index, 1);
+      } else {
+        const price = Number(photo.price || currentEvent?.price || currentEvent?.photo_price || CONFIG.DEFAULT_PHOTO_PRICE || 50);
+        const photoUrl = getPhotoUrl(photo);
+
+        cart.push({
+          photo_id: photo.id,
+          event_id: eventId,
+          event_name: currentEvent?.title || currentEvent?.name || "",
+          filename: photo.filename || "",
+          file_name: photo.filename || "",
+          photo_url: photoUrl,
+          preview_url: photoUrl,
+          watermark_url: photoUrl,
+          price: price
+        });
+      }
+
+      saveCart(cart);
+    }
+
+    function updateSelectedUI() {
+      const cart = getCart();
+
+      photos.forEach(photo => {
+        const btn = document.getElementById(`cartBtn-${photo.id}`);
+        if (!btn) return;
+
+        const isInCart = cart.some(item => String(item.photo_id) === String(photo.id));
+
+        btn.textContent = isInCart ? t("remove") : t("select");
+        btn.className =
+          `${isInCart ? "bg-red-500" : "bg-emerald-500"} text-white rounded-xl px-3 py-2 text-xs font-bold`;
+      });
+    }
+
+    function updateCartBadge() {
+      const badge = document.getElementById("cartBadge");
+      const count = getCart().length;
+
+      badge.textContent = count;
+
+      if (count > 0) {
+        badge.classList.remove("hidden");
+      } else {
+        badge.classList.add("hidden");
+      }
+    }
+
+    function openCart() {
+      const cart = getCart();
+
+      if (!cart.length) {
+        Swal.fire(
+          t("cartEmptyTitle"),
+          t("cartEmptyText"),
+          "info"
+        );
+        return;
+      }
+
+      window.location.href = `checkout.html?event=${encodeURIComponent(eventId)}`;
+    }
+
+    function openImageModal(photoId) {
+      const photo = photos.find(p => String(p.id) === String(photoId));
+      if (!photo) return;
+
+      selectedPhoto = photo;
+
+      document.getElementById("modalImage").src = getPhotoUrl(photo);
+      document.getElementById("imageModal").classList.remove("hidden");
+      document.getElementById("imageModal").classList.add("flex");
+
+      document.getElementById("modalAddBtn").onclick = () => {
+        toggleCart(photo.id);
+        closeImageModal();
+      };
+
+      document.body.style.overflow = "hidden";
+      protectImages();
+    }
+
+    function closeImageModal() {
+      document.getElementById("imageModal").classList.add("hidden");
+      document.getElementById("imageModal").classList.remove("flex");
+      document.getElementById("modalImage").src = "";
+      document.body.style.overflow = "";
+    }
+
+    function goHome() {
+      window.location.href = "index.html";
+    }
+
+    function goOrder() {
+      window.location.href = "order.html";
+    }
+
+    function goFaceSearch() {
+      window.location.href = `face-search.html?event=${encodeURIComponent(eventId)}`;
+    }
+
+    function updateLangUI() {
+      document.documentElement.lang = t("htmlLang");
+
+      const langSelect = document.getElementById("langSelect");
+      if (langSelect) {
+        langSelect.value = currentLang;
+      }
+
+      document.getElementById("appLabel").textContent = t("appLabel");
+      document.getElementById("eventSubtitle").textContent = t("subtitle");
+      document.getElementById("orderBtn").textContent = t("orderBtn");
+
+      document.getElementById("faceSearchBtn").textContent = t("faceSearch");
+
+      document.getElementById("navHome").textContent = t("navHome");
+      document.getElementById("navCart").textContent = t("navCart");
+      document.getElementById("navOrder").textContent = t("navOrder");
+
+      document.getElementById("modalAddBtn").textContent = t("modalAdd");
+      document.getElementById("modalCloseBtn").textContent = t("modalClose");
+
+      document.getElementById("loadingBox").textContent = t("loadingPhotos");
+      document.getElementById("emptyBox").textContent = t("noPhotos");
+
+      updateDarkButton();
+    }
+
+    function updateEventTexts() {
+      document.getElementById("eventSubtitle").textContent = t("subtitle");
+
+      if (!currentEvent) return;
+
+      const price = Number(currentEvent.price || currentEvent.photo_price || CONFIG.DEFAULT_PHOTO_PRICE || 50);
+
+      document.getElementById("priceText").textContent =
+        text("priceText", {
+          price: formatMoney(price)
+        });
+    }
+
+    function updatePhotoCountText() {
+      document.getElementById("photoCountText").textContent =
+        text("photoCount", {
+          count: photos.length
+        });
+    }
+
+    function toggleDarkMode() {
+      const html = document.documentElement;
+      html.classList.toggle("dark");
+
+      const isDark = html.classList.contains("dark");
+      localStorage.setItem("darkMode", isDark ? "1" : "0");
+
+      updateDarkButton();
+    }
+
+    function updateDarkButton() {
+      const btn = document.getElementById("darkBtn");
+      const isDark = document.documentElement.classList.contains("dark");
+
+      btn.innerHTML = isDark ? t("darkLight") : t("darkDark");
+    }
+
+    function initDarkMode() {
+      const saved = localStorage.getItem("darkMode");
+
+      if (saved === "1") {
+        document.documentElement.classList.add("dark");
+      }
+
+      updateDarkButton();
+    }
+
+    function formatMoney(value) {
+      return Number(value || 0).toLocaleString("th-TH", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      });
+    }
+
+    function escapeHtml(text) {
+      return String(text ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function escapeAttr(text) {
+      return escapeHtml(text);
+    }
+
+    /****************************************
+     * IMAGE / PAGE PROTECTION
+     * กันบันทึกรูปทั้งมือถือและคอม
+     ****************************************/
+
+    function protectImages() {
+      document.querySelectorAll("img").forEach(img => {
+        if (!img || img.dataset.protected === "1") return;
+
+        img.dataset.protected = "1";
+        img.classList.add("protected-img");
+        img.setAttribute("draggable", "false");
+        img.setAttribute("oncontextmenu", "return false;");
+        img.setAttribute("alt", img.getAttribute("alt") || "Protected Image");
+      });
+    }
+
+    const imageObserver = new MutationObserver(function () {
+      protectImages();
+    });
+
+    imageObserver.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+
+    document.addEventListener("contextmenu", function (e) {
+      e.preventDefault();
+      return false;
+    }, true);
+
+    document.addEventListener("dragstart", function (e) {
+      e.preventDefault();
+      return false;
+    }, true);
+
+    document.addEventListener("selectstart", function (e) {
+      const tag = String(e.target?.tagName || "").toLowerCase();
+
+      if (
+        tag === "input" ||
+        tag === "textarea" ||
+        tag === "select"
+      ) {
+        return true;
+      }
+
+      e.preventDefault();
+      return false;
+    }, true);
+
+    document.addEventListener("copy", function (e) {
+      e.preventDefault();
+      return false;
+    }, true);
+
+    document.addEventListener("cut", function (e) {
+      e.preventDefault();
+      return false;
+    }, true);
+
+    document.addEventListener("touchstart", function (e) {
+      if (e.target && e.target.tagName === "IMG") {
+        e.preventDefault();
+        return false;
+      }
+    }, {
+      passive: false,
+      capture: true
+    });
+
+    document.addEventListener("keydown", function (e) {
+      const key = String(e.key || "").toLowerCase();
+
+      if (e.key === "Escape") {
+        closeImageModal();
+      }
+
+      if (e.key === "F12") {
+        e.preventDefault();
+        return false;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && key === "s") {
+        e.preventDefault();
+        return false;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && key === "u") {
+        e.preventDefault();
+        return false;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && key === "p") {
+        e.preventDefault();
+        return false;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === "i") {
+        e.preventDefault();
+        return false;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === "j") {
+        e.preventDefault();
+        return false;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === "c") {
+        e.preventDefault();
+        return false;
+      }
+    }, true);
+  </script>
+
+</body>
+</html>

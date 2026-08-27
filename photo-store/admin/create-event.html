@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+
+  <title>Create Event</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class"
+    };
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <script src="../js/config.js?v=new-supabase-002"></script>
+
+  <style>
+    html,
+    body {
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
+    select,
+    input,
+    textarea,
+    button {
+      touch-action: manipulation;
+    }
+
+    .safe-bottom {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+  </style>
+</head>
+
+<body class="bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-white min-h-screen transition">
+
+  <header class="bg-black dark:bg-slate-900 text-white p-5 sticky top-0 z-40">
+    <div class="max-w-5xl mx-auto flex items-start justify-between gap-4">
+      <div class="min-w-0">
+        <p class="text-xs text-slate-400">ADMIN PANEL</p>
+        <h1 class="text-2xl font-black leading-tight">CREATE EVENT</h1>
+        <p class="text-sm text-slate-400 mt-1">สร้าง / แก้ไข / ลบ Event</p>
+      </div>
+
+      <div class="flex flex-col gap-2 shrink-0">
+        <button
+          onclick="toggleDarkMode()"
+          id="darkBtn"
+          class="bg-white/10 hover:bg-white/20 rounded-2xl px-4 py-3 font-bold transition"
+        >
+          🌙 Dark
+        </button>
+
+        <button
+          onclick="goUpload()"
+          class="bg-white text-slate-900 rounded-2xl px-4 py-3 font-bold transition"
+        >
+          UPLOAD
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto p-4 pb-28">
+
+    <section class="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow mb-6 transition">
+
+      <div class="flex items-center justify-between gap-3 mb-5">
+        <div>
+          <h2 id="formTitle" class="text-xl font-black">สร้าง Event ใหม่</h2>
+          <p id="formSubtitle" class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            ใส่ข้อมูลงาน แล้วกดบันทึก
+          </p>
+        </div>
+
+        <button
+          onclick="resetForm()"
+          class="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-2xl px-4 py-3 font-bold text-sm"
+        >
+          + ใหม่
+        </button>
+      </div>
+
+      <input type="hidden" id="eventId" />
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        <div class="md:col-span-2">
+          <label class="font-semibold block mb-2">ชื่อ Event</label>
+          <input
+            id="title"
+            type="text"
+            placeholder="เช่น Bang Wad Running"
+            class="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white rounded-xl p-3"
+            oninput="autoSlug()"
+          />
+        </div>
+
+        <div>
+          <label class="font-semibold block mb-2">Slug</label>
+          <input
+            id="slug"
+            type="text"
+            placeholder="bang-wad-running"
+            class="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white rounded-xl p-3"
+          />
+          <p class="text-xs text-slate-500 mt-1">
+            ใช้เป็นรหัสลิงก์ ห้ามซ้ำ เช่น bang-wad-2026
+          </p>
+        </div>
+
+        <div>
+          <label class="font-semibold block mb-2">วันที่จัดงาน</label>
+          <input
+            id="eventDate"
+            type="date"
+            class="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white rounded-xl p-3"
+          />
+        </div>
+
+        <div>
+          <label class="font-semibold block mb-2">ราคา / รูป</label>
+          <input
+            id="price"
+            type="number"
+            value="50"
+            min="0"
+            class="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white rounded-xl p-3"
+          />
+        </div>
+
+        <div>
+          <label class="font-semibold block mb-2">สถานะ</label>
+          <select
+            id="status"
+            class="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white rounded-xl p-3"
+          >
+            <option value="draft">Draft / แบบร่าง</option>
+            <option value="published">Published / เปิดขาย</option>
+            <option value="active">Active / ใช้งาน</option>
+            <option value="closed">Closed / ปิดงาน</option>
+          </select>
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="font-semibold block mb-2">รายละเอียด</label>
+          <textarea
+            id="description"
+            rows="3"
+            placeholder="รายละเอียดงานถ่ายภาพ"
+            class="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white rounded-xl p-3"
+          ></textarea>
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="font-semibold block mb-2">รูปปก Event</label>
+
+          <div class="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-5 bg-slate-50 dark:bg-slate-800">
+            <input
+              id="coverInput"
+              type="file"
+              accept="image/*"
+              class="hidden"
+              onchange="previewCover(event)"
+            />
+
+            <div class="flex flex-col md:flex-row gap-4 items-start">
+              <div class="w-full md:w-56 aspect-video rounded-2xl bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                <img
+                  id="coverPreview"
+                  src=""
+                  class="hidden w-full h-full object-cover"
+                  referrerpolicy="no-referrer"
+                />
+                <div id="coverPlaceholder" class="w-full h-full flex items-center justify-center text-slate-500 text-sm text-center px-2">
+                  ไม่มีรูปปก
+                </div>
+              </div>
+
+              <div class="flex-1">
+                <button
+                  type="button"
+                  onclick="document.getElementById('coverInput').click()"
+                  class="bg-black dark:bg-white dark:text-slate-900 text-white rounded-xl px-5 py-3 font-bold"
+                >
+                  เลือกรูปปก
+                </button>
+
+                <button
+                  type="button"
+                  onclick="clearCover()"
+                  class="bg-slate-200 dark:bg-slate-700 rounded-xl px-5 py-3 font-bold ml-2"
+                >
+                  ล้างรูป
+                </button>
+
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-3">
+                  รูปปกจะอัปโหลดเข้า Cloudflare R2 หลังจากกดบันทึก
+                </p>
+
+                <p id="coverDebug" class="text-xs text-slate-500 dark:text-slate-400 mt-2 break-all"></p>
+
+                <input id="coverUrl" type="hidden" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3">
+        <button
+          onclick="saveEvent()"
+          id="saveBtn"
+          class="bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl px-5 py-4 font-black"
+        >
+          บันทึก Event
+        </button>
+
+        <button
+          onclick="goUploadSelected()"
+          class="bg-blue-500 hover:bg-blue-600 text-white rounded-2xl px-5 py-4 font-black"
+        >
+          ไปหน้า Upload
+        </button>
+
+        <button
+          onclick="deleteSelectedEvent()"
+          id="deleteBtn"
+          class="hidden bg-red-500 hover:bg-red-600 text-white rounded-2xl px-5 py-4 font-black"
+        >
+          ลบ Event
+        </button>
+      </div>
+
+    </section>
+
+    <section class="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow transition">
+      <div class="flex items-center justify-between gap-3 mb-4">
+        <div>
+          <h2 class="text-xl font-black">รายการ Event</h2>
+          <p id="eventCountText" class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            กำลังโหลด...
+          </p>
+        </div>
+
+        <button
+          onclick="loadEvents()"
+          class="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-2xl px-4 py-3 font-bold"
+        >
+          รีเฟรช
+        </button>
+      </div>
+
+      <div id="eventList" class="space-y-3"></div>
+    </section>
+
+  </main>
+
+  <script>
+    const sb = window.sb || window.supabaseClient;
+
+    let events = [];
+    let selectedCoverFile = null;
+    let slugTouched = false;
+
+    const eventIdInput = document.getElementById("eventId");
+    const titleInput = document.getElementById("title");
+    const slugInput = document.getElementById("slug");
+    const eventDateInput = document.getElementById("eventDate");
+    const priceInput = document.getElementById("price");
+    const statusInput = document.getElementById("status");
+    const descriptionInput = document.getElementById("description");
+    const coverInput = document.getElementById("coverInput");
+    const coverUrlInput = document.getElementById("coverUrl");
+    const coverDebug = document.getElementById("coverDebug");
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      initDarkMode();
+
+      slugInput.addEventListener("input", () => {
+        slugTouched = true;
+        slugInput.value = toSlug(slugInput.value);
+      });
+
+      await loadEvents();
+
+      const params = new URLSearchParams(window.location.search);
+      const editId = params.get("event") || params.get("event_id") || params.get("id");
+
+      if (editId) {
+        const found = events.find(e => e.id === editId);
+        if (found) fillForm(found);
+      }
+    });
+
+    function autoSlug() {
+      if (slugTouched) return;
+      slugInput.value = toSlug(titleInput.value);
+    }
+
+    function toSlug(text) {
+      return String(text || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^\wก-๙\s-]+/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
+    }
+
+    function normalizeImageUrl(url) {
+      const cleanUrl = String(url || "").trim();
+
+      if (!cleanUrl) return "";
+
+      if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://")) {
+        return encodeURI(cleanUrl);
+      }
+
+      if (CONFIG.R2_PUBLIC_BASE_URL) {
+        const base = String(CONFIG.R2_PUBLIC_BASE_URL).replace(/\/+$/, "");
+        const key = cleanUrl.replace(/^\/+/, "");
+        return encodeURI(`${base}/${key}`);
+      }
+
+      return encodeURI(cleanUrl);
+    }
+
+    async function loadEvents() {
+      const eventList = document.getElementById("eventList");
+      const eventCountText = document.getElementById("eventCountText");
+
+      eventList.innerHTML = `
+        <div class="text-center text-slate-500 py-8">
+          กำลังโหลด Event...
+        </div>
+      `;
+
+      const { data, error } = await sb
+        .from("events")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error(error);
+
+        eventList.innerHTML = `
+          <div class="bg-red-100 text-red-700 rounded-2xl p-4">
+            โหลด Event ไม่สำเร็จ: ${escapeHtml(error.message)}
+          </div>
+        `;
+
+        eventCountText.textContent = "โหลดไม่สำเร็จ";
+        return;
+      }
+
+      events = data || [];
+      eventCountText.textContent = `ทั้งหมด ${events.length} Event`;
+
+      if (!events.length) {
+        eventList.innerHTML = `
+          <div class="text-center text-slate-500 py-8">
+            ยังไม่มี Event
+          </div>
+        `;
+        return;
+      }
+
+      eventList.innerHTML = events.map(event => renderEventItem(event)).join("");
+    }
+
+    function renderEventItem(event) {
+      const cover = normalizeImageUrl(event.cover_url || "");
+      const price = Number(event.price || CONFIG.DEFAULT_PHOTO_PRICE || 50);
+      const status = event.status || "draft";
+      const statusClass = getStatusClass(status);
+
+      return `
+        <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-3 bg-slate-50 dark:bg-slate-950">
+          <div class="flex gap-3">
+
+            <div class="w-24 h-20 rounded-xl bg-slate-200 dark:bg-slate-800 overflow-hidden shrink-0">
+              ${
+                cover
+                  ? `<img
+                      src="${escapeAttr(cover)}"
+                      class="w-full h-full object-cover"
+                      referrerpolicy="no-referrer"
+                      onerror="this.onerror=null; this.src='https://placehold.co/300x240/111827/ffffff?text=NO+COVER';"
+                    >`
+                  : `<div class="w-full h-full flex items-center justify-center text-xs text-slate-500">No Cover</div>`
+              }
+            </div>
+
+            <div class="flex-1 min-w-0">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <h3 class="font-black truncate">
+                    ${escapeHtml(event.title || event.name || "Untitled")}
+                  </h3>
+
+                  <p class="text-xs text-slate-500 dark:text-slate-400 truncate mt-1">
+                    slug: ${escapeHtml(event.slug || "-")}
+                  </p>
+
+                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    วันที่: ${escapeHtml(event.event_date || "-")} | ราคา: ${price} บาท
+                  </p>
+
+                  <p class="text-[10px] text-slate-400 mt-1 break-all">
+                    cover: ${escapeHtml(event.cover_url || "-")}
+                  </p>
+                </div>
+
+                <span class="${statusClass} rounded-full px-3 py-1 text-xs font-bold shrink-0">
+                  ${escapeHtml(status)}
+                </span>
+              </div>
+
+              <div class="grid grid-cols-2 md:grid-cols-5 gap-2 mt-3">
+                <button onclick="fillFormById('${event.id}')" class="bg-slate-200 dark:bg-slate-800 rounded-xl px-3 py-2 text-sm font-bold">
+                  แก้ไข
+                </button>
+
+                <button onclick="openEvent('${event.id}')" class="bg-black dark:bg-white dark:text-slate-900 text-white rounded-xl px-3 py-2 text-sm font-bold">
+                  เปิดดู
+                </button>
+
+                <button onclick="uploadEvent('${event.id}')" class="bg-blue-500 text-white rounded-xl px-3 py-2 text-sm font-bold">
+                  Upload
+                </button>
+
+                <button onclick="toggleEventStatus('${event.id}', '${status}')" class="bg-amber-500 text-white rounded-xl px-3 py-2 text-sm font-bold">
+                  ${status === "closed" ? "เปิด" : "ปิด"}
+                </button>
+
+                <button onclick="deleteEvent('${event.id}')" class="bg-red-500 text-white rounded-xl px-3 py-2 text-sm font-bold">
+                  ลบ
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      `;
+    }
+
+    function getStatusClass(status) {
+      if (status === "published" || status === "active") {
+        return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200";
+      }
+
+      if (status === "closed") {
+        return "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200";
+      }
+
+      return "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200";
+    }
+
+    function fillFormById(id) {
+      const event = events.find(e => e.id === id);
+      if (event) fillForm(event);
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
+    }
+
+    function fillForm(event) {
+      eventIdInput.value = event.id;
+      titleInput.value = event.title || event.name || "";
+      slugInput.value = event.slug || "";
+      eventDateInput.value = event.event_date || "";
+      priceInput.value = event.price || CONFIG.DEFAULT_PHOTO_PRICE || 50;
+      statusInput.value = event.status || "draft";
+      descriptionInput.value = event.description || "";
+
+      const coverUrl = event.cover_url || "";
+      coverUrlInput.value = coverUrl;
+
+      selectedCoverFile = null;
+      coverInput.value = "";
+
+      setCoverPreview(coverUrl);
+
+      document.getElementById("formTitle").textContent = "แก้ไข Event";
+      document.getElementById("formSubtitle").textContent = `ID: ${event.id}`;
+      document.getElementById("saveBtn").textContent = "บันทึกการแก้ไข";
+      document.getElementById("deleteBtn").classList.remove("hidden");
+
+      slugTouched = true;
+    }
+
+    function resetForm() {
+      eventIdInput.value = "";
+      titleInput.value = "";
+      slugInput.value = "";
+      eventDateInput.value = "";
+      priceInput.value = CONFIG.DEFAULT_PHOTO_PRICE || 50;
+      statusInput.value = "draft";
+      descriptionInput.value = "";
+      coverUrlInput.value = "";
+      coverInput.value = "";
+      selectedCoverFile = null;
+      slugTouched = false;
+
+      setCoverPreview("");
+
+      document.getElementById("formTitle").textContent = "สร้าง Event ใหม่";
+      document.getElementById("formSubtitle").textContent = "ใส่ข้อมูลงาน แล้วกดบันทึก";
+      document.getElementById("saveBtn").textContent = "บันทึก Event";
+      document.getElementById("deleteBtn").classList.add("hidden");
+    }
+
+    function previewCover(e) {
+      const file = e.target.files?.[0];
+
+      if (!file) return;
+
+      selectedCoverFile = file;
+
+      const localUrl = URL.createObjectURL(file);
+      setCoverPreview(localUrl);
+      coverDebug.textContent = `เลือกไฟล์ใหม่: ${file.name}`;
+    }
+
+    function setCoverPreview(url) {
+      const img = document.getElementById("coverPreview");
+      const placeholder = document.getElementById("coverPlaceholder");
+
+      const finalUrl = normalizeImageUrl(url);
+
+      if (finalUrl) {
+        img.onload = function () {
+          img.classList.remove("hidden");
+          placeholder.classList.add("hidden");
+        };
+
+        img.onerror = function () {
+          console.warn("Cover preview load failed:", finalUrl);
+          img.classList.add("hidden");
+          placeholder.classList.remove("hidden");
+          placeholder.textContent = "โหลดรูปปกไม่ได้";
+        };
+
+        img.src = finalUrl;
+        img.classList.remove("hidden");
+        placeholder.classList.add("hidden");
+        coverDebug.textContent = finalUrl;
+
+      } else {
+        img.src = "";
+        img.classList.add("hidden");
+        placeholder.classList.remove("hidden");
+        placeholder.textContent = "ไม่มีรูปปก";
+        coverDebug.textContent = "";
+      }
+    }
+
+    function clearCover() {
+      selectedCoverFile = null;
+      coverInput.value = "";
+      coverUrlInput.value = "";
+      setCoverPreview("");
+    }
+
+    async function saveEvent() {
+      const id = eventIdInput.value || "";
+      const title = titleInput.value.trim();
+      const slug = toSlug(slugInput.value || title);
+      const eventDate = eventDateInput.value || null;
+      const price = Number(priceInput.value || CONFIG.DEFAULT_PHOTO_PRICE || 50);
+      const status = statusInput.value || "draft";
+      const description = descriptionInput.value.trim();
+      let coverUrl = coverUrlInput.value || null;
+
+      if (!title) {
+        Swal.fire("กรุณาใส่ชื่อ Event", "", "warning");
+        return;
+      }
+
+      if (!slug) {
+        Swal.fire("กรุณาใส่ Slug", "", "warning");
+        return;
+      }
+
+      Swal.fire({
+        title: "กำลังบันทึก",
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => Swal.showLoading()
+      });
+
+      try {
+        let savedEvent;
+
+        if (id) {
+          const { data, error } = await sb
+            .from("events")
+            .update({
+              title,
+              slug,
+              event_date: eventDate,
+              price,
+              status,
+              description,
+              cover_url: coverUrl,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", id)
+            .select("*")
+            .single();
+
+          if (error) throw error;
+          savedEvent = data;
+
+        } else {
+          const { data, error } = await sb
+            .from("events")
+            .insert({
+              title,
+              slug,
+              event_date: eventDate,
+              price,
+              status,
+              description,
+              cover_url: coverUrl
+            })
+            .select("*")
+            .single();
+
+          if (error) throw error;
+          savedEvent = data;
+        }
+
+        if (selectedCoverFile) {
+          console.log("เริ่มอัปโหลดรูปปก:", selectedCoverFile.name);
+
+          const uploaded = await uploadCoverToR2(selectedCoverFile, savedEvent.id);
+
+          if (!uploaded?.key || !uploaded?.publicUrl) {
+            throw new Error("R2 Worker ส่ง key หรือ publicUrl กลับมาไม่ครบ");
+          }
+
+          coverUrl = uploaded.publicUrl;
+
+          console.log("Cover uploaded:", uploaded);
+
+          const { data: updatedEvent, error: coverError } = await sb
+            .from("events")
+            .update({
+              cover_url: coverUrl,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", savedEvent.id)
+            .select("*")
+            .single();
+
+          if (coverError) {
+            console.error("Update cover_url error:", coverError);
+            throw new Error("บันทึก cover_url ไม่สำเร็จ: " + coverError.message);
+          }
+
+          savedEvent = updatedEvent;
+          coverUrlInput.value = coverUrl;
+          selectedCoverFile = null;
+          coverInput.value = "";
+          setCoverPreview(coverUrl);
+
+          console.log("บันทึก cover_url สำเร็จ:", savedEvent.cover_url);
+        }
+
+        Swal.close();
+
+        await Swal.fire({
+          icon: "success",
+          title: "บันทึกสำเร็จ",
+          text: savedEvent.title || title,
+          timer: 1200,
+          showConfirmButton: false
+        });
+
+        await loadEvents();
+        fillForm(savedEvent);
+
+      } catch (err) {
+        console.error(err);
+
+        Swal.close();
+
+        Swal.fire({
+          icon: "error",
+          title: "บันทึกไม่สำเร็จ",
+          text: err.message || String(err)
+        });
+      }
+    }
+
+    async function uploadCoverToR2(file, eventId) {
+      if (!file) {
+        throw new Error("ไม่พบไฟล์รูปปก");
+      }
+
+      if (!eventId) {
+        throw new Error("ไม่พบ Event ID สำหรับอัปโหลดรูปปก");
+      }
+
+      if (window.uploadToR2) {
+        const data = await window.uploadToR2(file, eventId, "cover");
+
+        if (!data?.key || !data?.publicUrl) {
+          throw new Error("uploadToR2 ส่ง key หรือ publicUrl กลับมาไม่ครบ");
+        }
+
+        return data;
+      }
+
+      if (!CONFIG.R2_WORKER_URL) {
+        throw new Error("ไม่พบ R2_WORKER_URL");
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("event_id", eventId);
+      formData.append("folder", "cover");
+
+      const res = await fetch(`${CONFIG.R2_WORKER_URL}/upload`, {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.message || "Upload cover to R2 failed");
+      }
+
+      if (!data.key || !data.publicUrl) {
+        throw new Error("R2 Worker ส่ง key หรือ publicUrl กลับมาไม่ครบ");
+      }
+
+      return data;
+    }
+
+    async function toggleEventStatus(id, currentStatus) {
+      const nextStatus = currentStatus === "closed" ? "published" : "closed";
+      const text = nextStatus === "closed" ? "ปิด Event นี้หรือไม่?" : "เปิด Event นี้หรือไม่?";
+
+      const confirm = await Swal.fire({
+        icon: "question",
+        title: text,
+        showCancelButton: true,
+        confirmButtonText: "ตกลง",
+        cancelButtonText: "ยกเลิก"
+      });
+
+      if (!confirm.isConfirmed) return;
+
+      const { error } = await sb
+        .from("events")
+        .update({
+          status: nextStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", id);
+
+      if (error) {
+        Swal.fire("เปลี่ยนสถานะไม่สำเร็จ", error.message, "error");
+        return;
+      }
+
+      await loadEvents();
+
+      if (eventIdInput.value === id) {
+        const found = events.find(e => e.id === id);
+        if (found) fillForm(found);
+      }
+    }
+
+    async function deleteSelectedEvent() {
+      const id = eventIdInput.value;
+      if (!id) return;
+
+      await deleteEvent(id);
+    }
+
+    async function deleteEvent(id) {
+      const event = events.find(e => e.id === id);
+
+      const confirm = await Swal.fire({
+        icon: "warning",
+        title: "ยืนยันการลบ Event?",
+        html: `
+          <div class="text-left">
+            <p>Event: <b>${escapeHtml(event?.title || id)}</b></p>
+            <p class="text-red-600 mt-2">
+              ระบบจะลบ Event, รูปภาพ, faces และข้อมูลที่เกี่ยวข้อง
+            </p>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonColor: "#ef4444",
+        confirmButtonText: "ลบ",
+        cancelButtonText: "ยกเลิก"
+      });
+
+      if (!confirm.isConfirmed) return;
+
+      Swal.fire({
+        title: "กำลังลบ Event",
+        text: "กรุณารอสักครู่",
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => Swal.showLoading()
+      });
+
+      try {
+        if (window.callFunction) {
+          await window.callFunction("delete-event-deep", {
+            event_id: id
+          });
+        } else {
+          const res = await fetch(`${CONFIG.SUPABASE_URL}/functions/v1/delete-event-deep`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: CONFIG.SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify({
+              event_id: id
+            })
+          });
+
+          const data = await res.json().catch(() => null);
+
+          if (!res.ok || !data?.success) {
+            throw new Error(data?.message || "Delete event failed");
+          }
+        }
+
+        Swal.close();
+
+        await Swal.fire({
+          icon: "success",
+          title: "ลบสำเร็จ",
+          timer: 1200,
+          showConfirmButton: false
+        });
+
+        resetForm();
+        await loadEvents();
+
+      } catch (err) {
+        console.error(err);
+
+        Swal.close();
+
+        Swal.fire({
+          icon: "error",
+          title: "ลบไม่สำเร็จ",
+          text: err.message || String(err)
+        });
+      }
+    }
+
+    function openEvent(id) {
+      window.location.href = `../event.html?event=${encodeURIComponent(id)}`;
+    }
+
+    function uploadEvent(id) {
+      window.location.href = `upload.html?event=${encodeURIComponent(id)}`;
+    }
+
+    function goUploadSelected() {
+      const id = eventIdInput.value;
+
+      if (id) {
+        window.location.href = `upload.html?event=${encodeURIComponent(id)}`;
+      } else {
+        window.location.href = "upload.html";
+      }
+    }
+
+    function goUpload() {
+      window.location.href = "upload.html";
+    }
+
+    function toggleDarkMode() {
+      const html = document.documentElement;
+      html.classList.toggle("dark");
+
+      const isDark = html.classList.contains("dark");
+      localStorage.setItem("darkMode", isDark ? "1" : "0");
+
+      updateDarkButton();
+    }
+
+    function updateDarkButton() {
+      const btn = document.getElementById("darkBtn");
+      if (!btn) return;
+
+      const isDark = document.documentElement.classList.contains("dark");
+      btn.innerHTML = isDark ? "☀️ Light" : "🌙 Dark";
+    }
+
+    function initDarkMode() {
+      const saved = localStorage.getItem("darkMode");
+
+      if (saved === "1") {
+        document.documentElement.classList.add("dark");
+      }
+
+      updateDarkButton();
+    }
+
+    function escapeHtml(text) {
+      return String(text ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function escapeAttr(text) {
+      return escapeHtml(text);
+    }
+  </script>
+
+</body>
+</html>

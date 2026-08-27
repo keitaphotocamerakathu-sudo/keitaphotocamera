@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  />
+
+  <title>ออเดอร์ของฉัน</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: "class"
+    };
+  </script>
+
+  <script src="https://static.line-scdn.net/liff/edge/versions/2.29.0/sdk.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <script src="js/config.js?v=new-supabase-007"></script>
+  <script src="js/liff-helper.js?v=new-supabase-007"></script>
+  <script src="js/app-liff.js?v=new-supabase-007"></script>
+
+  <style>
+    html,
+    body {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
+    body {
+      min-height: 100vh;
+    }
+
+    .safe-bottom {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    img {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    body {
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-white transition safe-bottom">
+
+  <main class="max-w-5xl mx-auto p-4 pb-24">
+
+    <header class="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm mb-4 transition">
+
+      <div class="flex justify-between gap-3">
+
+        <div class="min-w-0">
+
+          <p
+            id="txtMiniApp"
+            class="text-xs text-slate-500 dark:text-slate-400"
+          >
+            LINE Mini App
+          </p>
+
+          <h1
+            id="txtPageTitle"
+            class="text-xl font-black"
+          >
+            ออเดอร์ของฉัน
+          </h1>
+
+          <p
+            id="txtPageDesc"
+            class="text-sm text-slate-500 dark:text-slate-400"
+          >
+            รายการสั่งซื้อภาพของคุณ
+          </p>
+
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-2 shrink-0">
+
+          <button
+            onclick="goHome()"
+            class="bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-full px-4 py-2 font-bold"
+          >
+            <span id="txtHome">หน้าแรก</span>
+          </button>
+
+          <select
+            id="langSelect"
+            onchange="changeLanguage(this.value)"
+            class="rounded-full bg-slate-100 dark:bg-slate-800 dark:text-white px-3 py-2 text-sm font-bold outline-none"
+          >
+            <option value="th">🇹🇭 TH</option>
+            <option value="en">🇺🇸 EN</option>
+            <option value="ru">🇷🇺 RU</option>
+          </select>
+
+          <button
+            onclick="toggleDarkMode()"
+            id="darkBtn"
+            class="rounded-full bg-slate-100 dark:bg-slate-800 dark:text-white px-4 py-2 text-sm font-bold"
+          >
+            🌙 Dark
+          </button>
+
+        </div>
+
+      </div>
+
+      <div
+        id="profileBox"
+        class="hidden mt-4 bg-slate-50 dark:bg-slate-800 rounded-2xl p-3 transition"
+      >
+
+        <div class="flex items-center gap-3">
+
+          <img
+            id="linePicture"
+            class="w-11 h-11 rounded-full object-cover bg-slate-200 dark:bg-slate-700"
+            referrerpolicy="no-referrer"
+          />
+
+          <div class="min-w-0">
+
+            <p
+              id="lineName"
+              class="font-bold truncate"
+            >
+              -
+            </p>
+
+            <p
+              id="txtConnected"
+              class="text-xs text-emerald-600"
+            >
+              เชื่อมต่อ LINE แล้ว
+            </p>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </header>
+
+    <section
+      id="loadingBox"
+      class="text-center py-10 text-slate-500 dark:text-slate-400"
+    >
+      กำลังโหลดออเดอร์...
+    </section>
+
+    <section
+      id="orderList"
+      class="space-y-4 hidden"
+    ></section>
+
+    <section
+      id="emptyBox"
+      class="hidden text-center py-16"
+    >
+
+      <p class="text-5xl">🧾</p>
+
+      <h2
+        id="txtEmptyTitle"
+        class="mt-3 text-lg font-bold"
+      >
+        ยังไม่มีออเดอร์
+      </h2>
+
+      <p
+        id="txtEmptyDesc"
+        class="text-sm text-slate-500 dark:text-slate-400 mt-1"
+      >
+        เมื่อสั่งซื้อแล้ว รายการจะแสดงที่นี่
+      </p>
+
+      <button
+        onclick="goHome()"
+        class="mt-5 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-2xl px-5 py-3 font-bold"
+      >
+        <span id="txtChooseEvent">เลือก Event</span>
+      </button>
+
+    </section>
+
+  </main>
+
+  <script>
+    const db =
+      window.sb ||
+      window.supabaseClient ||
+      window.supabase.createClient(
+        CONFIG.SUPABASE_URL,
+        CONFIG.SUPABASE_ANON_KEY
+      );
+
+    let profile = null;
+    let orders = [];
+
+    const LANG = {
+      th: {
+        miniApp: "LINE Mini App",
+        pageTitle: "ออเดอร์ของฉัน",
+        pageDesc: "รายการสั่งซื้อภาพของคุณ",
+        home: "หน้าแรก",
+        connected: "เชื่อมต่อ LINE แล้ว",
+        loading: "กำลังโหลดออเดอร์...",
+        emptyTitle: "ยังไม่มีออเดอร์",
+        emptyDesc: "เมื่อสั่งซื้อแล้ว รายการจะแสดงที่นี่",
+        chooseEvent: "เลือก Event",
+        noPhoto: "ไม่มีภาพ",
+        amount: "จำนวน",
+        total: "ยอดรวม",
+        photoUnit: "ภาพ",
+        download: "ดาวน์โหลดภาพ",
+        waitingApprove: "รอตรวจสอบสลิป",
+        rejected: "สลิปไม่ผ่าน",
+        pendingPayment: "รอชำระเงิน",
+        cancelled: "ยกเลิก",
+        waiting: "รอดำเนินการ",
+        paid: "ชำระเงินแล้ว",
+        approved: "อนุมัติแล้ว",
+        pending: "รอตรวจสอบ",
+        errorTitle: "เกิดข้อผิดพลาด"
+      },
+
+      en: {
+        miniApp: "LINE Mini App",
+        pageTitle: "My Orders",
+        pageDesc: "Your purchased photo orders",
+        home: "Home",
+        connected: "LINE Connected",
+        loading: "Loading orders...",
+        emptyTitle: "No Orders Yet",
+        emptyDesc: "Your purchased orders will appear here",
+        chooseEvent: "Choose Event",
+        noPhoto: "No Photos",
+        amount: "Quantity",
+        total: "Total",
+        photoUnit: "photos",
+        download: "Download Photos",
+        waitingApprove: "Waiting for Approval",
+        rejected: "Slip Rejected",
+        pendingPayment: "Pending Payment",
+        cancelled: "Cancelled",
+        waiting: "Processing",
+        paid: "Paid",
+        approved: "Approved",
+        pending: "Pending Review",
+        errorTitle: "Error"
+      },
+
+      ru: {
+        miniApp: "LINE Мини-приложение",
+        pageTitle: "Мои Заказы",
+        pageDesc: "Ваши заказы фотографий",
+        home: "Главная",
+        connected: "LINE подключён",
+        loading: "Загрузка заказов...",
+        emptyTitle: "Заказов пока нет",
+        emptyDesc: "После покупки ваши заказы появятся здесь",
+        chooseEvent: "Выбрать событие",
+        noPhoto: "Нет фото",
+        amount: "Количество",
+        total: "Сумма",
+        photoUnit: "фото",
+        download: "Скачать фото",
+        waitingApprove: "Ожидает проверки",
+        rejected: "Чек отклонён",
+        pendingPayment: "Ожидает оплаты",
+        cancelled: "Отменено",
+        waiting: "В обработке",
+        paid: "Оплачено",
+        approved: "Одобрено",
+        pending: "Ожидает проверки",
+        errorTitle: "Ошибка"
+      }
+    };
+
+    let currentLang =
+      localStorage.getItem("lang") || "th";
+
+    function t() {
+      return LANG[currentLang] || LANG.th;
+    }
+
+    document.addEventListener(
+      "DOMContentLoaded",
+      async () => {
+        try {
+          initDarkMode();
+          applyLanguage();
+
+          if (!db) {
+            throw new Error("ไม่พบ Supabase client");
+          }
+
+          try {
+            if (window.AppLIFF) {
+              profile = await AppLIFF.init();
+            }
+          } catch (liffErr) {
+            console.warn("LIFF init skipped:", liffErr);
+          }
+
+          if (!profile) {
+            profile = {
+              userId: localStorage.getItem("line_user_id") || "",
+              displayName: localStorage.getItem("line_display_name") || "Guest",
+              pictureUrl: localStorage.getItem("line_picture") || ""
+            };
+          }
+
+          if (!profile.userId) {
+            throw new Error("ไม่พบ LINE user id กรุณาเปิดผ่าน LINE LIFF");
+          }
+
+          showProfile();
+
+          await loadOrders();
+
+        } catch (err) {
+          console.error(err);
+
+          document
+            .getElementById("loadingBox")
+            .classList.add("hidden");
+
+          Swal.fire(
+            t().errorTitle,
+            err.message || "โหลดออเดอร์ไม่สำเร็จ",
+            "error"
+          );
+        }
+      }
+    );
+
+    function applyLanguage() {
+      const x = t();
+
+      document.documentElement.lang = currentLang;
+
+      document.getElementById("txtMiniApp").textContent = x.miniApp;
+      document.getElementById("txtPageTitle").textContent = x.pageTitle;
+      document.getElementById("txtPageDesc").textContent = x.pageDesc;
+      document.getElementById("txtHome").textContent = x.home;
+      document.getElementById("txtConnected").textContent = x.connected;
+      document.getElementById("loadingBox").textContent = x.loading;
+      document.getElementById("txtEmptyTitle").textContent = x.emptyTitle;
+      document.getElementById("txtEmptyDesc").textContent = x.emptyDesc;
+      document.getElementById("txtChooseEvent").textContent = x.chooseEvent;
+
+      document.getElementById("langSelect").value = currentLang;
+    }
+
+    function changeLanguage(lang) {
+      currentLang = lang;
+
+      localStorage.setItem("lang", lang);
+
+      applyLanguage();
+      renderOrders();
+    }
+
+    function showProfile() {
+      document.getElementById("profileBox")
+        .classList.remove("hidden");
+
+      document.getElementById("lineName").textContent =
+        profile.displayName || "LINE User";
+
+      document.getElementById("linePicture").src =
+        profile.pictureUrl ||
+        "https://placehold.co/100x100?text=LINE";
+    }
+
+    async function loadOrders() {
+      document.getElementById("loadingBox").classList.remove("hidden");
+      document.getElementById("orderList").classList.add("hidden");
+      document.getElementById("emptyBox").classList.add("hidden");
+
+      const { data, error } = await db
+        .from("orders")
+        .select(`
+          *,
+          order_items (
+            id,
+            photo_id,
+            event_id,
+            filename,
+            photo_url,
+            price,
+            photos (
+              id,
+              filename,
+              preview_url,
+              watermark_url,
+              r2_preview_url,
+              r2_watermark_url,
+              r2_key,
+              preview_path,
+              watermark_path,
+              original_path
+            )
+          )
+        `)
+        .eq("line_user_id", profile.userId)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      orders = data || [];
+
+      document
+        .getElementById("loadingBox")
+        .classList.add("hidden");
+
+      renderOrders();
+    }
+
+    function renderOrders() {
+      const list =
+        document.getElementById("orderList");
+
+      const empty =
+        document.getElementById("emptyBox");
+
+      list.innerHTML = "";
+
+      if (!orders.length) {
+        list.classList.add("hidden");
+        empty.classList.remove("hidden");
+        return;
+      }
+
+      empty.classList.add("hidden");
+      list.classList.remove("hidden");
+
+      orders.forEach(order => {
+        const items = order.order_items || [];
+
+        const total =
+          Number(
+            order.total_amount ||
+            order.amount ||
+            items.reduce((sum, item) => sum + Number(item.price || 0), 0)
+          );
+
+        const card = document.createElement("article");
+
+        card.className =
+          "bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm transition border border-slate-100 dark:border-slate-800";
+
+        card.innerHTML = `
+          <div class="flex justify-between gap-3">
+
+            <div class="min-w-0">
+
+              <p class="font-black truncate">
+                ${escapeHtml(order.order_no || order.id)}
+              </p>
+
+              <p class="text-xs text-slate-500 dark:text-slate-400">
+                ${formatDate(order.created_at)}
+              </p>
+
+            </div>
+
+            ${statusBadge(order.status)}
+
+          </div>
+
+          <div class="mt-4 grid grid-cols-4 gap-2">
+            ${renderPhotos(items)}
+          </div>
+
+          <div class="mt-4 flex justify-between items-center gap-4">
+
+            <div>
+
+              <p class="text-xs text-slate-500 dark:text-slate-400">
+                ${t().amount}
+              </p>
+
+              <p class="font-bold">
+                ${items.length} ${t().photoUnit}
+              </p>
+
+            </div>
+
+            <div class="text-right">
+
+              <p class="text-xs text-slate-500 dark:text-slate-400">
+                ${t().total}
+              </p>
+
+              <p class="font-black text-emerald-600">
+                ฿${formatMoney(total)}
+              </p>
+
+            </div>
+
+          </div>
+
+          <div class="mt-4">
+            ${actionButton(order)}
+          </div>
+        `;
+
+        list.appendChild(card);
+      });
+    }
+
+    function renderPhotos(items) {
+      if (!items.length) {
+        return `
+          <div class="col-span-4 text-center text-sm text-slate-400 py-6">
+            ${t().noPhoto}
+          </div>
+        `;
+      }
+
+      return items
+        .slice(0, 4)
+        .map(item => {
+          const photo = item.photos || {};
+          const img = getOrderItemImage(item, photo);
+
+          return `
+            <img
+              src="${escapeAttr(img)}"
+              class="w-full h-20 object-cover rounded-2xl bg-slate-200 dark:bg-slate-800"
+              referrerpolicy="no-referrer"
+              onerror="this.onerror=null; this.src='https://placehold.co/300x400/111827/ffffff?text=Photo';"
+            />
+          `;
+        })
+        .join("");
+    }
+
+    function getOrderItemImage(item, photo) {
+      const raw =
+        item.photo_url ||
+        photo.r2_watermark_url ||
+        photo.r2_preview_url ||
+        photo.watermark_url ||
+        photo.preview_url ||
+        photo.r2_key ||
+        photo.preview_path ||
+        photo.watermark_path ||
+        photo.original_path ||
+        "";
+
+      return normalizeImageUrl(raw);
+    }
+
+    function normalizeImageUrl(url) {
+      const cleanUrl = String(url || "").trim();
+
+      if (!cleanUrl) {
+        return "https://placehold.co/300x400/111827/ffffff?text=Photo";
+      }
+
+      if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://")) {
+        return encodeURI(cleanUrl);
+      }
+
+      if (CONFIG.R2_WORKER_URL) {
+        const base = String(CONFIG.R2_WORKER_URL).replace(/\/+$/, "");
+        const key = cleanUrl.replace(/^\/+/, "");
+
+        if (key.startsWith("events/")) {
+          return encodeURI(`${base}/file/${key}`);
+        }
+
+        return encodeURI(`${base}/file/${key}`);
+      }
+
+      if (CONFIG.R2_PUBLIC_BASE_URL) {
+        const base = String(CONFIG.R2_PUBLIC_BASE_URL).replace(/\/+$/, "");
+        const key = cleanUrl.replace(/^\/+/, "");
+        return encodeURI(`${base}/${key}`);
+      }
+
+      return encodeURI(cleanUrl);
+    }
+
+    function actionButton(order) {
+      const status = String(order.status || "").toLowerCase();
+
+      if (
+        status === "approved" ||
+        status === "paid"
+      ) {
+        return `
+          <button
+            onclick="downloadOrder('${escapeAttr(order.id)}')"
+            class="w-full bg-emerald-600 text-white rounded-2xl py-3 font-bold"
+          >
+            ${t().download}
+          </button>
+        `;
+      }
+
+      if (
+        status === "pending" ||
+        status === "waiting_approve" ||
+        status === "paid_pending" ||
+        status === "uploaded"
+      ) {
+        return `
+          <button
+            disabled
+            class="w-full bg-orange-100 text-orange-700 rounded-2xl py-3 font-bold"
+          >
+            ${t().waitingApprove}
+          </button>
+        `;
+      }
+
+      if (status === "rejected") {
+        return `
+          <button
+            disabled
+            class="w-full bg-red-100 text-red-700 rounded-2xl py-3 font-bold"
+          >
+            ${t().rejected}
+          </button>
+        `;
+      }
+
+      if (
+        status === "pending_payment" ||
+        status === "unpaid"
+      ) {
+        return `
+          <button
+            disabled
+            class="w-full bg-yellow-100 text-yellow-700 rounded-2xl py-3 font-bold"
+          >
+            ${t().pendingPayment}
+          </button>
+        `;
+      }
+
+      if (
+        status === "cancelled" ||
+        status === "canceled"
+      ) {
+        return `
+          <button
+            disabled
+            class="w-full bg-slate-100 text-slate-600 rounded-2xl py-3 font-bold"
+          >
+            ${t().cancelled}
+          </button>
+        `;
+      }
+
+      return `
+        <button
+          disabled
+          class="w-full bg-slate-100 text-slate-600 rounded-2xl py-3 font-bold"
+        >
+          ${escapeHtml(order.status || t().waiting)}
+        </button>
+      `;
+    }
+
+    function downloadOrder(orderId) {
+      window.location.href =
+        `download.html?order_id=${encodeURIComponent(orderId)}`;
+    }
+
+    function statusBadge(status) {
+      const s = String(status || "").toLowerCase();
+
+      const map = {
+        pending: [
+          t().waitingApprove,
+          "bg-orange-100 text-orange-700"
+        ],
+
+        waiting_approve: [
+          t().waitingApprove,
+          "bg-orange-100 text-orange-700"
+        ],
+
+        uploaded: [
+          t().waitingApprove,
+          "bg-orange-100 text-orange-700"
+        ],
+
+        approved: [
+          t().approved,
+          "bg-emerald-100 text-emerald-700"
+        ],
+
+        paid: [
+          t().paid,
+          "bg-emerald-100 text-emerald-700"
+        ],
+
+        rejected: [
+          t().rejected,
+          "bg-red-100 text-red-700"
+        ],
+
+        pending_payment: [
+          t().pendingPayment,
+          "bg-yellow-100 text-yellow-700"
+        ],
+
+        unpaid: [
+          t().pendingPayment,
+          "bg-yellow-100 text-yellow-700"
+        ],
+
+        cancelled: [
+          t().cancelled,
+          "bg-slate-100 text-slate-600"
+        ],
+
+        canceled: [
+          t().cancelled,
+          "bg-slate-100 text-slate-600"
+        ]
+      };
+
+      const item =
+        map[s] || [
+          status || t().waiting,
+          "bg-slate-100 text-slate-600"
+        ];
+
+      return `
+        <span class="rounded-full px-3 py-1 text-xs font-bold shrink-0 ${item[1]}">
+          ${escapeHtml(item[0])}
+        </span>
+      `;
+    }
+
+    function goHome() {
+      window.location.href = "index.html";
+    }
+
+    function formatMoney(value) {
+      return Number(value || 0)
+        .toLocaleString(
+          "th-TH",
+          {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          }
+        );
+    }
+
+    function formatDate(dateString) {
+      if (!dateString) return "-";
+
+      return new Date(dateString)
+        .toLocaleString(
+          currentLang === "ru"
+            ? "ru-RU"
+            : currentLang === "en"
+              ? "en-US"
+              : "th-TH",
+          {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+          }
+        );
+    }
+
+    function toggleDarkMode() {
+      const html =
+        document.documentElement;
+
+      html.classList.toggle("dark");
+
+      const isDark =
+        html.classList.contains("dark");
+
+      localStorage.setItem(
+        "darkMode",
+        isDark ? "1" : "0"
+      );
+
+      updateDarkButton();
+    }
+
+    function updateDarkButton() {
+      const btn =
+        document.getElementById("darkBtn");
+
+      if (!btn) return;
+
+      const isDark =
+        document.documentElement
+          .classList
+          .contains("dark");
+
+      btn.innerHTML =
+        isDark
+          ? "☀️ Light"
+          : "🌙 Dark";
+    }
+
+    function initDarkMode() {
+      const saved =
+        localStorage.getItem("darkMode");
+
+      if (saved === "1") {
+        document.documentElement
+          .classList.add("dark");
+      }
+
+      updateDarkButton();
+    }
+
+    function escapeHtml(text) {
+      return String(text ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function escapeAttr(text) {
+      return escapeHtml(text);
+    }
+
+    document.addEventListener("contextmenu", e => e.preventDefault());
+
+    document.addEventListener("dragstart", e => {
+      if (e.target.tagName === "IMG") e.preventDefault();
+    });
+
+    document.addEventListener("keydown", e => {
+      if (e.key === "F12") {
+        e.preventDefault();
+      }
+
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key.toLowerCase() === "s"
+      ) {
+        e.preventDefault();
+      }
+
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key.toLowerCase() === "u"
+      ) {
+        e.preventDefault();
+      }
+
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.shiftKey &&
+        e.key.toLowerCase() === "i"
+      ) {
+        e.preventDefault();
+      }
+    });
+  </script>
+
+  <script>
+  // ป้องกันคลิกขวา
+  document.addEventListener("contextmenu", function (e) {
+    e.preventDefault();
+    alert("ไม่อนุญาตให้คลิกขวา");
+  });
+
+  // ป้องกัน F12 / Inspect / View Source / Save
+  document.addEventListener("keydown", function (e) {
+    // F12
+    if (e.key === "F12") {
+      e.preventDefault();
+      alert("ไม่อนุญาตให้เปิด Developer Tools");
+      return false;
+    }
+
+    // Ctrl + Shift + I
+    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "i") {
+      e.preventDefault();
+      return false;
+    }
+
+    // Ctrl + Shift + J
+    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "j") {
+      e.preventDefault();
+      return false;
+    }
+
+    // Ctrl + Shift + C
+    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "c") {
+      e.preventDefault();
+      return false;
+    }
+
+    // Ctrl + U = View Source
+    if (e.ctrlKey && e.key.toLowerCase() === "u") {
+      e.preventDefault();
+      return false;
+    }
+
+    // Ctrl + S = Save Page
+    if (e.ctrlKey && e.key.toLowerCase() === "s") {
+      e.preventDefault();
+      return false;
+    }
+  });
+
+  // ป้องกันลากรูปออกจากหน้าเว็บ
+  document.addEventListener("dragstart", function (e) {
+    if (e.target.tagName === "IMG") {
+      e.preventDefault();
+    }
+  });
+</script>
+</body>
+</html>

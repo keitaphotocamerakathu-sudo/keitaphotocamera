@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>ชำระเงิน</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: "class" };
+  </script>
+
+  <script src="https://static.line-scdn.net/liff/edge/versions/2.29.0/sdk.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <script src="js/config.js?v=new-supabase-009"></script>
+  <script src="js/liff-helper.js?v=new-supabase-009"></script>
+  <script src="js/app-liff.js?v=new-supabase-009"></script>
+
+  <style>
+    html,
+    body {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
+    body {
+      min-height: 100vh;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    .safe-bottom {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    img {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    button,
+    select {
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    select {
+      appearance: auto;
+      -webkit-appearance: menulist;
+    }
+
+    .real-file-input {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      opacity: 0 !important;
+      overflow: hidden !important;
+      left: -9999px !important;
+    }
+
+    .custom-file-box {
+      width: 100%;
+    }
+
+    .custom-file-btn {
+      width: 100%;
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+
+    .custom-file-name {
+      margin-top: 10px;
+      font-size: 13px;
+      word-break: break-all;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-white transition safe-bottom">
+
+  <main class="max-w-4xl mx-auto p-4 pb-40">
+
+    <header class="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm mb-4 transition">
+      <div class="flex justify-between gap-3">
+        <div class="min-w-0">
+          <p id="txtMiniApp" class="text-xs text-slate-500 dark:text-slate-400">LINE Mini App</p>
+          <h1 id="txtPageTitle" class="text-xl font-black">ชำระเงิน</h1>
+          <p id="txtPageDesc" class="text-sm text-slate-500 dark:text-slate-400">ตรวจสอบรายการและแนบสลิป</p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-2 shrink-0">
+          <button
+            type="button"
+            onclick="goCart()"
+            class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full px-4 py-2 font-bold"
+          >
+            ← <span id="txtBack">กลับ</span>
+          </button>
+
+          <select
+            id="langSelect"
+            class="rounded-full bg-slate-100 dark:bg-slate-800 dark:text-white px-3 py-2 text-sm font-bold outline-none"
+          >
+            <option value="th">🇹🇭 TH</option>
+            <option value="en">🇺🇸 EN</option>
+            <option value="ru">🇷🇺 RU</option>
+          </select>
+
+          <button
+            type="button"
+            onclick="toggleDarkMode()"
+            id="darkBtn"
+            class="rounded-full bg-slate-100 dark:bg-slate-800 dark:text-white px-4 py-2 text-sm font-bold"
+          >
+            🌙 Dark
+          </button>
+        </div>
+      </div>
+
+      <div id="profileBox" class="hidden mt-4 bg-slate-50 dark:bg-slate-800 rounded-2xl p-3 transition">
+        <div class="flex items-center gap-3">
+          <img
+            id="linePicture"
+            class="w-11 h-11 rounded-full object-cover bg-slate-200 dark:bg-slate-700"
+            referrerpolicy="no-referrer"
+            alt="LINE Profile"
+          />
+
+          <div class="min-w-0">
+            <p id="lineName" class="font-bold truncate">-</p>
+            <p id="txtConnected" class="text-xs text-emerald-600">เชื่อมต่อ LINE แล้ว</p>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-3xl p-4 mb-4">
+      <p id="txtPromoTitle" class="font-bold text-emerald-700 dark:text-emerald-300">
+        🎉 โปรเหมา
+      </p>
+
+      <p id="txtPromoDesc" class="text-sm text-emerald-700 dark:text-emerald-300 mt-1">
+        ซื้อครบ 10 รูป เหลือ 250 บาท • 20 รูป เหลือ 500 บาท
+      </p>
+
+      <p id="promoSavingText" class="hidden text-sm font-bold text-emerald-700 dark:text-emerald-300 mt-2">
+        ประหยัด 0 บาท
+      </p>
+    </section>
+
+    <section id="cartList" class="space-y-3"></section>
+
+    <section class="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm mt-4 transition">
+      <h2 id="txtPromptpayTitle" class="font-bold text-lg mb-4">
+        ชำระเงินผ่าน PromptPay
+      </h2>
+
+      <div class="flex flex-col items-center">
+        <img
+          id="qrImage"
+          class="w-72 max-w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white"
+          alt="PromptPay QR"
+        />
+
+        <p id="txtPromptpay" class="mt-4 text-sm text-slate-500 dark:text-slate-400">PromptPay</p>
+        <p id="promptpayNumber" class="font-bold text-xl">-</p>
+
+        <p id="txtTotalPay" class="mt-2 text-sm text-slate-500 dark:text-slate-400">ยอดชำระ</p>
+        <p id="totalAmountText" class="text-4xl font-black text-emerald-600">฿0.00</p>
+
+        <p id="txtSlipDesc" class="mt-3 text-xs text-slate-400 text-center">
+          หลังชำระเงิน กรุณาแนบสลิปเพื่อให้แอดมินตรวจสอบ
+        </p>
+      </div>
+    </section>
+
+    <section class="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm mt-4 transition">
+      <h2 id="txtUploadSlip" class="font-bold text-lg mb-4">
+        แนบสลิปชำระเงิน
+      </h2>
+
+      <div class="custom-file-box">
+        <input
+          id="slipInput"
+          type="file"
+          accept="image/*"
+          class="real-file-input"
+        />
+
+        <button
+          type="button"
+          onclick="openSlipPicker()"
+          class="custom-file-btn bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 font-bold"
+        >
+          📎 <span id="txtChooseFile">เลือกไฟล์</span>
+        </button>
+
+        <p
+          id="slipFileName"
+          class="custom-file-name text-slate-500 dark:text-slate-400"
+        >
+          ไม่ได้เลือกไฟล์ใด
+        </p>
+      </div>
+
+      <img
+        id="slipPreview"
+        class="hidden mt-4 rounded-2xl w-full object-cover border border-slate-200 dark:border-slate-700"
+        referrerpolicy="no-referrer"
+        alt="Slip Preview"
+      />
+    </section>
+
+  </main>
+
+  <footer class="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 border-t dark:border-slate-800 shadow-lg transition safe-bottom">
+    <div class="max-w-4xl mx-auto p-4">
+      <div class="flex justify-between items-center gap-3">
+        <div class="min-w-0">
+          <p id="txtSummary" class="text-xs text-slate-500 dark:text-slate-400">รวมทั้งหมด</p>
+
+          <p class="text-xl font-black">
+            <span id="totalItems">0</span>
+            <span id="txtPhotoUnit">ภาพ</span>
+            ·
+            ฿<span id="totalAmount">0.00</span>
+          </p>
+        </div>
+
+        <button
+          id="submitBtn"
+          type="button"
+          onclick="submitOrder()"
+          class="bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-2xl px-5 py-3 font-bold disabled:opacity-40 shrink-0"
+        >
+          <span id="txtSubmit">ยืนยันส่งสลิป</span>
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const db =
+      window.sb ||
+      window.supabaseClient ||
+      window.supabase.createClient(
+        CONFIG.SUPABASE_URL,
+        CONFIG.SUPABASE_ANON_KEY
+      );
+
+    let profile = null;
+    let cartKey = null;
+    let cart = [];
+    let eventId = null;
+    let isSubmitting = false;
+
+    const DEFAULT_PRICE = Number(CONFIG.DEFAULT_PHOTO_PRICE || 50);
+
+    const LANG = {
+      th: {
+        miniApp: "LINE Mini App",
+        pageTitle: "ชำระเงิน",
+        pageDesc: "ตรวจสอบรายการและแนบสลิป",
+        back: "กลับ",
+        connected: "เชื่อมต่อ LINE แล้ว",
+
+        promptpayTitle: "ชำระเงินผ่าน PromptPay",
+        promptpay: "PromptPay",
+        totalPay: "ยอดชำระ",
+        slipDesc: "หลังชำระเงิน กรุณาแนบสลิปเพื่อให้แอดมินตรวจสอบ",
+        uploadSlip: "แนบสลิปชำระเงิน",
+
+        chooseFile: "เลือกไฟล์",
+        noFile: "ไม่ได้เลือกไฟล์ใด",
+        fileSelected: "เลือกไฟล์แล้ว",
+
+        summary: "รวมทั้งหมด",
+        photoUnit: "ภาพ",
+        submit: "ยืนยันส่งสลิป",
+
+        emptyCart: "ตะกร้าว่าง",
+        emptyCartDesc: "กรุณาเลือกภาพก่อน",
+        backHome: "กลับหน้าแรก",
+
+        sendingSlip: "กำลังส่งสลิป...",
+        telegramNotify: "ระบบกำลังสร้างคำสั่งซื้อและแจ้งแอดมิน...",
+        uploadSlipFirst: "กรุณาแนบสลิป",
+
+        orderSuccess: "ส่งสลิปสำเร็จ",
+        waitApprove: "ระบบได้แจ้งแอดมินเรียบร้อยแล้ว กรุณารอการอนุมัติ",
+        viewOrder: "ดูออเดอร์",
+
+        errorTitle: "เกิดข้อผิดพลาด",
+        loadPageFailed: "โหลดหน้าไม่สำเร็จ",
+        supabaseNotFound: "ไม่พบ Supabase client",
+        submitSlipFailed: "ไม่สามารถส่งสลิปได้",
+
+        promoTitle: "🎉 โปรเหมา",
+        promoDesc: "ซื้อครบ 10 รูป เหลือ 250 บาท • 20 รูป เหลือ 500 บาท",
+        saving: "ประหยัด",
+        normalPrice: "ราคาปกติ",
+
+        photoEvent: "Photo Event",
+        orderLabel: "Order",
+        amountLabel: "ยอดเงิน",
+        promotionSavingLabel: "ประหยัดโปรโมชัน",
+
+        darkLight: "☀️ Light",
+        darkDark: "🌙 Dark"
+      },
+
+      en: {
+        miniApp: "LINE Mini App",
+        pageTitle: "Checkout",
+        pageDesc: "Review your order and upload payment slip",
+        back: "Back",
+        connected: "LINE Connected",
+
+        promptpayTitle: "Pay with PromptPay",
+        promptpay: "PromptPay",
+        totalPay: "Total Payment",
+        slipDesc: "After payment, please upload your slip for verification",
+        uploadSlip: "Upload Payment Slip",
+
+        chooseFile: "Choose File",
+        noFile: "No file chosen",
+        fileSelected: "File selected",
+
+        summary: "Total",
+        photoUnit: "photos",
+        submit: "Submit Slip",
+
+        emptyCart: "Cart Empty",
+        emptyCartDesc: "Please select photos first",
+        backHome: "Back Home",
+
+        sendingSlip: "Uploading slip...",
+        telegramNotify: "The system is creating your order and notifying the admin...",
+        uploadSlipFirst: "Please upload payment slip",
+
+        orderSuccess: "Slip submitted successfully",
+        waitApprove: "The admin has been notified successfully. Please wait for approval.",
+        viewOrder: "View Orders",
+
+        errorTitle: "Error",
+        loadPageFailed: "Failed to load page",
+        supabaseNotFound: "Supabase client not found",
+        submitSlipFailed: "Unable to submit slip",
+
+        promoTitle: "🎉 Package Deal",
+        promoDesc: "10 photos for 250 THB • 20 photos for 500 THB",
+        saving: "Save",
+        normalPrice: "Normal price",
+
+        photoEvent: "Photo Event",
+        orderLabel: "Order",
+        amountLabel: "Amount",
+        promotionSavingLabel: "Promotion saving",
+
+        darkLight: "☀️ Light",
+        darkDark: "🌙 Dark"
+      },
+
+      ru: {
+        miniApp: "LINE Мини-приложение",
+        pageTitle: "Оплата",
+        pageDesc: "Проверьте заказ и загрузите чек",
+        back: "Назад",
+        connected: "LINE подключён",
+
+        promptpayTitle: "Оплата через PromptPay",
+        promptpay: "PromptPay",
+        totalPay: "Сумма оплаты",
+        slipDesc: "После оплаты загрузите чек для проверки администратором",
+        uploadSlip: "Загрузить чек",
+
+        chooseFile: "Выбрать файл",
+        noFile: "Файл не выбран",
+        fileSelected: "Файл выбран",
+
+        summary: "Итого",
+        photoUnit: "фото",
+        submit: "Отправить чек",
+
+        emptyCart: "Корзина пуста",
+        emptyCartDesc: "Пожалуйста, выберите фотографии",
+        backHome: "На главную",
+
+        sendingSlip: "Отправка чека...",
+        telegramNotify: "Система создаёт ваш заказ и уведомляет администратора...",
+        uploadSlipFirst: "Пожалуйста, загрузите чек",
+
+        orderSuccess: "Чек успешно отправлен",
+        waitApprove: "Администратор успешно уведомлён. Пожалуйста, дождитесь одобрения.",
+        viewOrder: "Мои заказы",
+
+        errorTitle: "Ошибка",
+        loadPageFailed: "Не удалось загрузить страницу",
+        supabaseNotFound: "Клиент Supabase не найден",
+        submitSlipFailed: "Не удалось отправить чек",
+
+        promoTitle: "🎉 Пакетное предложение",
+        promoDesc: "10 фото за 250 THB • 20 фото за 500 THB",
+        saving: "Экономия",
+        normalPrice: "Обычная цена",
+
+        photoEvent: "Фото Событие",
+        orderLabel: "Заказ",
+        amountLabel: "Сумма",
+        promotionSavingLabel: "Экономия по акции",
+
+        darkLight: "☀️ Светлая",
+        darkDark: "🌙 Тёмная"
+      }
+    };
+
+    let currentLang = localStorage.getItem("lang") || "th";
+
+    if (!LANG[currentLang]) {
+      currentLang = "th";
+      localStorage.setItem("lang", "th");
+    }
+
+    function t() {
+      return LANG[currentLang] || LANG.th;
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      try {
+        initDarkMode();
+        applyLanguage();
+        bindLanguageSelect();
+
+        if (!db) {
+          throw new Error(t().supabaseNotFound);
+        }
+
+        try {
+          if (window.AppLIFF) {
+            profile = await AppLIFF.init();
+          }
+        } catch (liffErr) {
+          console.warn("LIFF init skipped:", liffErr);
+        }
+
+        if (!profile) {
+          profile = {
+            userId: localStorage.getItem("line_user_id") || "guest",
+            displayName: localStorage.getItem("line_display_name") || "Guest",
+            pictureUrl: localStorage.getItem("line_picture") || ""
+          };
+        }
+
+        cartKey = getCartKey();
+
+        showProfile();
+        loadCart();
+
+        if (!cart.length) {
+          Swal.fire({
+            icon: "warning",
+            title: t().emptyCart,
+            text: t().emptyCartDesc,
+            confirmButtonText: t().backHome
+          }).then(() => {
+            window.location.href = "index.html";
+          });
+
+          return;
+        }
+
+        normalizeCartItems();
+        saveCart();
+
+        renderCart();
+        generateQR();
+
+        const slipInput = document.getElementById("slipInput");
+        if (slipInput) {
+          slipInput.addEventListener("change", previewSlip);
+        }
+
+      } catch (err) {
+        console.error(err);
+
+        Swal.fire(
+          t().errorTitle,
+          err.message || t().loadPageFailed,
+          "error"
+        );
+      }
+    });
+
+    function setText(id, value) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.textContent = value;
+      }
+    }
+
+    function setValue(id, value) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.value = value;
+      }
+    }
+
+    function applyLanguage() {
+      const x = t();
+
+      document.documentElement.lang = currentLang;
+
+      setText("txtMiniApp", x.miniApp);
+      setText("txtPageTitle", x.pageTitle);
+      setText("txtPageDesc", x.pageDesc);
+      setText("txtBack", x.back);
+      setText("txtConnected", x.connected);
+
+      setText("txtPromptpayTitle", x.promptpayTitle);
+      setText("txtPromptpay", x.promptpay);
+      setText("txtTotalPay", x.totalPay);
+      setText("txtSlipDesc", x.slipDesc);
+      setText("txtUploadSlip", x.uploadSlip);
+
+      setText("txtChooseFile", x.chooseFile);
+      updateSlipFileLabel();
+
+      setText("txtSummary", x.summary);
+      setText("txtPhotoUnit", x.photoUnit);
+      setText("txtSubmit", x.submit);
+
+      setText("txtPromoTitle", x.promoTitle);
+      setText("txtPromoDesc", x.promoDesc);
+
+      setValue("langSelect", currentLang);
+
+      updateDarkButton();
+    }
+
+    function changeLanguage(lang) {
+      currentLang = LANG[lang] ? lang : "th";
+      localStorage.setItem("lang", currentLang);
+
+      applyLanguage();
+
+      if (cart && cart.length) {
+        renderCart();
+      }
+
+      updateSummary();
+    }
+
+    window.changeLanguage = changeLanguage;
+
+    function bindLanguageSelect() {
+      const langSelect = document.getElementById("langSelect");
+      if (!langSelect) return;
+
+      langSelect.value = currentLang;
+
+      langSelect.addEventListener("change", function () {
+        changeLanguage(this.value);
+      });
+    }
+
+    function openSlipPicker() {
+      const input = document.getElementById("slipInput");
+      if (input) {
+        input.click();
+      }
+    }
+
+    function updateSlipFileLabel() {
+      const slipInput = document.getElementById("slipInput");
+      const slipFileName = document.getElementById("slipFileName");
+
+      if (!slipFileName) return;
+
+      const file = slipInput?.files?.[0];
+
+      if (file) {
+        slipFileName.textContent = `${t().fileSelected}: ${file.name}`;
+      } else {
+        slipFileName.textContent = t().noFile;
+      }
+    }
+
+    function getCartKey() {
+      if (window.AppLIFF && AppLIFF.getCartKey) {
+        return AppLIFF.getCartKey();
+      }
+
+      const userId = profile?.userId || localStorage.getItem("line_user_id") || "guest";
+      return `photo_cart_${userId}`;
+    }
+
+    function showProfile() {
+      const profileBox = document.getElementById("profileBox");
+      if (profileBox) {
+        profileBox.classList.remove("hidden");
+      }
+
+      setText("lineName", profile.displayName || "LINE User");
+
+      const linePicture = document.getElementById("linePicture");
+      if (linePicture) {
+        linePicture.src = profile.pictureUrl || "https://placehold.co/100x100?text=LINE";
+      }
+    }
+
+    function loadCart() {
+      try {
+        cart = JSON.parse(localStorage.getItem(cartKey) || "[]");
+      } catch {
+        cart = [];
+      }
+
+      cart = cart.filter(item => item && item.photo_id);
+
+      if (cart.length > 0) {
+        eventId = cart[0].event_id || getEventIdFromUrl();
+      }
+    }
+
+    function saveCart() {
+      localStorage.setItem(cartKey, JSON.stringify(cart));
+    }
+
+    function getEventIdFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("event") || params.get("event_id") || params.get("id") || null;
+    }
+
+    function normalizeCartItems() {
+      cart = cart.map(item => {
+        const price = Number(item.price || DEFAULT_PRICE);
+        const img = normalizeImageUrl(
+          item.preview_url ||
+          item.photo_url ||
+          item.watermark_url ||
+          item.watermarked_url ||
+          item.thumbnail_url ||
+          item.r2_preview_url ||
+          item.r2_watermark_url ||
+          item.r2_key ||
+          ""
+        );
+
+        return {
+          ...item,
+          price,
+          preview_url: img,
+          photo_url: img,
+          watermark_url: img,
+          file_name: item.file_name || item.filename || item.photo_id,
+          filename: item.filename || item.file_name || item.photo_id,
+          event_name: item.event_name || t().photoEvent
+        };
+      });
+    }
+
+    function getNormalTotal() {
+      return cart.reduce((sum, item) => {
+        return sum + Number(item.price || DEFAULT_PRICE);
+      }, 0);
+    }
+
+    function calculatePromoTotal() {
+      const count = cart.length;
+
+      if (!count) return 0;
+
+      const basePrice = DEFAULT_PRICE;
+
+      if (count >= 20) {
+        return 500 + ((count - 20) * basePrice);
+      }
+
+      if (count >= 10) {
+        return 250 + ((count - 10) * basePrice);
+      }
+
+      return getNormalTotal();
+    }
+
+    function calculateSaving() {
+      return Math.max(0, getNormalTotal() - calculatePromoTotal());
+    }
+
+    function getPromoData() {
+      let saved = {};
+
+      try {
+        saved = JSON.parse(localStorage.getItem(`${cartKey}_promo`) || "{}");
+      } catch {
+        saved = {};
+      }
+
+      return {
+        promo_total: Number(saved.promo_total ?? calculatePromoTotal()),
+        normal_total: Number(saved.normal_total ?? getNormalTotal()),
+        saving: Number(saved.saving ?? calculateSaving()),
+        item_count: cart.length,
+        normal_photo_price: DEFAULT_PRICE
+      };
+    }
+
+    function getTotalAmount() {
+      return Number(getPromoData().promo_total || 0);
+    }
+
+    function renderCart() {
+      const list = document.getElementById("cartList");
+      if (!list) return;
+
+      list.innerHTML = "";
+
+      cart.forEach(item => {
+        const img = normalizeImageUrl(
+          item.preview_url ||
+          item.photo_url ||
+          item.watermark_url ||
+          item.watermarked_url ||
+          item.thumbnail_url ||
+          item.r2_key ||
+          ""
+        );
+
+        const price = Number(item.price || DEFAULT_PRICE);
+
+        const card = document.createElement("article");
+
+        card.className =
+          "bg-white dark:bg-slate-900 rounded-3xl p-3 shadow-sm flex gap-3 transition border border-slate-100 dark:border-slate-800";
+
+        card.innerHTML = `
+          <img
+            src="${escapeAttr(img)}"
+            class="w-24 h-28 rounded-2xl object-cover bg-slate-200 dark:bg-slate-800"
+            referrerpolicy="no-referrer"
+            alt="Photo"
+            onerror="this.onerror=null; this.src='https://placehold.co/300x400/111827/ffffff?text=Photo';"
+          />
+
+          <div class="flex-1 min-w-0">
+            <p class="font-bold truncate">
+              ${escapeHtml(item.file_name || item.filename || item.photo_id)}
+            </p>
+
+            <p class="text-xs text-slate-500 dark:text-slate-400 truncate">
+              ${escapeHtml(item.event_name || t().photoEvent)}
+            </p>
+
+            <p class="mt-2 text-lg font-bold text-emerald-600">
+              ฿${formatMoney(price)}
+            </p>
+          </div>
+        `;
+
+        list.appendChild(card);
+      });
+
+      updateSummary();
+    }
+
+    function updateSummary() {
+      const promoData = getPromoData();
+      const totalAmount = getTotalAmount();
+
+      setText("totalItems", cart.length);
+      setText("totalAmount", formatMoney(totalAmount));
+      setText("totalAmountText", `฿${formatMoney(totalAmount)}`);
+
+      const savingText = document.getElementById("promoSavingText");
+
+      if (savingText) {
+        if (promoData.saving > 0) {
+          savingText.textContent =
+            `${t().saving} ฿${formatMoney(promoData.saving)} · ${t().normalPrice} ฿${formatMoney(promoData.normal_total)}`;
+          savingText.classList.remove("hidden");
+        } else {
+          savingText.classList.add("hidden");
+        }
+      }
+    }
+
+    function generateQR() {
+      const totalAmount = getTotalAmount();
+
+      const number =
+        CONFIG.PAYMENT?.PROMPTPAY_NUMBER ||
+        CONFIG.PROMPTPAY_NUMBER ||
+        "0936494961";
+
+      setText("promptpayNumber", number);
+
+      const qrImage = document.getElementById("qrImage");
+      if (qrImage) {
+        qrImage.src = `https://promptpay.io/${number}/${totalAmount}.png`;
+      }
+    }
+
+    function previewSlip(event) {
+      const file = event.target.files[0];
+
+      updateSlipFileLabel();
+
+      if (!file) return;
+
+      const reader = new FileReader();
+
+      reader.onload = e => {
+        const img = document.getElementById("slipPreview");
+        if (img) {
+          img.src = e.target.result;
+          img.classList.remove("hidden");
+        }
+      };
+
+      reader.readAsDataURL(file);
+    }
+
+    async function submitOrder() {
+      if (isSubmitting) return;
+
+      try {
+        const slipFile = document.getElementById("slipInput")?.files?.[0];
+
+        if (!slipFile) {
+          Swal.fire(t().uploadSlipFirst, "", "warning");
+          return;
+        }
+
+        if (!cart.length) {
+          Swal.fire(t().emptyCart, t().emptyCartDesc, "warning");
+          return;
+        }
+
+        isSubmitting = true;
+
+        const submitBtn = document.getElementById("submitBtn");
+        if (submitBtn) {
+          submitBtn.disabled = true;
+        }
+
+        const totalAmount = getTotalAmount();
+        const promoData = getPromoData();
+
+        Swal.fire({
+          title: t().sendingSlip,
+          text: t().telegramNotify,
+          allowOutsideClick: false,
+          showConfirmButton: false,
+          didOpen: () => Swal.showLoading()
+        });
+
+        const slipData = await uploadSlip(slipFile);
+
+        const orderData = await createOrder({
+          totalAmount,
+          slipUrl: slipData.slipUrl,
+          slipPath: slipData.slipPath
+        });
+
+        await createOrderItems(orderData.id, totalAmount);
+
+        await createPayment({
+          orderId: orderData.id,
+          amount: totalAmount,
+          slipUrl: slipData.slipUrl,
+          slipPath: slipData.slipPath
+        });
+
+        await notifyTelegram(orderData.id);
+
+        localStorage.removeItem(cartKey);
+        localStorage.removeItem(`${cartKey}_promo`);
+
+        Swal.fire({
+          icon: "success",
+          title: t().orderSuccess,
+          html: `
+            <div style="text-align:left">
+              <p><b>${escapeHtml(t().orderLabel)}:</b> ${escapeHtml(orderData.order_no || orderData.id)}</p>
+              <p><b>${escapeHtml(t().amountLabel)}:</b> ฿${formatMoney(totalAmount)}</p>
+              ${promoData.saving > 0 ? `
+                <p><b>${escapeHtml(t().promotionSavingLabel)}:</b> ฿${formatMoney(promoData.saving)}</p>
+              ` : ""}
+              <p style="margin-top:8px;color:#64748b">
+                ${escapeHtml(t().waitApprove)}
+              </p>
+            </div>
+          `,
+          confirmButtonText: t().viewOrder
+        }).then(() => {
+          window.location.href = "order.html";
+        });
+
+      } catch (err) {
+        console.error(err);
+
+        Swal.fire(
+          t().errorTitle,
+          err.message || t().submitSlipFailed,
+          "error"
+        );
+
+      } finally {
+        isSubmitting = false;
+
+        const submitBtn = document.getElementById("submitBtn");
+        if (submitBtn) {
+          submitBtn.disabled = false;
+        }
+      }
+    }
+
+    async function uploadSlip(file) {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const safeExt = ext.replace(/[^a-z0-9]/g, "") || "jpg";
+      const slipBucket = CONFIG.STORAGE_BUCKETS?.SLIPS || "slips";
+
+      const userId = profile.userId || "guest";
+      const slipPath = `${userId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${safeExt}`;
+
+      const { error: uploadError } = await db.storage
+        .from(slipBucket)
+        .upload(slipPath, file, {
+          cacheControl: "3600",
+          upsert: true,
+          contentType: file.type || "image/jpeg"
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: publicData } = db.storage
+        .from(slipBucket)
+        .getPublicUrl(slipPath);
+
+      return {
+        slipPath,
+        slipUrl: publicData.publicUrl
+      };
+    }
+
+    async function createOrder({ totalAmount, slipUrl, slipPath }) {
+      const orderNo = "ORD-" + Date.now();
+
+      const payload = {
+        order_no: orderNo,
+        line_user_id: profile.userId || "guest",
+        line_display_name: profile.displayName || null,
+        line_picture_url: profile.pictureUrl || null,
+        event_id: eventId,
+        total_amount: totalAmount,
+        status: "pending",
+        language: currentLang || "th"
+      };
+
+      const { data, error } = await db
+        .from("orders")
+        .insert(payload)
+        .select("*")
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return data;
+    }
+
+    async function createOrderItems(orderId, totalAmount) {
+      const perPhotoPrice =
+        cart.length > 0
+          ? Number((totalAmount / cart.length).toFixed(2))
+          : DEFAULT_PRICE;
+
+      const orderItems = cart.map(item => ({
+        order_id: orderId,
+        photo_id: item.photo_id,
+        event_id: item.event_id || eventId,
+        filename: item.filename || item.file_name || "",
+        photo_url: item.photo_url || item.preview_url || "",
+        price: perPhotoPrice
+      }));
+
+      const { error } = await db
+        .from("order_items")
+        .insert(orderItems);
+
+      if (error) {
+        throw error;
+      }
+    }
+
+    async function createPayment({ orderId, amount, slipUrl, slipPath }) {
+      const { error } = await db
+        .from("payments")
+        .insert({
+          order_id: orderId,
+          amount: amount,
+          slip_url: slipUrl,
+          slip_path: slipPath,
+          status: "uploaded"
+        });
+
+      if (error) {
+        throw error;
+      }
+    }
+
+    async function notifyTelegram(orderId) {
+      const functionUrl = `${CONFIG.SUPABASE_URL}/functions/v1/send-slip-telegram`;
+
+      console.log("Calling Telegram Function:", functionUrl);
+      console.log("Order ID:", orderId);
+
+      const res = await fetch(functionUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: CONFIG.SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({
+          order_id: orderId
+        })
+      });
+
+      const text = await res.text();
+
+      let data = null;
+
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = {
+          raw: text
+        };
+      }
+
+      console.log("Telegram Function status:", res.status);
+      console.log("Telegram Function response:", data);
+
+      if (!res.ok || data.success === false) {
+        throw new Error(
+          data.message ||
+          data.error ||
+          data.raw ||
+          `Telegram notify failed status ${res.status}`
+        );
+      }
+
+      return data;
+    }
+
+    function normalizeImageUrl(url) {
+      const cleanUrl = String(url || "").trim();
+
+      if (!cleanUrl) {
+        return "https://placehold.co/300x400/111827/ffffff?text=Photo";
+      }
+
+      if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://")) {
+        return encodeURI(cleanUrl);
+      }
+
+      if (CONFIG.R2_WORKER_URL) {
+        const base = String(CONFIG.R2_WORKER_URL).replace(/\/+$/, "");
+        const key = cleanUrl.replace(/^\/+/, "");
+
+        if (key.startsWith("events/")) {
+          return encodeURI(`${base}/file/${key}`);
+        }
+
+        return encodeURI(`${base}/file/${key}`);
+      }
+
+      if (CONFIG.R2_PUBLIC_BASE_URL) {
+        const base = String(CONFIG.R2_PUBLIC_BASE_URL).replace(/\/+$/, "");
+        const key = cleanUrl.replace(/^\/+/, "");
+        return encodeURI(`${base}/${key}`);
+      }
+
+      return encodeURI(cleanUrl);
+    }
+
+    function goCart() {
+      const backEventId = eventId || getEventIdFromUrl();
+
+      if (backEventId) {
+        window.location.href = `cart.html?event=${encodeURIComponent(backEventId)}`;
+      } else {
+        window.location.href = "cart.html";
+      }
+    }
+
+    function formatMoney(value) {
+      return Number(value || 0).toLocaleString("th-TH", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+
+    function toggleDarkMode() {
+      const html = document.documentElement;
+      html.classList.toggle("dark");
+
+      const isDark = html.classList.contains("dark");
+
+      localStorage.setItem("darkMode", isDark ? "1" : "0");
+
+      updateDarkButton();
+    }
+
+    function updateDarkButton() {
+      const btn = document.getElementById("darkBtn");
+      if (!btn) return;
+
+      const isDark = document.documentElement.classList.contains("dark");
+      btn.innerHTML = isDark ? t().darkLight : t().darkDark;
+    }
+
+    function initDarkMode() {
+      const saved = localStorage.getItem("darkMode");
+
+      if (saved === "1") {
+        document.documentElement.classList.add("dark");
+      }
+
+      updateDarkButton();
+    }
+
+    function escapeHtml(text) {
+      return String(text ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function escapeAttr(text) {
+      return escapeHtml(text);
+    }
+
+    document.addEventListener("contextmenu", function(e) {
+      e.preventDefault();
+    });
+
+    document.addEventListener("dragstart", function(e) {
+      e.preventDefault();
+    });
+
+    document.addEventListener("keydown", function(e) {
+      const key = String(e.key || "").toLowerCase();
+
+      if (e.key === "F12") {
+        e.preventDefault();
+      }
+
+      if ((e.ctrlKey || e.metaKey) && key === "s") {
+        e.preventDefault();
+      }
+
+      if ((e.ctrlKey || e.metaKey) && key === "u") {
+        e.preventDefault();
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === "i") {
+        e.preventDefault();
+      }
+    });
+  </script>
+
+</body>
+</html>

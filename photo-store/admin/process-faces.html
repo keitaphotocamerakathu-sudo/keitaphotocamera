@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Process Faces</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class"
+    };
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+  <script src="../js/config.js?v=new-supabase-004"></script>
+
+  <style>
+    html,
+    body {
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
+    button,
+    select {
+      touch-action: manipulation;
+    }
+
+    .safe-bottom {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+  </style>
+</head>
+
+<body class="bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-white transition safe-bottom">
+
+  <main class="max-w-7xl mx-auto p-4 pb-28">
+
+    <header class="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm mb-4 transition">
+      <div class="flex justify-between items-start gap-4">
+        <div class="min-w-0">
+          <p class="text-xs text-slate-500 dark:text-slate-400">ADMIN TOOL</p>
+          <h1 class="text-2xl font-black">ประมวลผลใบหน้า</h1>
+          <p class="text-sm text-slate-500 dark:text-slate-400">
+            สแกนรูปจาก R2 Worker แล้วบันทึกข้อมูลลงตาราง faces
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-2 shrink-0">
+          <button
+            onclick="toggleDarkMode()"
+            id="darkBtn"
+            class="bg-slate-100 dark:bg-slate-800 dark:text-white rounded-2xl px-4 py-3 font-bold transition"
+          >
+            🌙 Dark
+          </button>
+
+          <button
+            onclick="goUpload()"
+            class="bg-black dark:bg-white dark:text-slate-900 text-white rounded-2xl px-4 py-3 font-bold transition"
+          >
+            UPLOAD
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <section class="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm mb-4 transition">
+
+      <label class="font-bold">เลือก Event</label>
+
+      <select
+        id="eventSelect"
+        class="mt-3 w-full bg-slate-50 dark:bg-slate-800 dark:text-white rounded-2xl p-4 border border-slate-200 dark:border-slate-700"
+      >
+        <option value="">กำลังโหลด Event...</option>
+      </select>
+
+      <p id="eventHelp" class="mt-2 text-xs text-slate-500 dark:text-slate-400"></p>
+
+      <div class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+
+        <button
+          onclick="startProcess()"
+          id="processBtn"
+          class="bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-2xl py-3 font-black"
+        >
+          เริ่มประมวลผลทั้งหมด
+        </button>
+
+        <button
+          onclick="stopProcess()"
+          id="stopBtn"
+          class="bg-red-600 text-white rounded-2xl py-3 font-black"
+        >
+          หยุด
+        </button>
+
+        <button
+          onclick="clearFacesByEvent()"
+          class="bg-orange-600 text-white rounded-2xl py-3 font-black"
+        >
+          ล้าง Faces ของ Event นี้
+        </button>
+
+        <button
+          onclick="reloadPhotosOnly()"
+          class="bg-blue-600 text-white rounded-2xl py-3 font-black"
+        >
+          เช็กรูปใน Event
+        </button>
+
+      </div>
+
+      <div class="mt-4 bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 text-sm text-slate-600 dark:text-slate-300">
+        <p><b>โหมดตรวจจับ:</b> TinyFaceDetector + SSD MobileNet</p>
+        <p><b>แหล่งรูป:</b> photos.preview_url / r2_preview_url / watermark_url / Worker /file</p>
+        <p><b>หมายเหตุ:</b> ถ้ายังหาไม่เจอ ต้องมีข้อมูลในตาราง photos ก่อน และ URL รูปต้องเปิดได้จริง</p>
+        <p class="break-all mt-2"><b>Worker:</b> <span id="workerText">-</span></p>
+      </div>
+
+    </section>
+
+    <section class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+
+      <div class="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm transition">
+        <p class="text-xs text-slate-500 dark:text-slate-400">รูปทั้งหมด</p>
+        <p id="totalPhotos" class="text-2xl font-black">0</p>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm transition">
+        <p class="text-xs text-slate-500 dark:text-slate-400">ประมวลผลแล้ว</p>
+        <p id="donePhotos" class="text-2xl font-black text-emerald-600">0</p>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm transition">
+        <p class="text-xs text-slate-500 dark:text-slate-400">พบใบหน้า</p>
+        <p id="faceCount" class="text-2xl font-black text-blue-600">0</p>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm transition">
+        <p class="text-xs text-slate-500 dark:text-slate-400">ไม่พบใบหน้า</p>
+        <p id="noFaceCount" class="text-2xl font-black text-red-600">0</p>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm transition">
+        <p class="text-xs text-slate-500 dark:text-slate-400">ผิดพลาด</p>
+        <p id="errorCount" class="text-2xl font-black text-orange-600">0</p>
+      </div>
+
+    </section>
+
+    <section class="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm mb-4 transition">
+
+      <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-4 overflow-hidden">
+        <div id="progressBar" class="bg-emerald-600 h-4 w-0 transition-all"></div>
+      </div>
+
+      <p id="statusText" class="mt-4 text-sm text-slate-500 dark:text-slate-400">
+        พร้อมทำงาน
+      </p>
+
+    </section>
+
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+      <section class="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm transition">
+        <h2 class="font-bold mb-3">ภาพที่กำลังประมวลผล</h2>
+
+        <img
+          id="currentImage"
+          class="hidden w-full max-h-[520px] object-contain bg-slate-100 dark:bg-slate-800 rounded-2xl"
+          referrerpolicy="no-referrer"
+        />
+
+        <p id="currentImageUrl" class="mt-3 text-xs text-slate-500 dark:text-slate-400 break-all"></p>
+      </section>
+
+      <section class="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm transition">
+        <h2 class="font-bold mb-3">Log</h2>
+        <div id="logBox" class="space-y-2 text-sm max-h-[520px] overflow-auto"></div>
+      </section>
+
+    </section>
+
+  </main>
+
+  <script>
+    const db =
+      window.sb ||
+      window.supabaseClient ||
+      window.supabase.createClient(
+        CONFIG.SUPABASE_URL,
+        CONFIG.SUPABASE_ANON_KEY
+      );
+
+    let events = [];
+    let photos = [];
+
+    let total = 0;
+    let done = 0;
+    let foundFaces = 0;
+    let noFaces = 0;
+    let errors = 0;
+
+    let processing = false;
+    let shouldStop = false;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      try {
+        initDarkMode();
+
+        document.getElementById("workerText").textContent =
+          CONFIG.R2_WORKER_URL || "-";
+
+        if (!db) {
+          throw new Error("ไม่พบ Supabase client");
+        }
+
+        await checkWorker();
+        await loadModels();
+        await loadEvents();
+
+        const params = new URLSearchParams(window.location.search);
+        const eventId = params.get("event") || params.get("event_id") || params.get("id");
+
+        if (eventId) {
+          document.getElementById("eventSelect").value = eventId;
+          await reloadPhotosOnly();
+        }
+
+      } catch (err) {
+        console.error(err);
+        Swal.fire("เกิดข้อผิดพลาด", err.message || "เปิดหน้าไม่สำเร็จ", "error");
+      }
+    });
+
+    async function checkWorker() {
+      if (!CONFIG.R2_WORKER_URL) {
+        addLog("⚠️ ไม่พบ CONFIG.R2_WORKER_URL", "text-orange-600");
+        return false;
+      }
+
+      try {
+        const res = await fetch(`${CONFIG.R2_WORKER_URL}/health`);
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok || !data?.success) {
+          throw new Error(data?.message || "Worker health ไม่ผ่าน");
+        }
+
+        if (data.hasBucketBinding === false) {
+          throw new Error("Worker ยังไม่ได้ bind R2_BUCKET");
+        }
+
+        addLog("✅ R2 Worker พร้อมใช้งาน", "text-emerald-600");
+        return true;
+
+      } catch (err) {
+        addLog("❌ R2 Worker error: " + err.message, "text-red-600");
+        return false;
+      }
+    }
+
+    async function loadModels() {
+      Swal.fire({
+        title: "กำลังโหลด Face Model...",
+        text: "โหลดครั้งแรกอาจใช้เวลาสักครู่",
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => Swal.showLoading()
+      });
+
+      const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
+
+      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+      await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+
+      Swal.close();
+      addLog("✅ โหลด Face Model สำเร็จ", "text-emerald-600");
+    }
+
+    async function loadEvents() {
+      const { data, error } = await db
+        .from("events")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      events = data || [];
+
+      const select = document.getElementById("eventSelect");
+      const eventHelp = document.getElementById("eventHelp");
+
+      if (!events.length) {
+        select.innerHTML = `<option value="">ยังไม่มี Event</option>`;
+        eventHelp.textContent = "กรุณาสร้าง Event ก่อน";
+        return;
+      }
+
+      select.innerHTML = `
+        <option value="">-- เลือก Event --</option>
+        ${events.map(e => `
+          <option value="${escapeAttr(e.id)}">
+            ${escapeHtml(e.title || e.name || e.slug || e.id)}
+          </option>
+        `).join("")}
+      `;
+
+      eventHelp.textContent = `พบ Event ทั้งหมด ${events.length} รายการ`;
+    }
+
+    async function reloadPhotosOnly() {
+      const eventId = document.getElementById("eventSelect").value;
+
+      if (!eventId) {
+        Swal.fire("กรุณาเลือก Event", "", "warning");
+        return;
+      }
+
+      await loadPhotos(eventId);
+
+      total = photos.length;
+      done = 0;
+      foundFaces = 0;
+      noFaces = 0;
+      errors = 0;
+      updateStats();
+
+      addLog(`📷 Event นี้มีรูปทั้งหมด ${photos.length} รูป`, "text-blue-600");
+
+      if (!photos.length) {
+        Swal.fire("ไม่พบรูปภาพ", "Event นี้ยังไม่มีรูปในตาราง photos", "warning");
+      }
+    }
+
+    async function startProcess() {
+      if (processing) return;
+
+      const eventId = document.getElementById("eventSelect").value;
+
+      if (!eventId) {
+        Swal.fire("กรุณาเลือก Event", "", "warning");
+        return;
+      }
+
+      const confirm = await Swal.fire({
+        icon: "question",
+        title: "เริ่มประมวลผลใบหน้า?",
+        html: `
+          <div style="text-align:left">
+            <p>ระบบจะสแกนรูปทั้งหมดใน Event นี้</p>
+            <p>แล้วบันทึก descriptor ลงตาราง faces</p>
+            <p style="color:#dc2626;margin-top:8px">รูปจำนวนมากอาจใช้เวลานาน</p>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: "เริ่ม",
+        cancelButtonText: "ยกเลิก"
+      });
+
+      if (!confirm.isConfirmed) return;
+
+      processing = true;
+      shouldStop = false;
+      resetStats();
+
+      try {
+        await loadPhotos(eventId);
+
+        if (!photos.length) {
+          Swal.fire("ไม่พบรูปภาพ", "Event นี้ยังไม่มีรูปภาพ", "warning");
+          processing = false;
+          return;
+        }
+
+        total = photos.length;
+        updateStats();
+
+        addLog(`🚀 เริ่มประมวลผล ${total} รูป`, "text-blue-600");
+
+        for (const photo of photos) {
+          if (shouldStop) {
+            addLog("⛔ ผู้ใช้หยุดการทำงาน", "text-red-600");
+            break;
+          }
+
+          await processPhoto(eventId, photo);
+          done++;
+          updateStats();
+
+          await sleep(120);
+        }
+
+        Swal.fire(
+          "เสร็จสิ้น",
+          `ประมวลผล ${done}/${total} รูป พบใบหน้า ${foundFaces} รายการ`,
+          "success"
+        );
+
+      } catch (err) {
+        console.error(err);
+        Swal.fire("เกิดข้อผิดพลาด", err.message || "ประมวลผลไม่สำเร็จ", "error");
+      } finally {
+        processing = false;
+      }
+    }
+
+    function stopProcess() {
+      shouldStop = true;
+      addLog("⏳ กำลังหยุดหลังจบรูปปัจจุบัน...", "text-orange-600");
+    }
+
+    async function loadPhotos(eventId) {
+      const { data, error } = await db
+        .from("photos")
+        .select("*")
+        .eq("event_id", eventId)
+        .eq("status", "active")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      photos = data || [];
+    }
+
+    async function processPhoto(eventId, photo) {
+      const imageUrl = getBestImageUrl(photo);
+
+      if (!imageUrl) {
+        noFaces++;
+        addLog(`❌ ${photo.filename || photo.id} ไม่มี URL รูป`, "text-red-600");
+        return;
+      }
+
+      try {
+        document.getElementById("statusText").textContent =
+          `กำลังประมวลผล: ${photo.filename || photo.id}`;
+
+        document.getElementById("currentImage").src = imageUrl;
+        document.getElementById("currentImage").classList.remove("hidden");
+        document.getElementById("currentImageUrl").textContent = imageUrl;
+
+        const img = await loadImage(imageUrl);
+
+        const canvasHigh = resizeImageToCanvas(img, 1800);
+        const canvasMedium = resizeImageToCanvas(img, 1200);
+
+        let detections = [];
+
+        const tinyHigh = await detectWithTiny(canvasHigh, 1024, 0.12);
+        detections = mergeDetections(detections, tinyHigh);
+
+        const tinyMedium = await detectWithTiny(canvasMedium, 768, 0.15);
+        detections = mergeDetections(detections, tinyMedium);
+
+        const ssdMedium = await detectWithSSD(canvasMedium, 0.20);
+        detections = mergeDetections(detections, ssdMedium);
+
+        if (!detections.length) {
+          const ssdOriginal = await detectWithSSD(img, 0.15);
+          detections = mergeDetections(detections, ssdOriginal);
+        }
+
+        if (!detections.length) {
+          noFaces++;
+          addLog(`⚠️ ไม่พบใบหน้า: ${photo.filename || photo.id}`, "text-orange-600");
+          return;
+        }
+
+        await deleteOldFaces(photo.id);
+
+        const rows = detections.map((d, index) => ({
+          event_id: eventId,
+          photo_id: photo.id,
+          descriptor: Array.from(d.descriptor),
+          face_index: index,
+          image_url: imageUrl,
+          filename: photo.filename || null
+        }));
+
+        const { error } = await db
+          .from("faces")
+          .insert(rows);
+
+        if (error) {
+          throw error;
+        }
+
+        foundFaces += detections.length;
+
+        addLog(
+          `✅ ${photo.filename || photo.id} พบ ${detections.length} ใบหน้า`,
+          "text-emerald-600"
+        );
+
+      } catch (err) {
+        errors++;
+        console.warn(err);
+        addLog(
+          `❌ ${photo.filename || photo.id}: ${err.message || String(err)}`,
+          "text-red-600"
+        );
+        addLog(`URL: ${imageUrl}`, "text-slate-500");
+      }
+    }
+
+    async function detectWithTiny(input, inputSize = 768, scoreThreshold = 0.10) {
+      const options = new faceapi.TinyFaceDetectorOptions({
+        inputSize,
+        scoreThreshold
+      });
+
+      return await faceapi
+        .detectAllFaces(input, options)
+        .withFaceLandmarks()
+        .withFaceDescriptors();
+    }
+
+    async function detectWithSSD(input, minConfidence = 0.12) {
+      const options = new faceapi.SsdMobilenetv1Options({
+        minConfidence
+      });
+
+      return await faceapi
+        .detectAllFaces(input, options)
+        .withFaceLandmarks()
+        .withFaceDescriptors();
+    }
+
+    function mergeDetections(existing, incoming) {
+      const merged = [...existing];
+
+      incoming.forEach(newFace => {
+        const newBox = newFace.detection.box;
+
+        const duplicate = merged.some(oldFace => {
+          const oldBox = oldFace.detection.box;
+          return boxIoU(newBox, oldBox) > 0.35;
+        });
+
+        if (!duplicate) {
+          merged.push(newFace);
+        }
+      });
+
+      return merged;
+    }
+
+    function boxIoU(a, b) {
+      const xA = Math.max(a.x, b.x);
+      const yA = Math.max(a.y, b.y);
+      const xB = Math.min(a.x + a.width, b.x + b.width);
+      const yB = Math.min(a.y + a.height, b.y + b.height);
+
+      const interW = Math.max(0, xB - xA);
+      const interH = Math.max(0, yB - yA);
+      const interArea = interW * interH;
+
+      const areaA = a.width * a.height;
+      const areaB = b.width * b.height;
+
+      const denominator = areaA + areaB - interArea;
+
+      if (!denominator) return 0;
+
+      return interArea / denominator;
+    }
+
+    function resizeImageToCanvas(img, maxSide = 1600) {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      let width = img.naturalWidth || img.width;
+      let height = img.naturalHeight || img.height;
+
+      const scale = maxSide / Math.max(width, height);
+
+      if (scale < 1) {
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      } else if (scale > 1 && Math.max(width, height) < 900) {
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(img, 0, 0, width, height);
+
+      return canvas;
+    }
+
+    function getBestImageUrl(photo) {
+      const raw =
+        photo.original_url ||
+        photo.download_url ||
+        photo.public_url ||
+        photo.url ||
+        photo.r2_preview_url ||
+        photo.preview_url ||
+        photo.r2_watermark_url ||
+        photo.watermark_url ||
+        photo.r2_original_url ||
+        "";
+
+      if (raw) {
+        return normalizeImageUrl(raw);
+      }
+
+      const key =
+        photo.r2_key ||
+        photo.r2_original_key ||
+        photo.preview_path ||
+        photo.watermark_path ||
+        photo.original_path ||
+        "";
+
+      if (key && CONFIG.R2_WORKER_URL) {
+        const base = String(CONFIG.R2_WORKER_URL).replace(/\/+$/, "");
+        const cleanKey = String(key).replace(/^\/+/, "");
+
+        if (cleanKey.startsWith("events/")) {
+          return `${base}/file/${cleanKey}`;
+        }
+
+        return `${base}/file/events/${photo.event_id}/preview/${cleanKey}`;
+      }
+
+      return "";
+    }
+
+    function normalizeImageUrl(url) {
+      const cleanUrl = String(url || "").trim();
+
+      if (!cleanUrl) return "";
+
+      if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://")) {
+        return encodeURI(cleanUrl);
+      }
+
+      if (CONFIG.R2_WORKER_URL) {
+        const base = String(CONFIG.R2_WORKER_URL).replace(/\/+$/, "");
+        const key = cleanUrl.replace(/^\/+/, "");
+
+        if (key.startsWith("events/")) {
+          return encodeURI(`${base}/file/${key}`);
+        }
+      }
+
+      if (CONFIG.R2_PUBLIC_BASE_URL) {
+        const base = String(CONFIG.R2_PUBLIC_BASE_URL).replace(/\/+$/, "");
+        const key = cleanUrl.replace(/^\/+/, "");
+        return encodeURI(`${base}/${key}`);
+      }
+
+      return encodeURI(cleanUrl);
+    }
+
+    async function deleteOldFaces(photoId) {
+      const { error } = await db
+        .from("faces")
+        .delete()
+        .eq("photo_id", photoId);
+
+      if (error) {
+        throw error;
+      }
+    }
+
+    async function clearFacesByEvent() {
+      const eventId = document.getElementById("eventSelect").value;
+
+      if (!eventId) {
+        Swal.fire("กรุณาเลือก Event", "", "warning");
+        return;
+      }
+
+      const confirm = await Swal.fire({
+        icon: "warning",
+        title: "ล้าง Faces ของ Event นี้?",
+        text: "ข้อมูล face descriptor เดิมจะถูกลบทั้งหมด",
+        showCancelButton: true,
+        confirmButtonText: "ล้างข้อมูล",
+        cancelButtonText: "ยกเลิก"
+      });
+
+      if (!confirm.isConfirmed) return;
+
+      const { error } = await db
+        .from("faces")
+        .delete()
+        .eq("event_id", eventId);
+
+      if (error) {
+        Swal.fire("ผิดพลาด", error.message, "error");
+        return;
+      }
+
+      foundFaces = 0;
+      updateStats();
+
+      addLog("🧹 ล้าง Faces ของ Event นี้แล้ว", "text-orange-600");
+      Swal.fire("สำเร็จ", "ล้าง Faces แล้ว", "success");
+    }
+
+    function loadImage(url) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+
+        img.crossOrigin = "anonymous";
+        img.referrerPolicy = "no-referrer";
+
+        img.onload = () => resolve(img);
+
+        img.onerror = () => {
+          reject(new Error("โหลดรูปไม่ได้ อาจติด CORS หรือ URL รูปไม่ถูกต้อง"));
+        };
+
+        img.src = encodeURI(url);
+      });
+    }
+
+    function resetStats() {
+      total = 0;
+      done = 0;
+      foundFaces = 0;
+      noFaces = 0;
+      errors = 0;
+      photos = [];
+
+      document.getElementById("logBox").innerHTML = "";
+      document.getElementById("progressBar").style.width = "0%";
+      document.getElementById("statusText").textContent = "กำลังเริ่มต้น...";
+      document.getElementById("currentImage").classList.add("hidden");
+      document.getElementById("currentImageUrl").textContent = "";
+
+      updateStats();
+    }
+
+    function updateStats() {
+      document.getElementById("totalPhotos").textContent = total;
+      document.getElementById("donePhotos").textContent = done;
+      document.getElementById("faceCount").textContent = foundFaces;
+      document.getElementById("noFaceCount").textContent = noFaces;
+      document.getElementById("errorCount").textContent = errors;
+
+      const percent = total ? Math.round((done / total) * 100) : 0;
+      document.getElementById("progressBar").style.width = percent + "%";
+    }
+
+    function addLog(text, colorClass = "text-slate-600") {
+      const box = document.getElementById("logBox");
+      const p = document.createElement("p");
+      p.className = colorClass + " break-all";
+      p.textContent = text;
+      box.prepend(p);
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function goUpload() {
+      window.location.href = "upload.html";
+    }
+
+    /****************************************
+     * DARK MODE
+     ****************************************/
+
+    function toggleDarkMode() {
+      const html = document.documentElement;
+
+      html.classList.toggle("dark");
+
+      const isDark = html.classList.contains("dark");
+
+      localStorage.setItem(
+        "darkMode",
+        isDark ? "1" : "0"
+      );
+
+      updateDarkButton();
+    }
+
+    function updateDarkButton() {
+      const btn = document.getElementById("darkBtn");
+
+      if (!btn) return;
+
+      const isDark =
+        document.documentElement.classList.contains("dark");
+
+      btn.innerHTML = isDark
+        ? "☀️ Light"
+        : "🌙 Dark";
+    }
+
+    function initDarkMode() {
+      const saved = localStorage.getItem("darkMode");
+
+      if (saved === "1") {
+        document.documentElement.classList.add("dark");
+      }
+
+      updateDarkButton();
+    }
+
+    function escapeHtml(text) {
+      return String(text ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function escapeAttr(text) {
+      return escapeHtml(text);
+    }
+  </script>
+
+</body>
+</html>
