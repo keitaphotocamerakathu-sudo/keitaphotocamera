@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>ดาวน์โหลดภาพ</title>
+  <title>ดาวน์โหลดไฟล์</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -14,9 +14,9 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-  <script src="js/config.js?v=new-supabase-010"></script>
-  <script src="js/liff-helper.js?v=new-supabase-010"></script>
-  <script src="js/app-liff.js?v=new-supabase-010"></script>
+  <script src="js/config.js?v=new-supabase-011"></script>
+  <script src="js/liff-helper.js?v=new-supabase-011"></script>
+  <script src="js/app-liff.js?v=new-supabase-011"></script>
 
   <style>
     html,
@@ -28,16 +28,67 @@
 
     body {
       min-height: 100vh;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
     }
 
     .safe-bottom {
       padding-bottom: env(safe-area-inset-bottom);
     }
 
-    img {
+    img,
+    video {
       -webkit-touch-callout: none;
       -webkit-user-select: none;
       user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    .media-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 5;
+      background: rgba(0, 0, 0, .64);
+      color: white;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .04em;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+
+    .play-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .play-circle {
+      width: 58px;
+      height: 58px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, .58);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: 900;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, .4);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+
+    .download-card-img {
+      pointer-events: none;
     }
   </style>
 </head>
@@ -50,7 +101,7 @@
       <div class="flex justify-between gap-3">
         <div class="min-w-0">
           <p id="txtMiniApp" class="text-xs text-slate-500 dark:text-slate-400">LINE Mini App</p>
-          <h1 id="txtPageTitle" class="text-xl font-black">ดาวน์โหลดภาพ</h1>
+          <h1 id="txtPageTitle" class="text-xl font-black">ดาวน์โหลดไฟล์</h1>
           <p id="orderText" class="text-sm text-slate-500 dark:text-slate-400">กำลังโหลดข้อมูล...</p>
         </div>
 
@@ -74,16 +125,16 @@
 
     <section id="downloadAllBox" class="hidden bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm mb-4 transition">
       <button onclick="downloadAllFiles()" class="w-full bg-emerald-600 text-white rounded-2xl py-3 font-bold">
-        ⬇️ <span id="txtDownloadAll">เปิดรูปทั้งหมดเพื่อบันทึก</span>
+        ⬇️ <span id="txtDownloadAll">เปิดไฟล์ทั้งหมดเพื่อบันทึก</span>
       </button>
 
       <p id="txtDownloadAllHint" class="mt-3 text-center text-xs text-slate-500 dark:text-slate-400">
-        มือถือให้กดค้างที่รูป แล้วเลือกบันทึกรูปภาพ
+        มือถือให้กดเปิดไฟล์ แล้วบันทึกรูปหรือวิดีโอจากหน้าที่เปิดขึ้น
       </p>
     </section>
 
     <section id="loadingBox" class="text-center py-10 text-slate-500 dark:text-slate-400">
-      กำลังโหลดภาพ...
+      กำลังโหลดไฟล์...
     </section>
 
     <section id="photoGrid" class="hidden grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></section>
@@ -122,72 +173,101 @@
     const LANG = {
       th: {
         miniApp: "LINE Mini App",
-        pageTitle: "ดาวน์โหลดภาพ",
-        loadingPhoto: "กำลังโหลดภาพ...",
+        pageTitle: "ดาวน์โหลดไฟล์",
+        loadingPhoto: "กำลังโหลดไฟล์...",
         orderBtn: "ออเดอร์",
         blockedTitle: "ยังไม่สามารถดาวน์โหลดได้",
         blockedDesc: "กรุณารอแอดมินอนุมัติคำสั่งซื้อก่อน",
         backOrder: "กลับไปหน้าออเดอร์",
-        noPhoto: "ไม่พบรายการภาพ",
-        downloadReady: "กดเปิดรูป แล้วกดค้างเพื่อบันทึก",
-        downloadBtn: "เปิดรูป / ดาวน์โหลด",
-        downloadAll: "เปิดรูปทั้งหมดเพื่อบันทึก",
-        downloadAllHint: "มือถือให้กดค้างที่รูป แล้วเลือกบันทึกรูปภาพ",
-        downloadAllTitle: "เปิดรูปทั้งหมด",
-        downloadAllText: "ระบบจะเปิดรูปทีละภาพ หากอยู่บนมือถือให้กดค้างที่รูปเพื่อบันทึก",
-        startDownload: "เริ่มเปิดรูป",
+
+        noPhoto: "ไม่พบรายการไฟล์",
+        downloadReady: "กดเปิดไฟล์เพื่อบันทึก",
+        downloadBtn: "เปิด / ดาวน์โหลด",
+        downloadVideoBtn: "เปิด / ดาวน์โหลด VDO",
+
+        downloadAll: "เปิดไฟล์ทั้งหมดเพื่อบันทึก",
+        downloadAllHint: "มือถือให้กดเปิดไฟล์ แล้วบันทึกรูปหรือวิดีโอจากหน้าที่เปิดขึ้น",
+        downloadAllTitle: "เปิดไฟล์ทั้งหมด",
+        downloadAllText: "ระบบจะเปิดไฟล์ทีละรายการ หาก Browser บล็อก popup ให้กดดาวน์โหลดทีละไฟล์",
+        startDownload: "เริ่มเปิดไฟล์",
         cancel: "ยกเลิก",
+
         noFile: "ไม่พบไฟล์",
         noFileDesc: "ยังไม่มี URL สำหรับดาวน์โหลด",
-        errorTitle: "เกิดข้อผิดพลาด"
+        errorTitle: "เกิดข้อผิดพลาด",
+
+        photoLabel: "PHOTO",
+        videoLabel: "VDO",
+        priceLabel: "ราคา"
       },
 
       en: {
         miniApp: "LINE Mini App",
-        pageTitle: "Download Photos",
-        loadingPhoto: "Loading photos...",
+        pageTitle: "Download Files",
+        loadingPhoto: "Loading files...",
         orderBtn: "Orders",
         blockedTitle: "Download Not Available Yet",
         blockedDesc: "Please wait for admin approval",
         backOrder: "Back to Orders",
-        noPhoto: "No photos found",
-        downloadReady: "Open the photo, then long-press to save",
+
+        noPhoto: "No files found",
+        downloadReady: "Open the file to save it",
         downloadBtn: "Open / Download",
-        downloadAll: "Open All Photos",
-        downloadAllHint: "On mobile, long-press the photo and choose Save Image",
-        downloadAllTitle: "Open All Photos",
-        downloadAllText: "Photos will open one by one. On mobile, long-press to save.",
+        downloadVideoBtn: "Open / Download VDO",
+
+        downloadAll: "Open All Files",
+        downloadAllHint: "On mobile, open the file and save the photo or video from the opened page",
+        downloadAllTitle: "Open All Files",
+        downloadAllText: "Files will open one by one. If your browser blocks popups, download them one by one.",
         startDownload: "Start",
         cancel: "Cancel",
+
         noFile: "File Not Found",
         noFileDesc: "No download URL available",
-        errorTitle: "Error"
+        errorTitle: "Error",
+
+        photoLabel: "PHOTO",
+        videoLabel: "VDO",
+        priceLabel: "Price"
       },
 
       ru: {
         miniApp: "LINE Мини-приложение",
-        pageTitle: "Скачать Фото",
-        loadingPhoto: "Загрузка фотографий...",
+        pageTitle: "Скачать файлы",
+        loadingPhoto: "Загрузка файлов...",
         orderBtn: "Заказы",
         blockedTitle: "Скачивание недоступно",
         blockedDesc: "Пожалуйста, дождитесь подтверждения администратора",
         backOrder: "Назад к заказам",
-        noPhoto: "Фотографии не найдены",
-        downloadReady: "Откройте фото и удерживайте для сохранения",
+
+        noPhoto: "Файлы не найдены",
+        downloadReady: "Откройте файл, чтобы сохранить",
         downloadBtn: "Открыть / Скачать",
-        downloadAll: "Открыть все фото",
-        downloadAllHint: "На телефоне удерживайте фото и выберите сохранение",
-        downloadAllTitle: "Открыть все фото",
-        downloadAllText: "Фото будут открываться по одному. На телефоне удерживайте фото для сохранения.",
+        downloadVideoBtn: "Открыть / Скачать VDO",
+
+        downloadAll: "Открыть все файлы",
+        downloadAllHint: "На телефоне откройте файл и сохраните фото или видео",
+        downloadAllTitle: "Открыть все файлы",
+        downloadAllText: "Файлы будут открываться по одному. Если браузер блокирует окна, скачайте по одному.",
         startDownload: "Начать",
         cancel: "Отмена",
+
         noFile: "Файл не найден",
         noFileDesc: "URL для скачивания отсутствует",
-        errorTitle: "Ошибка"
+        errorTitle: "Ошибка",
+
+        photoLabel: "ФОТО",
+        videoLabel: "VDO",
+        priceLabel: "Цена"
       }
     };
 
     let currentLang = localStorage.getItem("lang") || "th";
+
+    if (!LANG[currentLang]) {
+      currentLang = "th";
+      localStorage.setItem("lang", "th");
+    }
 
     function t() {
       return LANG[currentLang] || LANG.th;
@@ -258,16 +338,18 @@
       document.getElementById("txtDownloadAll").textContent = x.downloadAll;
       document.getElementById("txtDownloadAllHint").textContent = x.downloadAllHint;
       document.getElementById("langSelect").value = currentLang;
+
+      updateDarkButton();
     }
 
     function changeLanguage(lang) {
-      currentLang = lang;
-      localStorage.setItem("lang", lang);
+      currentLang = LANG[lang] ? lang : "th";
+      localStorage.setItem("lang", currentLang);
 
       applyLanguage();
 
       if (order) {
-        renderPhotos();
+        renderFiles();
       }
     }
 
@@ -282,24 +364,8 @@
         .select(`
           *,
           order_items (
-            id,
-            photo_id,
-            event_id,
-            filename,
-            photo_url,
-            price,
-            photos (
-              id,
-              filename,
-              preview_url,
-              watermark_url,
-              r2_preview_url,
-              r2_watermark_url,
-              r2_key,
-              preview_path,
-              watermark_path,
-              original_path
-            )
+            *,
+            photos (*)
           )
         `)
         .eq("id", orderId)
@@ -324,7 +390,7 @@
 
       document.getElementById("downloadAllBox").classList.remove("hidden");
 
-      renderPhotos();
+      renderFiles();
     }
 
     function isApprovedStatus(status) {
@@ -332,7 +398,7 @@
       return s === "approved" || s === "paid";
     }
 
-    function renderPhotos() {
+    function renderFiles() {
       const grid = document.getElementById("photoGrid");
       const items = order.order_items || [];
 
@@ -341,7 +407,7 @@
       if (!items.length) {
         grid.innerHTML = `
           <div class="col-span-full text-center py-10 text-slate-500 dark:text-slate-400">
-            ${t().noPhoto}
+            ${escapeHtml(t().noPhoto)}
           </div>
         `;
 
@@ -349,11 +415,21 @@
         return;
       }
 
-      items.forEach(item => {
+      items.forEach((item, index) => {
         const photo = item.photos || {};
+        const mediaIsVideo = isVideoItem(item, photo);
+
         const preview = getPreviewUrl(item, photo);
         const downloadUrl = getDownloadUrl(item, photo);
-        const filename = photo.filename || item.filename || item.photo_id || "photo.jpg";
+
+        const filename =
+          photo.filename ||
+          item.filename ||
+          item.file_name ||
+          item.photo_id ||
+          (mediaIsVideo ? "video.mp4" : "photo.jpg");
+
+        const price = Number(item.price || photo.price || 0);
 
         const card = document.createElement("article");
 
@@ -361,12 +437,30 @@
           "bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-sm transition border border-slate-100 dark:border-slate-800";
 
         card.innerHTML = `
-          <img
-            src="${escapeAttr(preview)}"
-            class="w-full aspect-[3/4] object-cover bg-slate-200 dark:bg-slate-800"
-            referrerpolicy="no-referrer"
-            onerror="this.onerror=null; this.src='https://placehold.co/600x800/111827/ffffff?text=Photo';"
-          />
+          <div class="relative bg-slate-200 dark:bg-slate-800">
+            <img
+              src="${escapeAttr(preview || getPlaceholder(mediaIsVideo ? "VDO" : "Photo"))}"
+              class="download-card-img w-full aspect-[3/4] object-cover bg-slate-200 dark:bg-slate-800"
+              referrerpolicy="no-referrer"
+              draggable="false"
+              alt="${escapeAttr(mediaIsVideo ? t().videoLabel : t().photoLabel)}"
+              onerror="this.onerror=null; this.src='${escapeAttr(getPlaceholder(mediaIsVideo ? "VDO" : "Photo"))}';"
+            />
+
+            <div class="media-badge">
+              ${escapeHtml(mediaIsVideo ? t().videoLabel : t().photoLabel)}
+            </div>
+
+            ${
+              mediaIsVideo
+                ? `
+                  <div class="play-layer">
+                    <div class="play-circle">▶</div>
+                  </div>
+                `
+                : ""
+            }
+          </div>
 
           <div class="p-4">
             <p class="font-bold truncate">
@@ -374,16 +468,20 @@
             </p>
 
             <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              ${t().downloadReady}
+              ${escapeHtml(t().priceLabel)} ฿${formatMoney(price)}
+            </p>
+
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              ${escapeHtml(t().downloadReady)}
             </p>
 
             <button
               type="button"
-              onclick="downloadFile('${escapeAttr(downloadUrl)}', '${escapeAttr(filename)}')"
+              onclick="downloadItemByIndex(${index})"
               class="mt-4 w-full bg-emerald-600 text-white rounded-2xl py-3 font-bold disabled:opacity-40"
               ${downloadUrl ? "" : "disabled"}
             >
-              ${t().downloadBtn}
+              ${escapeHtml(mediaIsVideo ? t().downloadVideoBtn : t().downloadBtn)}
             </button>
           </div>
         `;
@@ -394,39 +492,138 @@
       grid.classList.remove("hidden");
     }
 
-    function getPreviewUrl(item, photo) {
-      const raw =
-        item.photo_url ||
-        photo.r2_watermark_url ||
-        photo.r2_preview_url ||
-        photo.watermark_url ||
-        photo.preview_url ||
-        photo.r2_key ||
-        photo.preview_path ||
-        photo.watermark_path ||
-        photo.original_path ||
-        "";
+    function getMediaType(item, photo) {
+      const mediaType = String(item.media_type || photo.media_type || "").toLowerCase();
+      const mimeType = String(item.mime_type || photo.mime_type || "").toLowerCase();
+      const filename = String(
+        item.filename ||
+        item.file_name ||
+        photo.filename ||
+        ""
+      ).toLowerCase();
 
-      return normalizeImageUrl(raw);
+      if (mediaType === "video") return "video";
+      if (mediaType === "image") return "image";
+
+      if (
+        mimeType.startsWith("video/") ||
+        filename.endsWith(".mp4") ||
+        filename.endsWith(".mov") ||
+        filename.endsWith(".webm") ||
+        item.video_url ||
+        item.video_path ||
+        photo.video_url ||
+        photo.video_path ||
+        photo.video_preview_url ||
+        photo.video_preview_path
+      ) {
+        return "video";
+      }
+
+      return "image";
+    }
+
+    function isVideoItem(item, photo) {
+      return getMediaType(item, photo) === "video";
+    }
+
+    function getPreviewUrl(item, photo) {
+      const mediaIsVideo = isVideoItem(item, photo);
+
+      const raw = mediaIsVideo
+        ? (
+            photo.thumbnail_url ||
+            photo.r2_thumbnail_url ||
+            item.thumbnail_url ||
+            item.photo_url ||
+            photo.preview_url ||
+            photo.r2_preview_url ||
+            photo.watermark_url ||
+            photo.r2_watermark_url ||
+            photo.thumbnail_path ||
+            photo.preview_path ||
+            ""
+          )
+        : (
+            item.photo_url ||
+            photo.r2_watermark_url ||
+            photo.r2_preview_url ||
+            photo.watermark_url ||
+            photo.preview_url ||
+            photo.preview_path ||
+            photo.watermark_path ||
+            photo.r2_key ||
+            photo.original_path ||
+            ""
+          );
+
+      return normalizeFileUrl(raw);
     }
 
     function getDownloadUrl(item, photo) {
-      const raw =
-        item.photo_url ||
-        photo.r2_preview_url ||
-        photo.preview_url ||
-        photo.r2_watermark_url ||
-        photo.watermark_url ||
-        photo.r2_key ||
-        photo.preview_path ||
-        photo.watermark_path ||
-        photo.original_path ||
-        "";
+      const mediaIsVideo = isVideoItem(item, photo);
 
-      return normalizeImageUrl(raw);
+      /*
+        สำคัญ:
+        - VDO ห้ามเอา item.photo_url มาก่อน เพราะ checkout มักเก็บ thumbnail/preview ไว้ตรงนั้น
+        - ภาพนิ่งให้พยายามใช้ original/r2_key ก่อน
+      */
+      const raw = mediaIsVideo
+        ? (
+            photo.video_url ||
+            photo.video_path ||
+            photo.r2_video_url ||
+            photo.r2_video_key ||
+            photo.video_preview_url ||
+            photo.video_preview_path ||
+            photo.r2_video_preview_url ||
+            photo.r2_video_preview_key ||
+            photo.r2_original_key ||
+            photo.r2_key ||
+            photo.original_path ||
+            ""
+          )
+        : (
+            photo.r2_original_key ||
+            photo.original_path ||
+            photo.r2_key ||
+            photo.r2_preview_url ||
+            photo.preview_url ||
+            photo.r2_watermark_url ||
+            photo.watermark_url ||
+            item.photo_url ||
+            photo.preview_path ||
+            photo.watermark_path ||
+            ""
+          );
+
+      return normalizeFileUrl(raw);
     }
 
-    function normalizeImageUrl(url) {
+    function downloadItemByIndex(index) {
+      const items = order?.order_items || [];
+      const item = items[index];
+
+      if (!item) {
+        Swal.fire(t().noFile, t().noFileDesc, "warning");
+        return;
+      }
+
+      const photo = item.photos || {};
+      const mediaIsVideo = isVideoItem(item, photo);
+      const url = getDownloadUrl(item, photo);
+
+      const filename =
+        photo.filename ||
+        item.filename ||
+        item.file_name ||
+        item.photo_id ||
+        (mediaIsVideo ? "video.mp4" : "photo.jpg");
+
+      downloadFile(url, filename);
+    }
+
+    function normalizeFileUrl(url) {
       const cleanUrl = String(url || "").trim();
 
       if (!cleanUrl) {
@@ -440,11 +637,6 @@
       if (CONFIG.R2_WORKER_URL) {
         const base = String(CONFIG.R2_WORKER_URL).replace(/\/+$/, "");
         const key = cleanUrl.replace(/^\/+/, "");
-
-        if (key.startsWith("events/")) {
-          return encodeURI(`${base}/file/${key}`);
-        }
-
         return encodeURI(`${base}/file/${key}`);
       }
 
@@ -455,6 +647,10 @@
       }
 
       return encodeURI(cleanUrl);
+    }
+
+    function getPlaceholder(text) {
+      return `https://placehold.co/600x800/111827/ffffff?text=${encodeURIComponent(text || "File")}`;
     }
 
     function downloadFile(url, filename) {
@@ -477,7 +673,7 @@
       a.href = absoluteUrl;
       a.target = "_blank";
       a.rel = "noopener noreferrer";
-      a.download = filename || "photo.jpg";
+      a.download = filename || "file";
 
       document.body.appendChild(a);
       a.click();
@@ -497,10 +693,16 @@
       const files = (order.order_items || [])
         .map(item => {
           const photo = item.photos || {};
+          const mediaIsVideo = isVideoItem(item, photo);
 
           return {
             url: getDownloadUrl(item, photo),
-            filename: photo.filename || item.filename || item.photo_id || "photo.jpg"
+            filename:
+              photo.filename ||
+              item.filename ||
+              item.file_name ||
+              item.photo_id ||
+              (mediaIsVideo ? "video.mp4" : "photo.jpg")
           };
         })
         .filter(item => item.url);
@@ -579,6 +781,17 @@
       updateDarkButton();
     }
 
+    function formatMoney(value) {
+      return Number(value || 0)
+        .toLocaleString(
+          "th-TH",
+          {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          }
+        );
+    }
+
     function escapeHtml(text) {
       return String(text ?? "")
         .replace(/&/g, "&amp;")
@@ -594,39 +807,50 @@
 
     document.addEventListener("contextmenu", function(e) {
       e.preventDefault();
-    });
+    }, true);
 
     document.addEventListener("dragstart", function(e) {
       e.preventDefault();
-    });
+    }, true);
 
     document.addEventListener("keydown", function(e) {
+      const key = String(e.key || "").toLowerCase();
+
       if (e.key === "F12") {
         e.preventDefault();
+        return false;
       }
 
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        e.key.toLowerCase() === "s"
-      ) {
+      if ((e.ctrlKey || e.metaKey) && key === "s") {
         e.preventDefault();
+        return false;
       }
 
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        e.key.toLowerCase() === "u"
-      ) {
+      if ((e.ctrlKey || e.metaKey) && key === "u") {
         e.preventDefault();
+        return false;
       }
 
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        e.shiftKey &&
-        e.key.toLowerCase() === "i"
-      ) {
+      if ((e.ctrlKey || e.metaKey) && key === "p") {
         e.preventDefault();
+        return false;
       }
-    });
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === "i") {
+        e.preventDefault();
+        return false;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === "j") {
+        e.preventDefault();
+        return false;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === "c") {
+        e.preventDefault();
+        return false;
+      }
+    }, true);
   </script>
 
 </body>
