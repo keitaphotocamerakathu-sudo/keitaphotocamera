@@ -29,6 +29,9 @@
 
     body {
       min-height: 100vh;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
     }
 
     .safe-bottom {
@@ -40,19 +43,61 @@
       -webkit-user-select: none;
       user-select: none;
       pointer-events: none;
+      -webkit-user-drag: none;
     }
 
-    body {
-      -webkit-user-select: none;
-      user-select: none;
-      -webkit-touch-callout: none;
+    .media-badge {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      z-index: 5;
+      background: rgba(0,0,0,.64);
+      color: white;
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .04em;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+
+    .play-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .play-circle {
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.58);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 21px;
+      font-weight: 900;
+      box-shadow: 0 8px 22px rgba(0,0,0,.4);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+
+    .summary-card {
+      background:
+        linear-gradient(135deg, rgba(16,185,129,.10), rgba(59,130,246,.08));
     }
   </style>
 </head>
 
 <body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-white transition safe-bottom">
 
-  <main class="max-w-4xl mx-auto p-4 pb-32">
+  <main class="max-w-4xl mx-auto p-4 pb-40">
 
     <header class="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm mb-4 transition">
       <div class="flex justify-between gap-3">
@@ -96,6 +141,7 @@
             id="linePicture"
             class="w-11 h-11 rounded-full object-cover bg-slate-200 dark:bg-slate-700"
             referrerpolicy="no-referrer"
+            alt="LINE Profile"
           />
 
           <div class="min-w-0">
@@ -108,11 +154,41 @@
 
     <section class="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-3xl p-4 mb-4">
       <p id="txtPromoTitle" class="font-bold text-emerald-700 dark:text-emerald-300">
-        🎉 โปรเหมา
+        🎉 โปรภาพนิ่ง + VDO
       </p>
       <p id="txtPromoDesc" class="text-sm text-emerald-700 dark:text-emerald-300 mt-1">
-        ซื้อครบ 10 รูป เหลือ 250 บาท • 20 รูป เหลือ 500 บาท
+        ภาพนิ่งครบ 10 รูป = 250 บาท • 20 รูป = 500 บาท • VDO 199 บาท/คลิป หรือ 149 บาท/คลิป เมื่อซื้อพร้อมแพ็กภาพ
       </p>
+    </section>
+
+    <section id="priceSummaryBox" class="hidden summary-card border border-slate-200 dark:border-slate-800 rounded-3xl p-4 mb-4">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="bg-white/80 dark:bg-slate-900/80 rounded-2xl p-3">
+          <p id="txtImageSummaryLabel" class="text-xs text-slate-500 dark:text-slate-400">ภาพนิ่ง</p>
+          <p class="font-black text-lg">
+            <span id="imageCountText">0</span>
+            <span id="txtImageUnit">รูป</span>
+          </p>
+          <p id="imagePriceText" class="text-xs text-slate-500 dark:text-slate-400 mt-1">-</p>
+        </div>
+
+        <div class="bg-white/80 dark:bg-slate-900/80 rounded-2xl p-3">
+          <p id="txtVideoSummaryLabel" class="text-xs text-slate-500 dark:text-slate-400">VDO</p>
+          <p class="font-black text-lg">
+            <span id="videoCountText">0</span>
+            <span id="txtVideoUnit">คลิป</span>
+          </p>
+          <p id="videoPriceText" class="text-xs text-slate-500 dark:text-slate-400 mt-1">-</p>
+        </div>
+
+        <div class="bg-white/80 dark:bg-slate-900/80 rounded-2xl p-3">
+          <p id="txtGrandTotalLabel" class="text-xs text-slate-500 dark:text-slate-400">ยอดสุทธิ</p>
+          <p class="font-black text-lg text-emerald-600">
+            ฿<span id="grandTotalText">0.00</span>
+          </p>
+          <p id="savingInlineText" class="text-xs text-emerald-600 font-bold mt-1">-</p>
+        </div>
+      </div>
     </section>
 
     <section id="cartList" class="space-y-3"></section>
@@ -145,8 +221,7 @@
           <p id="txtSummary" class="text-xs text-slate-500 dark:text-slate-400">รวมทั้งหมด</p>
 
           <p class="text-xl font-black">
-            <span id="totalItems">0</span>
-            <span id="txtPhotoUnit">ภาพ</span>
+            <span id="cartItemSummary">0 ไฟล์</span>
             ·
             ฿<span id="totalAmount">0.00</span>
           </p>
@@ -173,8 +248,12 @@
     let cartKey = null;
     let cart = [];
 
-    const DEFAULT_PRICE =
-      Number(CONFIG.DEFAULT_PHOTO_PRICE || 50);
+    const IMAGE_SINGLE_PRICE = Number(CONFIG.DEFAULT_PHOTO_PRICE || 50);
+    const IMAGE_PACK_10_PRICE = Number(CONFIG.IMAGE_PACK_10_PRICE || 250);
+    const IMAGE_PACK_20_PRICE = Number(CONFIG.IMAGE_PACK_20_PRICE || 500);
+
+    const VIDEO_SINGLE_PRICE = Number(CONFIG.DEFAULT_VIDEO_PRICE || 199);
+    const VIDEO_ADDON_PRICE = Number(CONFIG.VIDEO_ADDON_PRICE || 149);
 
     const LANG = {
       th: {
@@ -183,22 +262,42 @@
         loading: "กำลังโหลดข้อมูล...",
         home: "กลับ",
         connected: "เชื่อมต่อ LINE แล้ว",
+
         emptyTitle: "ยังไม่มีสินค้าในตะกร้า",
-        emptyDesc: "กรุณาเลือกภาพจาก Event ก่อน",
+        emptyDesc: "กรุณาเลือกภาพหรือ VDO จาก Event ก่อน",
         chooseEvent: "เลือก Event",
+
         summary: "รวมทั้งหมด",
-        photoUnit: "ภาพ",
         checkout: "ชำระเงิน",
         remove: "ลบ",
-        cartHas: "มีภาพในตะกร้า",
+
         cartEmpty: "ยังไม่มีสินค้าในตะกร้า",
         photoEvent: "Photo Event",
         emptyCartTitle: "ตะกร้าว่าง",
-        emptyCartDesc: "กรุณาเลือกภาพก่อนชำระเงิน",
-        promoTitle: "🎉 โปรเหมา",
-        promoDesc: "ซื้อครบ 10 รูป เหลือ 250 บาท • 20 รูป เหลือ 500 บาท",
+        emptyCartDesc: "กรุณาเลือกภาพหรือ VDO ก่อนชำระเงิน",
+
+        promoTitle: "🎉 โปรภาพนิ่ง + VDO",
+        promoDesc: "ภาพนิ่งครบ 10 รูป = 250 บาท • 20 รูป = 500 บาท • VDO 199 บาท/คลิป หรือ 149 บาท/คลิป เมื่อซื้อพร้อมแพ็กภาพ",
+
         saving: "ประหยัด",
-        normalPrice: "ราคาปกติ"
+        normalPrice: "ราคาปกติ",
+
+        imageSummary: "ภาพนิ่ง",
+        videoSummary: "VDO",
+        grandTotal: "ยอดสุทธิ",
+        imageUnit: "รูป",
+        videoUnit: "คลิป",
+        fileUnit: "ไฟล์",
+
+        imageNormal: "ภาพนิ่งราคาปกติ",
+        imagePack10: "แพ็กภาพนิ่ง 10 รูป",
+        imagePack20: "แพ็กภาพนิ่ง 20 รูป",
+        imageExtra: "รูปเกินแพ็ก",
+
+        videoNormal: "VDO ราคาปกติ",
+        videoAddon: "VDO ราคาพิเศษเมื่อซื้อพร้อมแพ็กภาพ",
+        videoLabel: "VDO",
+        photoLabel: "PHOTO"
       },
 
       en: {
@@ -207,22 +306,42 @@
         loading: "Loading data...",
         home: "Back",
         connected: "LINE Connected",
+
         emptyTitle: "Your cart is empty",
-        emptyDesc: "Please select photos from an Event first",
+        emptyDesc: "Please select photos or videos from an Event first",
         chooseEvent: "Choose Event",
+
         summary: "Total",
-        photoUnit: "photos",
         checkout: "Checkout",
         remove: "Remove",
-        cartHas: "photos in cart",
+
         cartEmpty: "Your cart is empty",
         photoEvent: "Photo Event",
         emptyCartTitle: "Empty Cart",
-        emptyCartDesc: "Please select photos before checkout",
-        promoTitle: "🎉 Package Deal",
-        promoDesc: "10 photos for 250 THB • 20 photos for 500 THB",
+        emptyCartDesc: "Please select photos or videos before checkout",
+
+        promoTitle: "🎉 Photo + Video Deal",
+        promoDesc: "10 photos = 250 THB • 20 photos = 500 THB • Video 199 THB/clip or 149 THB/clip with photo package",
+
         saving: "Save",
-        normalPrice: "Normal price"
+        normalPrice: "Normal price",
+
+        imageSummary: "Photos",
+        videoSummary: "VDO",
+        grandTotal: "Net total",
+        imageUnit: "photos",
+        videoUnit: "clips",
+        fileUnit: "files",
+
+        imageNormal: "Normal photo price",
+        imagePack10: "10-photo package",
+        imagePack20: "20-photo package",
+        imageExtra: "extra photos",
+
+        videoNormal: "Normal video price",
+        videoAddon: "Special video add-on price",
+        videoLabel: "VDO",
+        photoLabel: "PHOTO"
       },
 
       ru: {
@@ -231,26 +350,51 @@
         loading: "Загрузка данных...",
         home: "Назад",
         connected: "LINE подключён",
+
         emptyTitle: "Корзина пуста",
-        emptyDesc: "Пожалуйста, выберите фотографии из события",
+        emptyDesc: "Пожалуйста, выберите фото или видео из события",
         chooseEvent: "Выбрать событие",
+
         summary: "Итого",
-        photoUnit: "фото",
         checkout: "Оплатить",
         remove: "Удалить",
-        cartHas: "фото в корзине",
+
         cartEmpty: "Корзина пуста",
         photoEvent: "Фото Событие",
         emptyCartTitle: "Пустая корзина",
-        emptyCartDesc: "Пожалуйста, выберите фото перед оплатой",
-        promoTitle: "🎉 Пакетное предложение",
-        promoDesc: "10 фото за 250 THB • 20 фото за 500 THB",
+        emptyCartDesc: "Пожалуйста, выберите фото или видео перед оплатой",
+
+        promoTitle: "🎉 Фото + VDO",
+        promoDesc: "10 фото = 250 THB • 20 фото = 500 THB • VDO 199 THB/клип или 149 THB/клип с фотопакетом",
+
         saving: "Экономия",
-        normalPrice: "Обычная цена"
+        normalPrice: "Обычная цена",
+
+        imageSummary: "Фото",
+        videoSummary: "VDO",
+        grandTotal: "Итого",
+        imageUnit: "фото",
+        videoUnit: "клип",
+        fileUnit: "файлов",
+
+        imageNormal: "Обычная цена фото",
+        imagePack10: "Пакет 10 фото",
+        imagePack20: "Пакет 20 фото",
+        imageExtra: "дополнительные фото",
+
+        videoNormal: "Обычная цена VDO",
+        videoAddon: "Специальная цена VDO",
+        videoLabel: "VDO",
+        photoLabel: "PHOTO"
       }
     };
 
     let currentLang = localStorage.getItem("lang") || "th";
+
+    if (!LANG[currentLang]) {
+      currentLang = "th";
+      localStorage.setItem("lang", "th");
+    }
 
     function t() {
       return LANG[currentLang] || LANG.th;
@@ -314,20 +458,31 @@
       document.getElementById("txtCartTitle").textContent = x.cartTitle;
       document.getElementById("txtHome").textContent = x.home;
       document.getElementById("txtConnected").textContent = x.connected;
+
       document.getElementById("txtEmptyTitle").textContent = x.emptyTitle;
       document.getElementById("txtEmptyDesc").textContent = x.emptyDesc;
       document.getElementById("txtChooseEvent").textContent = x.chooseEvent;
+
       document.getElementById("txtSummary").textContent = x.summary;
-      document.getElementById("txtPhotoUnit").textContent = x.photoUnit;
       document.getElementById("txtCheckout").textContent = x.checkout;
+
       document.getElementById("txtPromoTitle").textContent = x.promoTitle;
       document.getElementById("txtPromoDesc").textContent = x.promoDesc;
+
+      document.getElementById("txtImageSummaryLabel").textContent = x.imageSummary;
+      document.getElementById("txtVideoSummaryLabel").textContent = x.videoSummary;
+      document.getElementById("txtGrandTotalLabel").textContent = x.grandTotal;
+      document.getElementById("txtImageUnit").textContent = x.imageUnit;
+      document.getElementById("txtVideoUnit").textContent = x.videoUnit;
+
       document.getElementById("langSelect").value = currentLang;
+
+      updateDarkButton();
     }
 
     function changeLanguage(lang) {
-      currentLang = lang;
-      localStorage.setItem("lang", lang);
+      currentLang = LANG[lang] ? lang : "th";
+      localStorage.setItem("lang", currentLang);
 
       applyLanguage();
       renderCart();
@@ -345,8 +500,23 @@
     }
 
     function loadCart() {
-      cart = JSON.parse(localStorage.getItem(cartKey) || "[]");
-      cart = cart.filter(item => item && item.photo_id);
+      let rawCart = [];
+
+      try {
+        rawCart = JSON.parse(localStorage.getItem(cartKey) || "[]");
+      } catch {
+        rawCart = [];
+      }
+
+      const map = new Map();
+
+      rawCart
+        .filter(item => item && item.photo_id)
+        .forEach(item => {
+          map.set(String(item.photo_id), item);
+        });
+
+      cart = Array.from(map.values());
     }
 
     function saveCart() {
@@ -355,57 +525,158 @@
 
     function normalizeCartItems() {
       cart = cart.map(item => {
-        const price = Number(item.price || DEFAULT_PRICE);
-        const imageUrl = normalizeImageUrl(
-          item.preview_url ||
-          item.photo_url ||
-          item.watermark_url ||
-          item.watermarked_url ||
-          item.thumbnail_url ||
-          item.r2_preview_url ||
-          item.r2_watermark_url ||
-          item.r2_key ||
-          ""
-        );
+        const mediaType = getMediaType(item);
+        const isVid = mediaType === "video";
+
+        const previewUrl = isVid
+          ? normalizeImageUrl(
+              item.thumbnail_url ||
+              item.preview_url ||
+              item.photo_url ||
+              item.watermark_url ||
+              item.r2_preview_url ||
+              item.r2_watermark_url ||
+              item.r2_key ||
+              ""
+            )
+          : normalizeImageUrl(
+              item.preview_url ||
+              item.photo_url ||
+              item.watermark_url ||
+              item.watermarked_url ||
+              item.thumbnail_url ||
+              item.r2_preview_url ||
+              item.r2_watermark_url ||
+              item.r2_key ||
+              ""
+            );
+
+        const videoUrl = isVid
+          ? normalizeImageUrl(
+              item.video_url ||
+              item.video_preview_url ||
+              item.video_path ||
+              item.video_preview_path ||
+              item.r2_video_url ||
+              item.r2_video_preview_url ||
+              ""
+            )
+          : "";
 
         return {
           ...item,
-          price,
-          preview_url: imageUrl,
-          photo_url: imageUrl,
+          media_type: mediaType,
+
+          preview_url: previewUrl,
+          photo_url: previewUrl,
+          watermark_url: previewUrl,
+
+          thumbnail_url: isVid ? previewUrl : (item.thumbnail_url || null),
+          video_url: isVid ? videoUrl : null,
+
           file_name: item.file_name || item.filename || item.photo_id,
           filename: item.filename || item.file_name || item.photo_id,
-          event_name: item.event_name || t().photoEvent
+          event_name: item.event_name || t().photoEvent,
+
+          price: isVid ? VIDEO_SINGLE_PRICE : IMAGE_SINGLE_PRICE
         };
       });
     }
 
-    function getNormalTotal() {
-      return cart.reduce((sum, item) => {
-        return sum + Number(item.price || DEFAULT_PRICE);
-      }, 0);
-    }
+    function getMediaType(item) {
+      const mediaType = String(item.media_type || "").toLowerCase();
+      const mimeType = String(item.mime_type || "").toLowerCase();
+      const filename = String(item.filename || item.file_name || "").toLowerCase();
 
-    function calculatePromoTotal() {
-      const count = cart.length;
+      if (mediaType === "video") return "video";
+      if (mediaType === "image") return "image";
 
-      if (!count) return 0;
-
-      const basePrice = DEFAULT_PRICE;
-
-      if (count >= 20) {
-        return 500 + ((count - 20) * basePrice);
+      if (
+        mimeType.startsWith("video/") ||
+        filename.endsWith(".mp4") ||
+        filename.endsWith(".mov") ||
+        filename.endsWith(".webm") ||
+        item.video_url ||
+        item.video_path ||
+        item.video_preview_url ||
+        item.video_preview_path
+      ) {
+        return "video";
       }
 
-      if (count >= 10) {
-        return 250 + ((count - 10) * basePrice);
-      }
-
-      return getNormalTotal();
+      return "image";
     }
 
-    function calculateSaving() {
-      return Math.max(0, getNormalTotal() - calculatePromoTotal());
+    function isVideoItem(item) {
+      return getMediaType(item) === "video";
+    }
+
+    function getImageItems() {
+      return cart.filter(item => !isVideoItem(item));
+    }
+
+    function getVideoItems() {
+      return cart.filter(item => isVideoItem(item));
+    }
+
+    function calculateCartBreakdown() {
+      const imageItems = getImageItems();
+      const videoItems = getVideoItems();
+
+      const imageCount = imageItems.length;
+      const videoCount = videoItems.length;
+
+      const imageNormalTotal = imageCount * IMAGE_SINGLE_PRICE;
+      const videoNormalTotal = videoCount * VIDEO_SINGLE_PRICE;
+
+      let imageTotal = imageNormalTotal;
+      let imagePackageName = t().imageNormal;
+      let imageExtraCount = 0;
+
+      if (imageCount >= 20) {
+        imageExtraCount = imageCount - 20;
+        imageTotal = IMAGE_PACK_20_PRICE + (imageExtraCount * IMAGE_SINGLE_PRICE);
+        imagePackageName = t().imagePack20;
+      } else if (imageCount >= 10) {
+        imageExtraCount = imageCount - 10;
+        imageTotal = IMAGE_PACK_10_PRICE + (imageExtraCount * IMAGE_SINGLE_PRICE);
+        imagePackageName = t().imagePack10;
+      }
+
+      const hasImagePackage = imageCount >= 10;
+
+      const videoUnitPrice = videoCount > 0
+        ? (hasImagePackage ? VIDEO_ADDON_PRICE : VIDEO_SINGLE_PRICE)
+        : 0;
+
+      const videoTotal = videoCount * videoUnitPrice;
+
+      const normalTotal = imageNormalTotal + videoNormalTotal;
+      const promoTotal = imageTotal + videoTotal;
+      const saving = Math.max(0, normalTotal - promoTotal);
+
+      return {
+        imageCount,
+        videoCount,
+
+        imageNormalTotal,
+        videoNormalTotal,
+        normalTotal,
+
+        imageTotal,
+        videoTotal,
+        promoTotal,
+        saving,
+
+        imagePackageName,
+        imageExtraCount,
+
+        hasImagePackage,
+        videoUnitPrice,
+        videoPriceType: hasImagePackage ? t().videoAddon : t().videoNormal,
+
+        itemCount: cart.length
+      };
     }
 
     function renderCart() {
@@ -419,6 +690,7 @@
         list.classList.add("hidden");
         empty.classList.remove("hidden");
         checkoutBtn.disabled = true;
+        document.getElementById("priceSummaryBox").classList.add("hidden");
         updateSummary();
         return;
       }
@@ -426,8 +698,13 @@
       list.classList.remove("hidden");
       empty.classList.add("hidden");
       checkoutBtn.disabled = false;
+      document.getElementById("priceSummaryBox").classList.remove("hidden");
+
+      const breakdown = calculateCartBreakdown();
 
       cart.forEach((item, index) => {
+        const mediaIsVideo = isVideoItem(item);
+
         const img = normalizeImageUrl(
           item.preview_url ||
           item.photo_url ||
@@ -439,7 +716,9 @@
           ""
         );
 
-        const price = Number(item.price || DEFAULT_PRICE);
+        const effectivePrice = mediaIsVideo
+          ? breakdown.videoUnitPrice
+          : IMAGE_SINGLE_PRICE;
 
         const card = document.createElement("article");
 
@@ -447,12 +726,30 @@
           "bg-white dark:bg-slate-900 rounded-3xl p-3 shadow-sm flex gap-3 transition border border-slate-100 dark:border-slate-800";
 
         card.innerHTML = `
-          <img
-            src="${escapeAttr(img)}"
-            class="w-24 h-28 rounded-2xl object-cover bg-slate-200 dark:bg-slate-800"
-            referrerpolicy="no-referrer"
-            onerror="this.onerror=null; this.src='https://placehold.co/300x400/111827/ffffff?text=Photo';"
-          />
+          <div class="relative w-24 h-28 rounded-2xl overflow-hidden bg-slate-200 dark:bg-slate-800 shrink-0">
+            <img
+              src="${escapeAttr(img)}"
+              class="w-full h-full object-cover"
+              referrerpolicy="no-referrer"
+              draggable="false"
+              onerror="this.onerror=null; this.src='https://placehold.co/300x400/111827/ffffff?text=${mediaIsVideo ? "VDO" : "Photo"}';"
+              alt="${escapeAttr(mediaIsVideo ? t().videoLabel : t().photoLabel)}"
+            />
+
+            <div class="media-badge">
+              ${escapeHtml(mediaIsVideo ? t().videoLabel : t().photoLabel)}
+            </div>
+
+            ${
+              mediaIsVideo
+                ? `
+                  <div class="play-layer">
+                    <div class="play-circle">▶</div>
+                  </div>
+                `
+                : ""
+            }
+          </div>
 
           <div class="flex-1 min-w-0">
             <p class="font-bold truncate">
@@ -464,7 +761,15 @@
             </p>
 
             <p class="mt-2 text-lg font-bold text-emerald-600">
-              ฿${formatMoney(price)}
+              ฿${formatMoney(effectivePrice)}
+            </p>
+
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+              ${
+                mediaIsVideo
+                  ? escapeHtml(breakdown.videoPriceType)
+                  : escapeHtml(t().imageNormal)
+              }
             </p>
 
             <div class="mt-3 flex gap-2">
@@ -472,7 +777,7 @@
                 onclick="removeItem(${index})"
                 class="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl px-3 py-2 text-sm font-bold"
               >
-                ${t().remove}
+                ${escapeHtml(t().remove)}
               </button>
             </div>
           </div>
@@ -485,28 +790,68 @@
     }
 
     function updateSummary() {
-      const totalItems = cart.length;
-      const promoAmount = calculatePromoTotal();
-      const normalAmount = getNormalTotal();
-      const saving = calculateSaving();
+      const breakdown = calculateCartBreakdown();
+
+      const itemSummary = buildItemSummary(breakdown);
 
       document.getElementById("cartDesc").textContent =
-        totalItems > 0
-          ? `${totalItems} ${t().photoUnit} · ${t().summary} ฿${formatMoney(promoAmount)}`
+        breakdown.itemCount > 0
+          ? `${itemSummary} · ${t().summary} ฿${formatMoney(breakdown.promoTotal)}`
           : t().cartEmpty;
 
-      document.getElementById("totalItems").textContent = totalItems;
-      document.getElementById("totalAmount").textContent = formatMoney(promoAmount);
+      document.getElementById("cartItemSummary").textContent = itemSummary;
+      document.getElementById("totalAmount").textContent = formatMoney(breakdown.promoTotal);
+
+      document.getElementById("imageCountText").textContent = breakdown.imageCount;
+      document.getElementById("videoCountText").textContent = breakdown.videoCount;
+      document.getElementById("grandTotalText").textContent = formatMoney(breakdown.promoTotal);
+
+      document.getElementById("imagePriceText").textContent =
+        breakdown.imageCount > 0
+          ? `${breakdown.imagePackageName} = ฿${formatMoney(breakdown.imageTotal)}`
+          : "-";
+
+      document.getElementById("videoPriceText").textContent =
+        breakdown.videoCount > 0
+          ? `${breakdown.videoPriceType} ฿${formatMoney(breakdown.videoUnitPrice)} / ${t().videoUnit} = ฿${formatMoney(breakdown.videoTotal)}`
+          : "-";
 
       const savingText = document.getElementById("promoSavingText");
+      const savingInlineText = document.getElementById("savingInlineText");
 
-      if (saving > 0) {
-        savingText.textContent =
-          `${t().saving} ฿${formatMoney(saving)} จาก${t().normalPrice} ฿${formatMoney(normalAmount)}`;
+      if (breakdown.saving > 0) {
+        const text =
+          `${t().saving} ฿${formatMoney(breakdown.saving)} จาก${t().normalPrice} ฿${formatMoney(breakdown.normalTotal)}`;
+
+        savingText.textContent = text;
         savingText.classList.remove("hidden");
+
+        savingInlineText.textContent = text;
+        savingInlineText.classList.remove("hidden");
       } else {
         savingText.classList.add("hidden");
+
+        savingInlineText.textContent = "-";
+        savingInlineText.classList.add("hidden");
       }
+    }
+
+    function buildItemSummary(breakdown) {
+      const parts = [];
+
+      if (breakdown.imageCount > 0) {
+        parts.push(`${breakdown.imageCount} ${t().imageUnit}`);
+      }
+
+      if (breakdown.videoCount > 0) {
+        parts.push(`${breakdown.videoCount} ${t().videoUnit}`);
+      }
+
+      if (!parts.length) {
+        return `0 ${t().fileUnit}`;
+      }
+
+      return parts.join(" + ");
     }
 
     function removeItem(index) {
@@ -525,22 +870,64 @@
         return;
       }
 
-      const eventId = cart[0]?.event_id || "";
+      const breakdown = calculateCartBreakdown();
+
+      cart = cart.map(item => {
+        const mediaIsVideo = isVideoItem(item);
+
+        return {
+          ...item,
+          media_type: mediaIsVideo ? "video" : "image",
+          price: mediaIsVideo ? breakdown.videoUnitPrice : IMAGE_SINGLE_PRICE,
+          effective_unit_price: mediaIsVideo ? breakdown.videoUnitPrice : IMAGE_SINGLE_PRICE,
+          price_type: mediaIsVideo
+            ? breakdown.videoPriceType
+            : breakdown.imagePackageName
+        };
+      });
+
+      saveCart();
+
+      const eventId =
+        cart[0]?.event_id ||
+        new URLSearchParams(window.location.search).get("event") ||
+        "";
 
       const checkoutData = {
-        promo_total: calculatePromoTotal(),
-        normal_total: getNormalTotal(),
-        saving: calculateSaving(),
-        item_count: cart.length,
-        normal_photo_price: DEFAULT_PRICE
+        pricing_version: "photo_video_v1",
+
+        promo_total: breakdown.promoTotal,
+        normal_total: breakdown.normalTotal,
+        saving: breakdown.saving,
+
+        item_count: breakdown.itemCount,
+        image_count: breakdown.imageCount,
+        video_count: breakdown.videoCount,
+
+        image_total: breakdown.imageTotal,
+        image_normal_total: breakdown.imageNormalTotal,
+        image_package_name: breakdown.imagePackageName,
+        image_extra_count: breakdown.imageExtraCount,
+
+        video_total: breakdown.videoTotal,
+        video_normal_total: breakdown.videoNormalTotal,
+        video_unit_price: breakdown.videoUnitPrice,
+        video_price_type: breakdown.videoPriceType,
+
+        has_image_package: breakdown.hasImagePackage,
+
+        normal_photo_price: IMAGE_SINGLE_PRICE,
+        image_pack_10_price: IMAGE_PACK_10_PRICE,
+        image_pack_20_price: IMAGE_PACK_20_PRICE,
+
+        video_single_price: VIDEO_SINGLE_PRICE,
+        video_addon_price: VIDEO_ADDON_PRICE
       };
 
       localStorage.setItem(
         `${cartKey}_promo`,
         JSON.stringify(checkoutData)
       );
-
-      saveCart();
 
       window.location.href =
         `checkout.html?event=${encodeURIComponent(eventId)}`;
@@ -560,11 +947,6 @@
       if (CONFIG.R2_WORKER_URL) {
         const base = String(CONFIG.R2_WORKER_URL).replace(/\/+$/, "");
         const key = cleanUrl.replace(/^\/+/, "");
-
-        if (key.startsWith("events/")) {
-          return encodeURI(`${base}/file/${key}`);
-        }
-
         return encodeURI(`${base}/file/${key}`);
       }
 
@@ -578,7 +960,9 @@
     }
 
     function goBack() {
-      const eventId = cart[0]?.event_id || new URLSearchParams(window.location.search).get("event");
+      const eventId =
+        cart[0]?.event_id ||
+        new URLSearchParams(window.location.search).get("event");
 
       if (eventId) {
         window.location.href = `event.html?event=${encodeURIComponent(eventId)}`;
@@ -600,7 +984,6 @@
 
     function toggleDarkMode() {
       const html = document.documentElement;
-
       html.classList.toggle("dark");
 
       const isDark = html.classList.contains("dark");
@@ -654,95 +1037,51 @@
 
     document.addEventListener("contextmenu", function(e) {
       e.preventDefault();
-    });
+    }, true);
 
     document.addEventListener("dragstart", function(e) {
       e.preventDefault();
-    });
+    }, true);
 
     document.addEventListener("keydown", function(e) {
+      const key = String(e.key || "").toLowerCase();
+
       if (e.key === "F12") {
         e.preventDefault();
+        return false;
       }
 
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        e.key.toLowerCase() === "s"
-      ) {
+      if ((e.ctrlKey || e.metaKey) && key === "s") {
         e.preventDefault();
+        return false;
       }
 
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        e.key.toLowerCase() === "u"
-      ) {
+      if ((e.ctrlKey || e.metaKey) && key === "u") {
         e.preventDefault();
+        return false;
       }
 
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        e.shiftKey &&
-        e.key.toLowerCase() === "i"
-      ) {
+      if ((e.ctrlKey || e.metaKey) && key === "p") {
         e.preventDefault();
+        return false;
       }
-    });
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === "i") {
+        e.preventDefault();
+        return false;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === "j") {
+        e.preventDefault();
+        return false;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === "c") {
+        e.preventDefault();
+        return false;
+      }
+    }, true);
   </script>
-
-  <script>
-  // ป้องกันคลิกขวา
-  document.addEventListener("contextmenu", function (e) {
-    e.preventDefault();
-    alert("ไม่อนุญาตให้คลิกขวา");
-  });
-
-  // ป้องกัน F12 / Inspect / View Source / Save
-  document.addEventListener("keydown", function (e) {
-    // F12
-    if (e.key === "F12") {
-      e.preventDefault();
-      alert("ไม่อนุญาตให้เปิด Developer Tools");
-      return false;
-    }
-
-    // Ctrl + Shift + I
-    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "i") {
-      e.preventDefault();
-      return false;
-    }
-
-    // Ctrl + Shift + J
-    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "j") {
-      e.preventDefault();
-      return false;
-    }
-
-    // Ctrl + Shift + C
-    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "c") {
-      e.preventDefault();
-      return false;
-    }
-
-    // Ctrl + U = View Source
-    if (e.ctrlKey && e.key.toLowerCase() === "u") {
-      e.preventDefault();
-      return false;
-    }
-
-    // Ctrl + S = Save Page
-    if (e.ctrlKey && e.key.toLowerCase() === "s") {
-      e.preventDefault();
-      return false;
-    }
-  });
-
-  // ป้องกันลากรูปออกจากหน้าเว็บ
-  document.addEventListener("dragstart", function (e) {
-    if (e.target.tagName === "IMG") {
-      e.preventDefault();
-    }
-  });
-</script>
 
 </body>
 </html>
