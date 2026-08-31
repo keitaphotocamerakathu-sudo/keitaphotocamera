@@ -35,6 +35,14 @@
       -webkit-user-select: none;
       user-select: none;
       pointer-events: none;
+      -webkit-user-drag: none;
+    }
+
+    video {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-user-drag: none;
     }
 
     body {
@@ -135,6 +143,22 @@
       transform: scale(.995);
     }
 
+    .photo-modal-video {
+      width: 100%;
+      height: 100%;
+      max-height: 90vh;
+      object-fit: contain;
+      display: block;
+      background: #000;
+      pointer-events: auto;
+      position: relative;
+      z-index: 2;
+    }
+
+    .hidden-media {
+      display: none !important;
+    }
+
     .photo-close {
       position: fixed;
       top: max(16px, env(safe-area-inset-top));
@@ -170,6 +194,7 @@
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
       font-size: 12px;
+      pointer-events: none;
     }
 
     .watermark-layer {
@@ -255,6 +280,65 @@
 
     .open-preview-btn {
       pointer-events: auto;
+    }
+
+    .media-type-badge {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      z-index: 20;
+      background: rgba(0,0,0,.62);
+      color: white;
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .05em;
+      pointer-events: none;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+
+    .video-play-badge {
+      position: absolute;
+      inset: 0;
+      z-index: 18;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .video-play-circle {
+      width: 56px;
+      height: 56px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.58);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 27px;
+      font-weight: 900;
+      box-shadow: 0 10px 28px rgba(0,0,0,.45);
+      backdrop-filter: blur(7px);
+      -webkit-backdrop-filter: blur(7px);
+    }
+
+    .duration-badge {
+      position: absolute;
+      right: 8px;
+      bottom: 42px;
+      z-index: 20;
+      background: rgba(0,0,0,.62);
+      color: white;
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 10px;
+      font-weight: 900;
+      pointer-events: none;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
     }
   </style>
 </head>
@@ -392,6 +476,17 @@
         referrerpolicy="no-referrer"
       >
 
+      <video
+        id="photoModalVideo"
+        class="photo-modal-video hidden-media"
+        controls
+        controlsList="nodownload noplaybackrate"
+        disablePictureInPicture
+        playsinline
+        preload="none"
+        oncontextmenu="return false;"
+      ></video>
+
       <div class="preview-soft-mask"></div>
       <div class="preview-noise"></div>
 
@@ -446,14 +541,14 @@
 
         searchBtn: "ค้นหาภาพของฉัน",
         searchResult: "ผลการค้นหา",
-        photoUnit: "ภาพ",
+        photoUnit: "ไฟล์",
         goCart: "ไปตะกร้า",
 
-        noResult: "ยังไม่พบภาพ",
+        noResult: "ยังไม่พบภาพหรือวิดีโอ",
         noResultDesc: "ลองใช้รูปหน้าที่ชัดขึ้น",
 
         loadingFace: "กำลังวิเคราะห์ใบหน้า...",
-        loadingSearch: "กำลังค้นหารูป...",
+        loadingSearch: "กำลังค้นหารูปและวิดีโอ...",
         loadingSystem: "กำลังโหลดระบบค้นหาใบหน้า...",
 
         noFace: "ไม่พบใบหน้า",
@@ -464,7 +559,7 @@
         continueSelect: "เลือกต่อ",
 
         similarity: "ความใกล้เคียง",
-        viewPhoto: "ดูรูป",
+        viewPhoto: "ดูตัวอย่าง",
         addCart: "เพิ่มลงตะกร้า",
 
         selectFileFirst: "กรุณาเลือกรูปก่อน",
@@ -477,8 +572,13 @@
 
         distance: "ระยะ",
         previewOnly: "ตัวอย่างเท่านั้น · มีลายน้ำ",
+        videoPreviewOnly: "วิดีโอตัวอย่างเท่านั้น · มีลายน้ำ",
         photoFallback: "รูปภาพ",
         previewFallback: "ตัวอย่าง",
+
+        mediaPhoto: "PHOTO",
+        mediaVideo: "VIDEO",
+        noVideoPreview: "ไม่พบวิดีโอ Preview",
 
         darkLight: "☀️ Light",
         darkDark: "🌙 Dark"
@@ -498,14 +598,14 @@
 
         searchBtn: "Search My Photos",
         searchResult: "Search Results",
-        photoUnit: "photos",
+        photoUnit: "files",
         goCart: "Go to Cart",
 
-        noResult: "No Photos Found",
+        noResult: "No Photos or Videos Found",
         noResultDesc: "Try using a clearer face image",
 
         loadingFace: "Analyzing face...",
-        loadingSearch: "Searching photos...",
+        loadingSearch: "Searching photos and videos...",
         loadingSystem: "Loading face search system...",
 
         noFace: "Face not found",
@@ -516,7 +616,7 @@
         continueSelect: "Continue",
 
         similarity: "Similarity",
-        viewPhoto: "View",
+        viewPhoto: "Preview",
         addCart: "Add to Cart",
 
         selectFileFirst: "Please choose a photo first",
@@ -529,8 +629,13 @@
 
         distance: "Distance",
         previewOnly: "Preview only · Watermarked",
+        videoPreviewOnly: "Video preview only · Watermarked",
         photoFallback: "Photo",
         previewFallback: "Preview",
+
+        mediaPhoto: "PHOTO",
+        mediaVideo: "VIDEO",
+        noVideoPreview: "Video preview not found",
 
         darkLight: "☀️ Light",
         darkDark: "🌙 Dark"
@@ -550,14 +655,14 @@
 
         searchBtn: "Найти мои фото",
         searchResult: "Результаты поиска",
-        photoUnit: "фото",
+        photoUnit: "файлов",
         goCart: "В корзину",
 
-        noResult: "Фото не найдены",
+        noResult: "Фото или видео не найдены",
         noResultDesc: "Попробуйте использовать более чёткое фото",
 
         loadingFace: "Анализ лица...",
-        loadingSearch: "Поиск фотографий...",
+        loadingSearch: "Поиск фото и видео...",
         loadingSystem: "Загрузка системы поиска...",
 
         noFace: "Лицо не найдено",
@@ -581,8 +686,13 @@
 
         distance: "Расстояние",
         previewOnly: "Только предпросмотр · С водяным знаком",
+        videoPreviewOnly: "Только видео предпросмотр · С водяным знаком",
         photoFallback: "Фото",
         previewFallback: "Предпросмотр",
+
+        mediaPhoto: "ФОТО",
+        mediaVideo: "ВИДЕО",
+        noVideoPreview: "Видео не найдено",
 
         darkLight: "☀️ Светлая",
         darkDark: "🌙 Тёмная"
@@ -605,6 +715,7 @@
         initDarkMode();
         applyLanguage();
         bindLanguageSelect();
+        protectMedia();
 
         eventId = getEventId();
 
@@ -793,6 +904,8 @@
       document.getElementById("searchBtn").disabled = false;
       document.getElementById("debugText").textContent =
         `${t().fileSelected}: ${file.name}`;
+
+      protectMedia();
     }
 
     async function searchByFace() {
@@ -885,21 +998,55 @@
     }
 
     function normalizeResults(items) {
-      return (items || []).map(item => {
+      const normalized = (items || []).map(item => {
         if (item.photo) {
-          item.photo = normalizePhoto(item.photo);
+          item.photo = normalizePhoto({
+            ...item.photo,
+            media_type: item.media_type || item.photo.media_type,
+            video_time_seconds: item.video_time_seconds || item.photo.video_time_seconds,
+            frame_index: item.frame_index || item.photo.frame_index
+          });
+
           return item;
         }
 
         const photo = normalizePhoto({
           id: item.photo_id || item.id,
+
           filename: item.filename,
+          file_name: item.file_name,
+          name: item.name,
+
           price: item.price,
+
+          media_type: item.media_type,
+          mime_type: item.mime_type,
+          duration_seconds: item.duration_seconds,
+          video_time_seconds: item.video_time_seconds,
+          frame_index: item.frame_index,
+
           preview_url: item.preview_url || item.image_url || item.url,
           watermark_url: item.watermark_url,
           r2_preview_url: item.r2_preview_url,
           r2_watermark_url: item.r2_watermark_url,
-          r2_key: item.r2_key
+          r2_key: item.r2_key,
+          r2_original_key: item.r2_original_key,
+          preview_path: item.preview_path,
+          watermark_path: item.watermark_path,
+          original_path: item.original_path,
+
+          thumbnail_url: item.thumbnail_url,
+          thumbnail_path: item.thumbnail_path,
+          r2_thumbnail_url: item.r2_thumbnail_url,
+
+          video_url: item.video_url,
+          video_path: item.video_path,
+          video_preview_url: item.video_preview_url,
+          video_preview_path: item.video_preview_path,
+          r2_video_url: item.r2_video_url,
+          r2_video_preview_url: item.r2_video_preview_url,
+          r2_video_key: item.r2_video_key,
+          r2_video_preview_key: item.r2_video_preview_key
         });
 
         return {
@@ -907,25 +1054,96 @@
           photo
         };
       });
+
+      return dedupeResultsByPhotoId(normalized);
+    }
+
+    function dedupeResultsByPhotoId(items) {
+      const map = new Map();
+
+      (items || []).forEach(item => {
+        const photoId = String(item.photo?.id || item.photo_id || item.id || "");
+        if (!photoId) return;
+
+        const old = map.get(photoId);
+
+        if (!old) {
+          map.set(photoId, item);
+          return;
+        }
+
+        const oldDistance = Number(old.distance ?? 999);
+        const newDistance = Number(item.distance ?? 999);
+
+        const oldConfidence = Number(old.confidence ?? 0);
+        const newConfidence = Number(item.confidence ?? 0);
+
+        if (
+          newDistance < oldDistance ||
+          newConfidence > oldConfidence
+        ) {
+          map.set(photoId, item);
+        }
+      });
+
+      return Array.from(map.values());
     }
 
     function normalizePhoto(photo) {
+      const mediaType = getMediaType(photo);
+      const previewUrl = mediaType === "video"
+        ? getVideoThumbnailUrl(photo)
+        : normalizeImageUrl(
+            photo.r2_preview_url ||
+            photo.preview_url ||
+            photo.r2_watermark_url ||
+            photo.watermark_url ||
+            photo.image_url ||
+            photo.public_url ||
+            photo.url ||
+            photo.r2_key ||
+            photo.preview_path ||
+            photo.watermark_path ||
+            ""
+          );
+
       return {
         ...photo,
-        preview_url: normalizeImageUrl(
-          photo.r2_preview_url ||
-          photo.preview_url ||
-          photo.r2_watermark_url ||
-          photo.watermark_url ||
-          photo.image_url ||
-          photo.public_url ||
-          photo.url ||
-          photo.r2_key ||
-          photo.preview_path ||
-          photo.watermark_path ||
-          ""
-        )
+        media_type: mediaType,
+        preview_url: previewUrl,
+        thumbnail_url_final: mediaType === "video" ? getVideoThumbnailUrl(photo) : previewUrl,
+        video_url_final: mediaType === "video" ? getVideoPreviewUrl(photo) : ""
       };
+    }
+
+    function getMediaType(photo) {
+      const mediaType = String(photo.media_type || "").toLowerCase();
+      const mime = String(photo.mime_type || "").toLowerCase();
+      const filename = String(photo.filename || photo.file_name || photo.name || "").toLowerCase();
+
+      if (mediaType === "video") return "video";
+      if (mediaType === "image") return "image";
+
+      if (
+        mime.startsWith("video/") ||
+        filename.endsWith(".mp4") ||
+        filename.endsWith(".mov") ||
+        filename.endsWith(".webm") ||
+        photo.video_url ||
+        photo.video_path ||
+        photo.video_preview_url ||
+        photo.video_preview_path ||
+        photo.r2_video_url ||
+        photo.r2_video_preview_url
+      ) {
+        return "video";
+      }
+
+      return "image";
+    }
+
+    function isVideo(photo) {
+      return getMediaType(photo) === "video";
     }
 
     function renderResults() {
@@ -944,10 +1162,13 @@
 
       results.forEach(item => {
         const photo = item.photo || {};
+        const mediaIsVideo = isVideo(photo);
+
         const img = getSafePreviewUrl(photo);
         const price = getPhotoPrice(photo);
         const fileName = escapeHtml(photo.filename || photo.file_name || photo.name || photo.id || t().photoFallback);
         const photoId = escapeAttribute(photo.id || "");
+        const durationText = mediaIsVideo ? formatDuration(photo.duration_seconds || item.video_time_seconds || photo.video_time_seconds) : "";
 
         const card = document.createElement("article");
         card.className =
@@ -960,9 +1181,29 @@
               class="w-full h-full object-cover bg-slate-200 dark:bg-slate-800"
               draggable="false"
               referrerpolicy="no-referrer"
-              alt="${escapeAttribute(t().photoFallback)}"
-              onerror="this.onerror=null; this.src='https://placehold.co/600x800/111827/ffffff?text=NO+IMAGE';"
+              alt="${escapeAttribute(mediaIsVideo ? t().mediaVideo : t().photoFallback)}"
+              onerror="this.onerror=null; this.src='https://placehold.co/600x800/111827/ffffff?text=${mediaIsVideo ? "VIDEO" : "NO+IMAGE"}';"
             >
+
+            <div class="media-type-badge">
+              ${escapeHtml(mediaIsVideo ? t().mediaVideo : t().mediaPhoto)}
+            </div>
+
+            ${
+              mediaIsVideo
+                ? `
+                  <div class="video-play-badge">
+                    <div class="video-play-circle">▶</div>
+                  </div>
+
+                  ${
+                    durationText
+                      ? `<div class="duration-badge">${escapeHtml(durationText)}</div>`
+                      : ""
+                  }
+                `
+                : ""
+            }
 
             <button
               type="button"
@@ -973,10 +1214,10 @@
 
             <button
               type="button"
-              class="open-preview-btn absolute top-2 left-2 z-30 bg-black/55 text-white rounded-full px-3 py-1 text-xs font-bold backdrop-blur"
+              class="open-preview-btn absolute top-2 right-2 z-30 bg-black/55 text-white rounded-full px-3 py-1 text-xs font-bold backdrop-blur"
               onclick="openPhotoModal('${photoId}')"
             >
-              🔍 ${escapeHtml(t().viewPhoto)}
+              ${mediaIsVideo ? "▶" : "🔍"} ${escapeHtml(t().viewPhoto)}
             </button>
 
             <div class="absolute bottom-0 left-0 right-0 z-20 bg-black/50 text-white p-2 text-xs pointer-events-none truncate">
@@ -988,6 +1229,16 @@
             <p class="text-xs text-slate-500 dark:text-slate-400">
               ${escapeHtml(t().similarity)} : ${formatConfidence(item.confidence, item.distance)}
             </p>
+
+            ${
+              mediaIsVideo && item.video_time_seconds !== undefined && item.video_time_seconds !== null
+                ? `
+                  <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    Match frame: ${escapeHtml(formatDuration(item.video_time_seconds))}
+                  </p>
+                `
+                : ""
+            }
 
             <p class="mt-1 font-bold text-emerald-600">
               ฿${formatMoney(price)}
@@ -1005,6 +1256,8 @@
 
         grid.appendChild(card);
       });
+
+      protectMedia();
     }
 
     function formatConfidence(confidence, distance) {
@@ -1031,6 +1284,7 @@
       if (!item?.photo) return;
 
       const photo = item.photo;
+      const mediaIsVideo = isVideo(photo);
       const price = getPhotoPrice(photo);
 
       let cartKey = "photo_cart_guest";
@@ -1052,13 +1306,29 @@
 
       const map = new Map(oldCart.map(i => [String(i.photo_id), i]));
 
+      const previewUrl = getSafePreviewUrl(photo);
+      const videoUrl = mediaIsVideo ? getVideoPreviewUrl(photo) : "";
+
       map.set(String(photo.id), {
         event_id: eventId,
         event_name: eventData?.title || eventData?.name || "",
         photo_id: photo.id,
         filename: photo.filename || photo.file_name || photo.name || "",
         file_name: photo.filename || photo.file_name || photo.name || "",
-        preview_url: getSafePreviewUrl(photo),
+
+        media_type: mediaIsVideo ? "video" : "image",
+
+        photo_url: previewUrl,
+        preview_url: previewUrl,
+        watermark_url: previewUrl,
+
+        thumbnail_url: mediaIsVideo ? previewUrl : null,
+        thumbnail_path: mediaIsVideo ? (photo.thumbnail_path || null) : null,
+
+        video_url: mediaIsVideo ? videoUrl : null,
+        video_path: mediaIsVideo ? (photo.video_path || photo.video_preview_path || null) : null,
+        duration_seconds: mediaIsVideo ? (photo.duration_seconds || null) : null,
+
         price,
         line_user_id: profile?.userId || "guest"
       });
@@ -1095,6 +1365,10 @@
     }
 
     function getSafePreviewUrl(photo) {
+      if (isVideo(photo)) {
+        return getVideoThumbnailUrl(photo);
+      }
+
       return normalizeImageUrl(
         photo.preview_url ||
         photo.r2_preview_url ||
@@ -1104,8 +1378,72 @@
         photo.public_url ||
         photo.url ||
         photo.r2_key ||
+        photo.preview_path ||
+        photo.watermark_path ||
         `https://placehold.co/600x800/111827/ffffff?text=${encodeURIComponent(t().previewFallback)}`
       );
+    }
+
+    function getVideoThumbnailUrl(photo) {
+      const raw =
+        photo.thumbnail_url ||
+        photo.thumbnail_url_final ||
+        photo.r2_thumbnail_url ||
+        photo.preview_url ||
+        photo.r2_preview_url ||
+        photo.watermark_url ||
+        photo.r2_watermark_url ||
+        photo.image_url ||
+        photo.public_url ||
+        photo.url ||
+        "";
+
+      if (raw) {
+        return normalizeImageUrl(raw);
+      }
+
+      const key =
+        photo.thumbnail_path ||
+        photo.preview_path ||
+        photo.watermark_path ||
+        "";
+
+      if (key) {
+        return normalizeImageUrl(key);
+      }
+
+      return `https://placehold.co/600x800/111827/ffffff?text=VIDEO`;
+    }
+
+    function getVideoPreviewUrl(photo) {
+      const raw =
+        photo.video_url_final ||
+        photo.video_preview_url ||
+        photo.r2_video_preview_url ||
+        photo.preview_video_url ||
+        photo.video_url ||
+        photo.r2_video_url ||
+        "";
+
+      if (raw) {
+        return normalizeImageUrl(raw);
+      }
+
+      const key =
+        photo.video_preview_path ||
+        photo.r2_video_preview_key ||
+        photo.video_path ||
+        photo.r2_video_key ||
+        photo.r2_key ||
+        photo.r2_original_key ||
+        photo.original_path ||
+        "";
+
+      if (key) {
+        return normalizeImageUrl(key);
+      }
+
+      return "";
     }
 
     function normalizeImageUrl(url) {
@@ -1141,25 +1479,87 @@
       if (!item?.photo) return;
 
       const photo = item.photo;
-      const img = getSafePreviewUrl(photo);
+      const mediaIsVideo = isVideo(photo);
 
-      document.getElementById("photoModalImg").src = img || "";
+      const modalImg = document.getElementById("photoModalImg");
+      const modalVideo = document.getElementById("photoModalVideo");
+
+      modalVideo.pause();
+      modalVideo.removeAttribute("src");
+      modalVideo.removeAttribute("poster");
+      modalVideo.load();
+
+      modalImg.src = "";
+      modalImg.classList.add("hidden-media");
+      modalVideo.classList.add("hidden-media");
+
+      if (mediaIsVideo) {
+        const videoUrl = getVideoPreviewUrl(photo);
+        const posterUrl = getVideoThumbnailUrl(photo);
+
+        if (!videoUrl) {
+          Swal.fire(t().warningTitle, t().noVideoPreview, "warning");
+          return;
+        }
+
+        modalVideo.poster = posterUrl || "";
+        modalVideo.src = videoUrl;
+        modalVideo.classList.remove("hidden-media");
+        modalVideo.load();
+
+        setTimeout(() => {
+          modalVideo.play().catch(() => {});
+        }, 220);
+
+        document.getElementById("txtPreviewOnly").textContent = t().videoPreviewOnly;
+
+      } else {
+        const img = getSafePreviewUrl(photo);
+
+        modalImg.src = img || "";
+        modalImg.classList.remove("hidden-media");
+
+        document.getElementById("txtPreviewOnly").textContent = t().previewOnly;
+      }
+
       document.getElementById("photoModalName").textContent =
         photo.filename || photo.file_name || photo.name || photo.id || t().photoFallback;
 
       document.getElementById("photoModalPrice").textContent =
         formatMoney(getPhotoPrice(photo));
 
-      document.getElementById("txtPreviewOnly").textContent = t().previewOnly;
-
       document.getElementById("photoModal").classList.add("show");
       document.body.style.overflow = "hidden";
+
+      protectMedia();
     }
 
     function closePhotoModal() {
+      const modalImg = document.getElementById("photoModalImg");
+      const modalVideo = document.getElementById("photoModalVideo");
+
+      modalVideo.pause();
+      modalVideo.removeAttribute("src");
+      modalVideo.removeAttribute("poster");
+      modalVideo.load();
+
+      modalImg.src = "";
+
       document.getElementById("photoModal").classList.remove("show");
-      document.getElementById("photoModalImg").src = "";
       document.body.style.overflow = "";
+    }
+
+    function formatDuration(seconds) {
+      const s = Number(seconds || 0);
+
+      if (!s || !isFinite(s)) {
+        return "";
+      }
+
+      const min = Math.floor(s / 60);
+      const sec = Math.round(s % 60);
+
+      return `${min}:${String(sec).padStart(2, "0")}`;
     }
 
     function formatMoney(value) {
@@ -1215,13 +1615,52 @@
         .replace(/>/g, "&gt;");
     }
 
+    /****************************************
+     * IMAGE / VIDEO / PAGE PROTECTION
+     ****************************************/
+
+    function protectMedia() {
+      document.querySelectorAll("img").forEach(img => {
+        if (!img || img.dataset.protected === "1") return;
+
+        img.dataset.protected = "1";
+        img.setAttribute("draggable", "false");
+        img.setAttribute("oncontextmenu", "return false;");
+        img.style.webkitUserDrag = "none";
+        img.style.webkitTouchCallout = "none";
+        img.style.userSelect = "none";
+      });
+
+      document.querySelectorAll("video").forEach(video => {
+        if (!video || video.dataset.protected === "1") return;
+
+        video.dataset.protected = "1";
+        video.setAttribute("draggable", "false");
+        video.setAttribute("oncontextmenu", "return false;");
+        video.setAttribute("controlsList", "nodownload noplaybackrate");
+        video.setAttribute("disablePictureInPicture", "");
+        video.setAttribute("playsinline", "");
+      });
+    }
+
+    const mediaObserver = new MutationObserver(function () {
+      protectMedia();
+    });
+
+    mediaObserver.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+
     document.addEventListener("contextmenu", function(e) {
       e.preventDefault();
-    });
+      return false;
+    }, true);
 
     document.addEventListener("dragstart", function(e) {
       e.preventDefault();
-    });
+      return false;
+    }, true);
 
     document.addEventListener("keydown", function(e) {
       const key = String(e.key || "").toLowerCase();
@@ -1230,20 +1669,39 @@
 
       if (e.key === "F12") {
         e.preventDefault();
+        return false;
       }
 
       if ((e.ctrlKey || e.metaKey) && key === "s") {
         e.preventDefault();
+        return false;
       }
 
       if ((e.ctrlKey || e.metaKey) && key === "u") {
         e.preventDefault();
+        return false;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && key === "p") {
+        e.preventDefault();
+        return false;
       }
 
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === "i") {
         e.preventDefault();
+        return false;
       }
-    });
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === "j") {
+        e.preventDefault();
+        return false;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === "c") {
+        e.preventDefault();
+        return false;
+      }
+    }, true);
   </script>
 
 </body>
