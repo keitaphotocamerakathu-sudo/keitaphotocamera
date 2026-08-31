@@ -22,9 +22,9 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-  <script src="js/config.js?v=new-supabase-007"></script>
-  <script src="js/liff-helper.js?v=new-supabase-007"></script>
-  <script src="js/app-liff.js?v=new-supabase-007"></script>
+  <script src="js/config.js?v=new-supabase-008"></script>
+  <script src="js/liff-helper.js?v=new-supabase-008"></script>
+  <script src="js/app-liff.js?v=new-supabase-008"></script>
 
   <style>
     html,
@@ -36,6 +36,9 @@
 
     body {
       min-height: 100vh;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
     }
 
     .safe-bottom {
@@ -46,12 +49,64 @@
       -webkit-touch-callout: none;
       -webkit-user-select: none;
       user-select: none;
+      -webkit-user-drag: none;
+      pointer-events: none;
     }
 
-    body {
-      -webkit-user-select: none;
-      user-select: none;
-      -webkit-touch-callout: none;
+    .media-badge {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      z-index: 5;
+      background: rgba(0, 0, 0, .64);
+      color: white;
+      border-radius: 999px;
+      padding: 3px 7px;
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: .04em;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+
+    .play-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .play-circle {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, .58);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      font-weight: 900;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, .4);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+
+    .more-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 8;
+      background: rgba(0, 0, 0, .58);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 900;
+      border-radius: 1rem;
     }
   </style>
 </head>
@@ -84,7 +139,7 @@
             id="txtPageDesc"
             class="text-sm text-slate-500 dark:text-slate-400"
           >
-            รายการสั่งซื้อภาพของคุณ
+            รายการสั่งซื้อภาพและ VDO ของคุณ
           </p>
 
         </div>
@@ -131,6 +186,7 @@
             id="linePicture"
             class="w-11 h-11 rounded-full object-cover bg-slate-200 dark:bg-slate-700"
             referrerpolicy="no-referrer"
+            alt="LINE Profile"
           />
 
           <div class="min-w-0">
@@ -217,18 +273,22 @@
       th: {
         miniApp: "LINE Mini App",
         pageTitle: "ออเดอร์ของฉัน",
-        pageDesc: "รายการสั่งซื้อภาพของคุณ",
+        pageDesc: "รายการสั่งซื้อภาพและ VDO ของคุณ",
         home: "หน้าแรก",
         connected: "เชื่อมต่อ LINE แล้ว",
         loading: "กำลังโหลดออเดอร์...",
         emptyTitle: "ยังไม่มีออเดอร์",
         emptyDesc: "เมื่อสั่งซื้อแล้ว รายการจะแสดงที่นี่",
         chooseEvent: "เลือก Event",
-        noPhoto: "ไม่มีภาพ",
+
+        noPhoto: "ไม่มีไฟล์",
         amount: "จำนวน",
         total: "ยอดรวม",
-        photoUnit: "ภาพ",
-        download: "ดาวน์โหลดภาพ",
+        fileUnit: "ไฟล์",
+        photoUnit: "รูป",
+        videoUnit: "คลิป",
+
+        download: "ดาวน์โหลดไฟล์",
         waitingApprove: "รอตรวจสอบสลิป",
         rejected: "สลิปไม่ผ่าน",
         pendingPayment: "รอชำระเงิน",
@@ -237,24 +297,32 @@
         paid: "ชำระเงินแล้ว",
         approved: "อนุมัติแล้ว",
         pending: "รอตรวจสอบ",
+
+        photoLabel: "PHOTO",
+        videoLabel: "VDO",
+
         errorTitle: "เกิดข้อผิดพลาด"
       },
 
       en: {
         miniApp: "LINE Mini App",
         pageTitle: "My Orders",
-        pageDesc: "Your purchased photo orders",
+        pageDesc: "Your purchased photo and video orders",
         home: "Home",
         connected: "LINE Connected",
         loading: "Loading orders...",
         emptyTitle: "No Orders Yet",
         emptyDesc: "Your purchased orders will appear here",
         chooseEvent: "Choose Event",
-        noPhoto: "No Photos",
+
+        noPhoto: "No Files",
         amount: "Quantity",
         total: "Total",
+        fileUnit: "files",
         photoUnit: "photos",
-        download: "Download Photos",
+        videoUnit: "clips",
+
+        download: "Download Files",
         waitingApprove: "Waiting for Approval",
         rejected: "Slip Rejected",
         pendingPayment: "Pending Payment",
@@ -263,24 +331,32 @@
         paid: "Paid",
         approved: "Approved",
         pending: "Pending Review",
+
+        photoLabel: "PHOTO",
+        videoLabel: "VDO",
+
         errorTitle: "Error"
       },
 
       ru: {
         miniApp: "LINE Мини-приложение",
         pageTitle: "Мои Заказы",
-        pageDesc: "Ваши заказы фотографий",
+        pageDesc: "Ваши заказы фото и видео",
         home: "Главная",
         connected: "LINE подключён",
         loading: "Загрузка заказов...",
         emptyTitle: "Заказов пока нет",
         emptyDesc: "После покупки ваши заказы появятся здесь",
         chooseEvent: "Выбрать событие",
-        noPhoto: "Нет фото",
+
+        noPhoto: "Нет файлов",
         amount: "Количество",
         total: "Сумма",
+        fileUnit: "файлов",
         photoUnit: "фото",
-        download: "Скачать фото",
+        videoUnit: "клип",
+
+        download: "Скачать файлы",
         waitingApprove: "Ожидает проверки",
         rejected: "Чек отклонён",
         pendingPayment: "Ожидает оплаты",
@@ -289,12 +365,21 @@
         paid: "Оплачено",
         approved: "Одобрено",
         pending: "Ожидает проверки",
+
+        photoLabel: "ФОТО",
+        videoLabel: "VDO",
+
         errorTitle: "Ошибка"
       }
     };
 
     let currentLang =
       localStorage.getItem("lang") || "th";
+
+    if (!LANG[currentLang]) {
+      currentLang = "th";
+      localStorage.setItem("lang", "th");
+    }
 
     function t() {
       return LANG[currentLang] || LANG.th;
@@ -367,12 +452,14 @@
       document.getElementById("txtChooseEvent").textContent = x.chooseEvent;
 
       document.getElementById("langSelect").value = currentLang;
+
+      updateDarkButton();
     }
 
     function changeLanguage(lang) {
-      currentLang = lang;
+      currentLang = LANG[lang] ? lang : "th";
 
-      localStorage.setItem("lang", lang);
+      localStorage.setItem("lang", currentLang);
 
       applyLanguage();
       renderOrders();
@@ -400,23 +487,38 @@
         .select(`
           *,
           order_items (
-            id,
-            photo_id,
-            event_id,
-            filename,
-            photo_url,
-            price,
+            *,
             photos (
               id,
+              event_id,
               filename,
+              price,
+              status,
+
+              media_type,
+              mime_type,
+              file_size,
+              duration_seconds,
+
               preview_url,
               watermark_url,
               r2_preview_url,
               r2_watermark_url,
-              r2_key,
+
+              original_path,
               preview_path,
               watermark_path,
-              original_path
+              r2_key,
+              r2_original_key,
+
+              video_url,
+              video_path,
+              video_preview_url,
+              video_preview_path,
+
+              thumbnail_url,
+              thumbnail_path,
+              r2_thumbnail_url
             )
           )
         `)
@@ -457,6 +559,8 @@
       orders.forEach(order => {
         const items = order.order_items || [];
 
+        const counts = countMediaItems(items);
+
         const total =
           Number(
             order.total_amount ||
@@ -489,7 +593,7 @@
           </div>
 
           <div class="mt-4 grid grid-cols-4 gap-2">
-            ${renderPhotos(items)}
+            ${renderMediaPreview(items)}
           </div>
 
           <div class="mt-4 flex justify-between items-center gap-4">
@@ -501,7 +605,7 @@
               </p>
 
               <p class="font-bold">
-                ${items.length} ${t().photoUnit}
+                ${buildMediaCountText(counts)}
               </p>
 
             </div>
@@ -529,7 +633,46 @@
       });
     }
 
-    function renderPhotos(items) {
+    function countMediaItems(items) {
+      let imageCount = 0;
+      let videoCount = 0;
+
+      (items || []).forEach(item => {
+        const photo = item.photos || {};
+
+        if (isVideoItem(item, photo)) {
+          videoCount++;
+        } else {
+          imageCount++;
+        }
+      });
+
+      return {
+        imageCount,
+        videoCount,
+        total: imageCount + videoCount
+      };
+    }
+
+    function buildMediaCountText(counts) {
+      const parts = [];
+
+      if (counts.imageCount > 0) {
+        parts.push(`${counts.imageCount} ${t().photoUnit}`);
+      }
+
+      if (counts.videoCount > 0) {
+        parts.push(`${counts.videoCount} ${t().videoUnit}`);
+      }
+
+      if (!parts.length) {
+        return `0 ${t().fileUnit}`;
+      }
+
+      return parts.join(" + ");
+    }
+
+    function renderMediaPreview(items) {
       if (!items.length) {
         return `
           <div class="col-span-4 text-center text-sm text-slate-400 py-6">
@@ -540,43 +683,126 @@
 
       return items
         .slice(0, 4)
-        .map(item => {
+        .map((item, index) => {
           const photo = item.photos || {};
+          const mediaIsVideo = isVideoItem(item, photo);
           const img = getOrderItemImage(item, photo);
+          const hasMore = index === 3 && items.length > 4;
+          const moreCount = items.length - 4;
 
           return `
-            <img
-              src="${escapeAttr(img)}"
-              class="w-full h-20 object-cover rounded-2xl bg-slate-200 dark:bg-slate-800"
-              referrerpolicy="no-referrer"
-              onerror="this.onerror=null; this.src='https://placehold.co/300x400/111827/ffffff?text=Photo';"
-            />
+            <div class="relative w-full h-20 rounded-2xl overflow-hidden bg-slate-200 dark:bg-slate-800">
+              <img
+                src="${escapeAttr(img)}"
+                class="w-full h-full object-cover"
+                referrerpolicy="no-referrer"
+                draggable="false"
+                alt="${escapeAttr(mediaIsVideo ? t().videoLabel : t().photoLabel)}"
+                onerror="this.onerror=null; this.src='https://placehold.co/300x400/111827/ffffff?text=${mediaIsVideo ? "VDO" : "Photo"}';"
+              />
+
+              <div class="media-badge">
+                ${escapeHtml(mediaIsVideo ? t().videoLabel : t().photoLabel)}
+              </div>
+
+              ${
+                mediaIsVideo
+                  ? `
+                    <div class="play-layer">
+                      <div class="play-circle">▶</div>
+                    </div>
+                  `
+                  : ""
+              }
+
+              ${
+                hasMore
+                  ? `
+                    <div class="more-layer">
+                      +${moreCount}
+                    </div>
+                  `
+                  : ""
+              }
+            </div>
           `;
         })
         .join("");
     }
 
-    function getOrderItemImage(item, photo) {
-      const raw =
-        item.photo_url ||
-        photo.r2_watermark_url ||
-        photo.r2_preview_url ||
-        photo.watermark_url ||
-        photo.preview_url ||
-        photo.r2_key ||
-        photo.preview_path ||
-        photo.watermark_path ||
-        photo.original_path ||
-        "";
+    function getMediaType(item, photo) {
+      const mediaType = String(item.media_type || photo.media_type || "").toLowerCase();
+      const mimeType = String(item.mime_type || photo.mime_type || "").toLowerCase();
+      const filename = String(
+        item.filename ||
+        item.file_name ||
+        photo.filename ||
+        ""
+      ).toLowerCase();
 
-      return normalizeImageUrl(raw);
+      if (mediaType === "video") return "video";
+      if (mediaType === "image") return "image";
+
+      if (
+        mimeType.startsWith("video/") ||
+        filename.endsWith(".mp4") ||
+        filename.endsWith(".mov") ||
+        filename.endsWith(".webm") ||
+        item.video_url ||
+        item.video_path ||
+        photo.video_url ||
+        photo.video_path ||
+        photo.video_preview_url ||
+        photo.video_preview_path
+      ) {
+        return "video";
+      }
+
+      return "image";
     }
 
-    function normalizeImageUrl(url) {
+    function isVideoItem(item, photo) {
+      return getMediaType(item, photo) === "video";
+    }
+
+    function getOrderItemImage(item, photo) {
+      const mediaIsVideo = isVideoItem(item, photo);
+
+      const raw = mediaIsVideo
+        ? (
+            photo.thumbnail_url ||
+            photo.r2_thumbnail_url ||
+            item.thumbnail_url ||
+            item.photo_url ||
+            photo.preview_url ||
+            photo.r2_preview_url ||
+            photo.watermark_url ||
+            photo.r2_watermark_url ||
+            photo.thumbnail_path ||
+            photo.preview_path ||
+            ""
+          )
+        : (
+            item.photo_url ||
+            photo.r2_watermark_url ||
+            photo.r2_preview_url ||
+            photo.watermark_url ||
+            photo.preview_url ||
+            photo.r2_key ||
+            photo.preview_path ||
+            photo.watermark_path ||
+            photo.original_path ||
+            ""
+          );
+
+      return normalizeImageUrl(raw, mediaIsVideo ? "VDO" : "Photo");
+    }
+
+    function normalizeImageUrl(url, fallbackText = "Photo") {
       const cleanUrl = String(url || "").trim();
 
       if (!cleanUrl) {
-        return "https://placehold.co/300x400/111827/ffffff?text=Photo";
+        return `https://placehold.co/300x400/111827/ffffff?text=${encodeURIComponent(fallbackText)}`;
       }
 
       if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://")) {
@@ -586,10 +812,6 @@
       if (CONFIG.R2_WORKER_URL) {
         const base = String(CONFIG.R2_WORKER_URL).replace(/\/+$/, "");
         const key = cleanUrl.replace(/^\/+/, "");
-
-        if (key.startsWith("events/")) {
-          return encodeURI(`${base}/file/${key}`);
-        }
 
         return encodeURI(`${base}/file/${key}`);
       }
@@ -705,6 +927,11 @@
         ],
 
         uploaded: [
+          t().waitingApprove,
+          "bg-orange-100 text-orange-700"
+        ],
+
+        paid_pending: [
           t().waitingApprove,
           "bg-orange-100 text-orange-700"
         ],
@@ -852,94 +1079,53 @@
       return escapeHtml(text);
     }
 
-    document.addEventListener("contextmenu", e => e.preventDefault());
+    document.addEventListener("contextmenu", function(e) {
+      e.preventDefault();
+    }, true);
 
-    document.addEventListener("dragstart", e => {
-      if (e.target.tagName === "IMG") e.preventDefault();
-    });
+    document.addEventListener("dragstart", function(e) {
+      e.preventDefault();
+    }, true);
 
-    document.addEventListener("keydown", e => {
+    document.addEventListener("keydown", function(e) {
+      const key = String(e.key || "").toLowerCase();
+
       if (e.key === "F12") {
         e.preventDefault();
+        return false;
       }
 
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        e.key.toLowerCase() === "s"
-      ) {
+      if ((e.ctrlKey || e.metaKey) && key === "s") {
         e.preventDefault();
+        return false;
       }
 
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        e.key.toLowerCase() === "u"
-      ) {
+      if ((e.ctrlKey || e.metaKey) && key === "u") {
         e.preventDefault();
+        return false;
       }
 
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        e.shiftKey &&
-        e.key.toLowerCase() === "i"
-      ) {
+      if ((e.ctrlKey || e.metaKey) && key === "p") {
         e.preventDefault();
+        return false;
       }
-    });
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === "i") {
+        e.preventDefault();
+        return false;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === "j") {
+        e.preventDefault();
+        return false;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === "c") {
+        e.preventDefault();
+        return false;
+      }
+    }, true);
   </script>
 
-  <script>
-  // ป้องกันคลิกขวา
-  document.addEventListener("contextmenu", function (e) {
-    e.preventDefault();
-    alert("ไม่อนุญาตให้คลิกขวา");
-  });
-
-  // ป้องกัน F12 / Inspect / View Source / Save
-  document.addEventListener("keydown", function (e) {
-    // F12
-    if (e.key === "F12") {
-      e.preventDefault();
-      alert("ไม่อนุญาตให้เปิด Developer Tools");
-      return false;
-    }
-
-    // Ctrl + Shift + I
-    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "i") {
-      e.preventDefault();
-      return false;
-    }
-
-    // Ctrl + Shift + J
-    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "j") {
-      e.preventDefault();
-      return false;
-    }
-
-    // Ctrl + Shift + C
-    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "c") {
-      e.preventDefault();
-      return false;
-    }
-
-    // Ctrl + U = View Source
-    if (e.ctrlKey && e.key.toLowerCase() === "u") {
-      e.preventDefault();
-      return false;
-    }
-
-    // Ctrl + S = Save Page
-    if (e.ctrlKey && e.key.toLowerCase() === "s") {
-      e.preventDefault();
-      return false;
-    }
-  });
-
-  // ป้องกันลากรูปออกจากหน้าเว็บ
-  document.addEventListener("dragstart", function (e) {
-    if (e.target.tagName === "IMG") {
-      e.preventDefault();
-    }
-  });
-</script>
 </body>
 </html>
