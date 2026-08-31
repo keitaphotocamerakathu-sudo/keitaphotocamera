@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-  <title>Upload Photos</title>
+  <title>Upload Media</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -34,6 +34,13 @@
     .safe-bottom {
       padding-bottom: env(safe-area-inset-bottom);
     }
+
+    img,
+    video {
+      -webkit-user-drag: none;
+      -webkit-touch-callout: none;
+      user-select: none;
+    }
   </style>
 </head>
 
@@ -43,9 +50,9 @@
     <div class="max-w-4xl mx-auto flex items-start justify-between gap-4">
       <div class="min-w-0">
         <p class="text-xs text-slate-400">ADMIN PANEL</p>
-        <h1 class="text-2xl font-black leading-tight">PHOTO UPLOAD</h1>
+        <h1 class="text-2xl font-black leading-tight">MEDIA UPLOAD</h1>
         <p class="text-sm text-slate-400 mt-1">
-          อัปโหลดรูปภาพเข้า Event ผ่าน Cloudflare R2 Worker
+          อัปโหลดรูปภาพ / วิดีโอ เข้า Event ผ่าน Cloudflare R2 Worker
         </p>
       </div>
 
@@ -91,7 +98,7 @@
 
         <div>
           <label class="font-semibold block mb-2">
-            ราคา / รูป
+            ราคา / ไฟล์
           </label>
 
           <input
@@ -101,6 +108,10 @@
             min="0"
             class="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white rounded-xl p-3"
           />
+
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">
+            ใช้ได้ทั้งรูปภาพและวิดีโอ
+          </p>
         </div>
 
         <div>
@@ -112,7 +123,7 @@
             id="fileCountBox"
             class="w-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-xl p-3 text-slate-500 dark:text-slate-400"
           >
-            ยังไม่ได้เลือกรูป
+            ยังไม่ได้เลือกไฟล์
           </div>
         </div>
 
@@ -125,7 +136,7 @@
           type="file"
           id="fileInput"
           multiple
-          accept="image/*"
+          accept="image/*,video/mp4,video/quicktime,video/webm"
           class="hidden"
         />
 
@@ -133,11 +144,15 @@
           onclick="document.getElementById('fileInput').click()"
           class="bg-black dark:bg-white dark:text-slate-900 text-white px-6 py-4 rounded-2xl font-black"
         >
-          เลือกรูปภาพ
+          เลือกรูปภาพ / วิดีโอ
         </button>
 
         <p class="text-sm text-slate-500 dark:text-slate-400 mt-3">
-          รองรับหลายไฟล์ / อัปโหลดเข้า R2 / URL เปิดผ่าน Worker /file
+          รองรับรูปภาพ และวิดีโอ MP4 / MOV / WEBM
+        </p>
+
+        <p class="text-xs text-red-500 dark:text-red-300 mt-2 font-bold">
+          วิดีโอต้องยาวไม่เกิน 10 วินาที และขนาดไม่เกิน 300MB ต่อไฟล์
         </p>
 
         <div class="mt-4 text-xs text-slate-500 dark:text-slate-400">
@@ -191,6 +206,16 @@
         CONFIG.SUPABASE_URL,
         CONFIG.SUPABASE_ANON_KEY
       );
+
+    const MAX_VIDEO_SECONDS = 10;
+    const MAX_VIDEO_SIZE_MB = 300;
+    const MAX_VIDEO_SIZE_BYTES = MAX_VIDEO_SIZE_MB * 1024 * 1024;
+
+    const ALLOWED_VIDEO_TYPES = [
+      "video/mp4",
+      "video/quicktime",
+      "video/webm"
+    ];
 
     let successCount = 0;
     let failCount = 0;
@@ -283,7 +308,7 @@
 
       if (!data || !data.length) {
         eventSelect.innerHTML = `<option value="">ยังไม่มี Event</option>`;
-        eventHelp.textContent = "กรุณาสร้าง Event ก่อนอัปโหลดรูป";
+        eventHelp.textContent = "กรุณาสร้าง Event ก่อนอัปโหลดไฟล์";
         return;
       }
 
@@ -332,6 +357,245 @@
       totalCountText.textContent = totalCount;
     }
 
+    function getMediaType(file) {
+      const type = String(file.type || "").toLowerCase();
+      const name = String(file.name || "").toLowerCase();
+
+      if (type.startsWith("image/")) {
+        return "image";
+      }
+
+      if (
+        type.startsWith("video/") ||
+        name.endsWith(".mp4") ||
+        name.endsWith(".mov") ||
+        name.endsWith(".webm")
+      ) {
+        return "video";
+      }
+
+      return "unknown";
+    }
+
+    function isAllowedVideo(file) {
+      const type = String(file.type || "").toLowerCase();
+      const name = String(file.name || "").toLowerCase();
+
+      return (
+        ALLOWED_VIDEO_TYPES.includes(type) ||
+        name.endsWith(".mp4") ||
+        name.endsWith(".mov") ||
+        name.endsWith(".webm")
+      );
+    }
+
+    function formatFileSize(bytes) {
+      const size = Number(bytes || 0);
+
+      if (size >= 1024 * 1024 * 1024) {
+        return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`;
+      }
+
+      if (size >= 1024 * 1024) {
+        return `${(size / 1024 / 1024).toFixed(2)} MB`;
+      }
+
+      if (size >= 1024) {
+        return `${(size / 1024).toFixed(2)} KB`;
+      }
+
+      return `${size} B`;
+    }
+
+    function getBaseFilename(filename) {
+      return String(filename || "video")
+        .replace(/\.[^/.]+$/, "")
+        .replace(/[^\wก-๙.-]+/g, "_")
+        .slice(0, 80);
+    }
+
+    async function getVideoDuration(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const video = document.createElement("video");
+
+        let finished = false;
+
+        function cleanup() {
+          if (finished) return;
+          finished = true;
+          URL.revokeObjectURL(url);
+          video.removeAttribute("src");
+          video.load();
+        }
+
+        video.preload = "metadata";
+        video.muted = true;
+        video.playsInline = true;
+
+        video.onloadedmetadata = () => {
+          const duration = Number(video.duration || 0);
+          cleanup();
+
+          if (!duration || !isFinite(duration)) {
+            reject(new Error("อ่านความยาววิดีโอไม่ได้"));
+            return;
+          }
+
+          resolve(duration);
+        };
+
+        video.onerror = () => {
+          cleanup();
+          reject(new Error("ไฟล์วิดีโอนี้ browser อ่านไม่ได้"));
+        };
+
+        setTimeout(() => {
+          if (!finished) {
+            cleanup();
+            reject(new Error("อ่านข้อมูลวิดีโอนานเกินไป"));
+          }
+        }, 15000);
+
+        video.src = url;
+      });
+    }
+
+    async function createVideoThumbnailFile(file, durationSeconds) {
+      return new Promise((resolve) => {
+        const url = URL.createObjectURL(file);
+        const video = document.createElement("video");
+        const canvas = document.createElement("canvas");
+
+        let finished = false;
+
+        function cleanup() {
+          if (finished) return;
+          finished = true;
+          URL.revokeObjectURL(url);
+          video.removeAttribute("src");
+          video.load();
+        }
+
+        function failSoft(reason) {
+          console.warn("Create thumbnail skipped:", reason);
+          cleanup();
+          resolve(null);
+        }
+
+        video.preload = "metadata";
+        video.muted = true;
+        video.playsInline = true;
+
+        video.onloadedmetadata = () => {
+          try {
+            const seekTime = Math.min(
+              Math.max(Number(durationSeconds || video.duration || 1) * 0.25, 0.1),
+              Math.max(Number(video.duration || 1) - 0.1, 0.1)
+            );
+
+            video.currentTime = seekTime;
+          } catch (err) {
+            failSoft(err.message || err);
+          }
+        };
+
+        video.onseeked = () => {
+          try {
+            const videoWidth = video.videoWidth || 1280;
+            const videoHeight = video.videoHeight || 720;
+
+            const maxWidth = 720;
+            const ratio = Math.min(1, maxWidth / videoWidth);
+
+            canvas.width = Math.round(videoWidth * ratio);
+            canvas.height = Math.round(videoHeight * ratio);
+
+            const ctx = canvas.getContext("2d");
+
+            if (!ctx) {
+              failSoft("Canvas not supported");
+              return;
+            }
+
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            canvas.toBlob((blob) => {
+              cleanup();
+
+              if (!blob) {
+                resolve(null);
+                return;
+              }
+
+              const thumbFile = new File(
+                [blob],
+                `${getBaseFilename(file.name)}_thumbnail.jpg`,
+                {
+                  type: "image/jpeg"
+                }
+              );
+
+              resolve(thumbFile);
+            }, "image/jpeg", 0.78);
+
+          } catch (err) {
+            failSoft(err.message || err);
+          }
+        };
+
+        video.onerror = () => {
+          failSoft("Video load error");
+        };
+
+        setTimeout(() => {
+          if (!finished) {
+            failSoft("Timeout");
+          }
+        }, 20000);
+
+        video.src = url;
+      });
+    }
+
+    async function validateMediaFile(file) {
+      const mediaType = getMediaType(file);
+
+      if (mediaType === "image") {
+        return {
+          mediaType: "image",
+          durationSeconds: null,
+          thumbnailFile: null
+        };
+      }
+
+      if (mediaType !== "video") {
+        throw new Error("รองรับเฉพาะไฟล์รูปภาพ หรือวิดีโอ MP4 / MOV / WEBM");
+      }
+
+      if (!isAllowedVideo(file)) {
+        throw new Error("รองรับวิดีโอเฉพาะ MP4 / MOV / WEBM");
+      }
+
+      if (file.size > MAX_VIDEO_SIZE_BYTES) {
+        throw new Error(`วิดีโอขนาดเกิน ${MAX_VIDEO_SIZE_MB}MB`);
+      }
+
+      const durationSeconds = await getVideoDuration(file);
+
+      if (durationSeconds > MAX_VIDEO_SECONDS + 0.25) {
+        throw new Error(`วิดีโอยาว ${durationSeconds.toFixed(2)} วินาที เกิน ${MAX_VIDEO_SECONDS} วินาที`);
+      }
+
+      const thumbnailFile = await createVideoThumbnailFile(file, durationSeconds);
+
+      return {
+        mediaType: "video",
+        durationSeconds,
+        thumbnailFile
+      };
+    }
+
     async function uploadFileToR2(file, eventId, folder = "preview") {
       if (!CONFIG.R2_ENABLED) {
         throw new Error("R2 ยังไม่ได้เปิดใช้งานใน config.js");
@@ -368,40 +632,58 @@
       return data;
     }
 
-    async function savePhotoToSupabase({
+    async function saveMediaToSupabase({
       eventId,
       file,
       price,
+      mediaType,
+      durationSeconds,
       r2Key,
-      publicUrl
+      publicUrl,
+      thumbnailKey,
+      thumbnailUrl
     }) {
+      const isVideo = mediaType === "video";
+
+      const payload = {
+        event_id: eventId,
+
+        media_type: mediaType,
+        mime_type: file.type || null,
+        file_size: file.size || null,
+        duration_seconds: isVideo ? durationSeconds : null,
+
+        filename: file.name,
+        price: price,
+        status: "active",
+        storage_provider: "r2",
+
+        original_path: r2Key,
+        preview_path: isVideo ? thumbnailKey : r2Key,
+        watermark_path: isVideo ? thumbnailKey : r2Key,
+
+        preview_url: isVideo ? thumbnailUrl : publicUrl,
+        watermark_url: isVideo ? thumbnailUrl : publicUrl,
+
+        r2_key: r2Key,
+        r2_preview_url: isVideo ? thumbnailUrl : publicUrl,
+        r2_watermark_url: isVideo ? thumbnailUrl : publicUrl,
+        r2_original_key: r2Key,
+
+        video_url: isVideo ? publicUrl : null,
+        video_path: isVideo ? r2Key : null,
+        thumbnail_url: isVideo ? thumbnailUrl : null,
+        thumbnail_path: isVideo ? thumbnailKey : null
+      };
+
       const { data, error } = await supabaseClient
         .from("photos")
-        .insert({
-          event_id: eventId,
-
-          original_path: r2Key,
-          preview_path: r2Key,
-          watermark_path: r2Key,
-
-          preview_url: publicUrl,
-          watermark_url: publicUrl,
-
-          storage_provider: "r2",
-          r2_key: r2Key,
-          r2_preview_url: publicUrl,
-          r2_watermark_url: publicUrl,
-          r2_original_key: r2Key,
-
-          filename: file.name,
-          price: price,
-          status: "active"
-        })
+        .insert(payload)
         .select("*")
         .single();
 
       if (error) {
-        throw new Error(error.message || "บันทึกข้อมูลรูปลง Supabase ไม่สำเร็จ");
+        throw new Error(error.message || "บันทึกข้อมูลลง Supabase ไม่สำเร็จ");
       }
 
       return data;
@@ -421,28 +703,78 @@
         "bg-slate-100 dark:bg-slate-800 rounded-2xl p-3 text-sm border border-slate-200 dark:border-slate-700";
 
       statusDiv.innerHTML = `
-        <div class="font-bold">กำลังอัปโหลดเข้า R2 ${index}/${total}</div>
+        <div class="font-bold">กำลังตรวจสอบไฟล์ ${index}/${total}</div>
         <div class="break-all">${escapeHtml(file.name)}</div>
+        <div class="text-xs text-slate-500 mt-1">${escapeHtml(formatFileSize(file.size))}</div>
       `;
 
       uploadStatus.prepend(statusDiv);
 
       try {
-        const r2Result = await uploadFileToR2(file, eventId, "preview");
+        const mediaInfo = await validateMediaFile(file);
+
+        const isVideo = mediaInfo.mediaType === "video";
+        const uploadFolder = isVideo ? "videos/original" : "preview";
+
+        statusDiv.innerHTML = `
+          <div class="font-bold">กำลังอัปโหลดเข้า R2 ${index}/${total}</div>
+          <div class="break-all">${escapeHtml(file.name)}</div>
+          <div class="text-xs text-slate-500 mt-1">
+            ${isVideo ? `วิดีโอ ${mediaInfo.durationSeconds.toFixed(2)} วินาที` : "รูปภาพ"} · ${escapeHtml(formatFileSize(file.size))}
+          </div>
+        `;
+
+        const r2Result = await uploadFileToR2(file, eventId, uploadFolder);
 
         const r2Key = r2Result.key;
         const publicUrl = r2Result.publicUrl;
 
-        await savePhotoToSupabase({
+        let thumbnailKey = null;
+        let thumbnailUrl = null;
+
+        if (isVideo && mediaInfo.thumbnailFile) {
+          statusDiv.innerHTML = `
+            <div class="font-bold">กำลังอัปโหลด Thumbnail ${index}/${total}</div>
+            <div class="break-all">${escapeHtml(file.name)}</div>
+            <div class="text-xs text-slate-500 mt-1">
+              วิดีโอ ${mediaInfo.durationSeconds.toFixed(2)} วินาที · ${escapeHtml(formatFileSize(file.size))}
+            </div>
+          `;
+
+          const thumbResult = await uploadFileToR2(
+            mediaInfo.thumbnailFile,
+            eventId,
+            "videos/thumbnail"
+          );
+
+          thumbnailKey = thumbResult.key;
+          thumbnailUrl = thumbResult.publicUrl;
+        }
+
+        await saveMediaToSupabase({
           eventId,
           file,
           price,
+          mediaType: mediaInfo.mediaType,
+          durationSeconds: mediaInfo.durationSeconds,
           r2Key,
-          publicUrl
+          publicUrl,
+          thumbnailKey,
+          thumbnailUrl
         });
 
-        statusDiv.innerHTML = `
-          <div class="flex gap-3 items-start">
+        const previewHtml = isVideo
+          ? `
+            <div class="relative w-24 h-16 rounded-xl overflow-hidden bg-black shrink-0">
+              ${
+                thumbnailUrl
+                  ? `<img src="${escapeAttr(thumbnailUrl)}" class="w-full h-full object-cover" onerror="this.style.display='none'">`
+                  : `<div class="w-full h-full flex items-center justify-center text-white text-2xl">🎬</div>`
+              }
+              <div class="absolute inset-0 flex items-center justify-center text-white text-xl bg-black/20">▶</div>
+            </div>
+          `
+          : `
             <div class="w-20 h-16 rounded-xl overflow-hidden bg-slate-200 shrink-0">
               <img
                 src="${escapeAttr(publicUrl)}"
@@ -450,20 +782,35 @@
                 onerror="this.style.display='none'"
               />
             </div>
+          `;
+
+        statusDiv.innerHTML = `
+          <div class="flex gap-3 items-start">
+            ${previewHtml}
 
             <div class="min-w-0 flex-1">
               <div class="font-bold">✅ อัปโหลดสำเร็จ</div>
               <div class="break-all">${escapeHtml(file.name)}</div>
+              <div class="mt-1 text-xs">
+                ประเภท: ${isVideo ? "วิดีโอ" : "รูปภาพ"}
+                ${isVideo ? ` · ${mediaInfo.durationSeconds.toFixed(2)} วินาที` : ""}
+                · ${escapeHtml(formatFileSize(file.size))}
+              </div>
               <div class="mt-1 text-xs break-all">
                 Key: ${escapeHtml(r2Key)}
               </div>
+              ${
+                thumbnailKey
+                  ? `<div class="mt-1 text-xs break-all">Thumbnail: ${escapeHtml(thumbnailKey)}</div>`
+                  : ""
+              }
               <a
                 href="${escapeAttr(publicUrl)}"
                 target="_blank"
                 rel="noopener"
                 class="underline text-green-800 dark:text-green-200 text-xs break-all"
               >
-                เปิดรูปผ่าน Worker
+                เปิดไฟล์ผ่าน Worker
               </a>
             </div>
           </div>
@@ -479,7 +826,8 @@
           success: true,
           fileName: file.name,
           key: r2Key,
-          publicUrl
+          publicUrl,
+          mediaType: mediaInfo.mediaType
         };
 
       } catch (err) {
@@ -516,13 +864,20 @@
         return;
       }
 
-      fileCountBox.textContent = `เลือกแล้ว ${files.length} ไฟล์`;
+      const imageCount = files.filter(file => getMediaType(file) === "image").length;
+      const videoCount = files.filter(file => getMediaType(file) === "video").length;
+      const unknownCount = files.length - imageCount - videoCount;
+
+      fileCountBox.textContent =
+        `เลือกแล้ว ${files.length} ไฟล์ · รูป ${imageCount} · วิดีโอ ${videoCount}${unknownCount ? ` · ไม่รองรับ ${unknownCount}` : ""}`;
+
       resetCounters(files.length);
 
       Swal.fire({
         title: "กำลังอัปโหลด",
         html: `
           ทั้งหมด <b>${files.length}</b> ไฟล์<br>
+          รูปภาพ <b>${imageCount}</b> ไฟล์ · วิดีโอ <b>${videoCount}</b> ไฟล์<br>
           <span id="swalProgressText">เริ่มอัปโหลด...</span>
         `,
         allowOutsideClick: false,
