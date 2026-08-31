@@ -951,12 +951,13 @@
         });
 
         const data = await callFaceSearchFunction({
-          event_id: eventId,
-          descriptor,
-          threshold: 0.55,
-          max_results: 99,
-          gap_limit: 0.18
-        });
+  event_id: eventId,
+  descriptor,
+  threshold: 0.42,
+  max_results: 50,
+  gap_limit: 0.06,
+  strict: true
+});
 
         results = normalizeResults(data.results || data.matches || []);
 
