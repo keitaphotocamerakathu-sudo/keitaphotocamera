@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
@@ -810,6 +810,1281 @@
       btn.innerHTML = isDark
         ? "☀️ Light"
         : "🌙 Dark";
+    }
+
+    function initDarkMode() {
+      const saved = localStorage.getItem("darkMode");
+
+      if (saved === "1") {
+        document.documentElement.classList.add("dark");
+      }
+
+      updateDarkButton();
+    }
+
+    function escapeHtml(text) {
+      return String(text ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function escapeAttr(text) {
+      return escapeHtml(text);
+    }
+  </script>
+
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Process Faces</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class"
+    };
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
+
+  <script src="../js/config.js?v=new-supabase-004"></script>
+
+  <style>
+    html,
+    body {
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
+    button,
+    input,
+    select {
+      touch-action: manipulation;
+    }
+
+    .safe-bottom {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    img,
+    video,
+    canvas {
+      -webkit-user-drag: none;
+      -webkit-touch-callout: none;
+      user-select: none;
+    }
+
+    .log-box {
+      max-height: 420px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-white min-h-screen transition safe-bottom">
+
+  <header class="bg-black dark:bg-slate-900 text-white p-5 sticky top-0 z-40">
+    <div class="max-w-5xl mx-auto flex items-start justify-between gap-4">
+      <div class="min-w-0">
+        <p class="text-xs text-slate-400">ADMIN PANEL</p>
+        <h1 class="text-2xl font-black leading-tight">SYNC FACES</h1>
+        <p class="text-sm text-slate-400 mt-1">
+          สแกนใบหน้าจากรูปภาพ และดึงเฟรมจากวิดีโอเพื่อค้นหาใบหน้า
+        </p>
+      </div>
+
+      <div class="flex flex-col gap-2 shrink-0">
+        <button
+          onclick="toggleDarkMode()"
+          id="darkBtn"
+          class="bg-white/10 hover:bg-white/20 rounded-2xl px-4 py-3 font-bold transition"
+        >
+          🌙 Dark
+        </button>
+
+        <button
+          onclick="goUpload()"
+          class="bg-white text-slate-900 rounded-2xl px-4 py-3 font-bold transition"
+        >
+          UPLOAD
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto p-4 pb-28">
+
+    <section class="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow transition mb-5">
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        <div>
+          <label class="font-semibold block mb-2">
+            เลือก Event
+          </label>
+
+          <select
+            id="eventSelect"
+            class="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white rounded-xl p-3"
+          >
+            <option value="">กำลังโหลด Event...</option>
+          </select>
+
+          <p id="eventHelp" class="text-xs text-slate-500 dark:text-slate-400 mt-2"></p>
+        </div>
+
+        <div>
+          <label class="font-semibold block mb-2">
+            เฟรมวิดีโอที่ต้องการสแกน
+          </label>
+
+          <input
+            id="frameSecondsInput"
+            type="text"
+            value="1,3,5,7,9"
+            class="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white rounded-xl p-3"
+          />
+
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">
+            ตัวอย่าง: 1,3,5,7,9 หมายถึงดึงภาพจากวินาทีที่ 1, 3, 5, 7, 9
+          </p>
+        </div>
+
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5">
+
+        <label class="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 cursor-pointer">
+          <input
+            id="includeImages"
+            type="checkbox"
+            checked
+            class="w-5 h-5"
+          />
+          <div>
+            <p class="font-bold">สแกนรูปภาพ</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">media_type = image</p>
+          </div>
+        </label>
+
+        <label class="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 cursor-pointer">
+          <input
+            id="includeVideos"
+            type="checkbox"
+            checked
+            class="w-5 h-5"
+          />
+          <div>
+            <p class="font-bold">สแกนวิดีโอ</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">ดึงเฟรมแล้วสแกนใบหน้า</p>
+          </div>
+        </label>
+
+        <label class="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 cursor-pointer">
+          <input
+            id="deleteOldFaces"
+            type="checkbox"
+            checked
+            class="w-5 h-5"
+          />
+          <div>
+            <p class="font-bold">ลบผล Sync เดิมก่อน</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">กันข้อมูลใบหน้าซ้ำ</p>
+          </div>
+        </label>
+
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5">
+
+        <button
+          onclick="loadMedia()"
+          id="loadBtn"
+          class="bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-2xl px-5 py-4 font-black"
+        >
+          โหลดไฟล์
+        </button>
+
+        <button
+          onclick="startProcessFaces()"
+          id="startBtn"
+          class="bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl px-5 py-4 font-black disabled:opacity-40"
+        >
+          เริ่ม Sync Faces
+        </button>
+
+        <button
+          onclick="stopProcessFaces()"
+          id="stopBtn"
+          disabled
+          class="bg-red-500 hover:bg-red-600 text-white rounded-2xl px-5 py-4 font-black disabled:opacity-40"
+        >
+          หยุด
+        </button>
+
+      </div>
+
+      <div class="mt-4 text-xs text-slate-500 dark:text-slate-400 break-all">
+        Worker:
+        <span id="workerUrlText"></span>
+      </div>
+
+      <div class="mt-2 text-xs text-slate-500 dark:text-slate-400 break-all">
+        Model:
+        <span id="modelUrlText"></span>
+      </div>
+
+    </section>
+
+    <section class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
+
+      <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow">
+        <p class="text-xs text-slate-500 dark:text-slate-400">ไฟล์ทั้งหมด</p>
+        <p id="totalFilesText" class="text-2xl font-black">0</p>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow">
+        <p class="text-xs text-slate-500 dark:text-slate-400">รูปภาพ</p>
+        <p id="imageFilesText" class="text-2xl font-black">0</p>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow">
+        <p class="text-xs text-slate-500 dark:text-slate-400">วิดีโอ</p>
+        <p id="videoFilesText" class="text-2xl font-black">0</p>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow">
+        <p class="text-xs text-slate-500 dark:text-slate-400">ประมวลผลแล้ว</p>
+        <p id="processedText" class="text-2xl font-black text-blue-600">0</p>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow">
+        <p class="text-xs text-slate-500 dark:text-slate-400">ใบหน้าที่เจอ</p>
+        <p id="facesFoundText" class="text-2xl font-black text-emerald-600">0</p>
+      </div>
+
+    </section>
+
+    <section class="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow transition mb-5">
+      <div class="flex items-center justify-between gap-3 mb-4">
+        <div>
+          <h2 class="text-xl font-black">รายการไฟล์</h2>
+          <p id="mediaSummaryText" class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            ยังไม่ได้โหลดไฟล์
+          </p>
+        </div>
+
+        <button
+          onclick="loadMedia()"
+          class="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-2xl px-4 py-3 font-bold"
+        >
+          รีเฟรช
+        </button>
+      </div>
+
+      <div id="mediaList" class="space-y-2"></div>
+    </section>
+
+    <section class="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow transition">
+      <div class="flex items-center justify-between gap-3 mb-4">
+        <div>
+          <h2 class="text-xl font-black">Log</h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            รายงานการ Sync ใบหน้า
+          </p>
+        </div>
+
+        <button
+          onclick="clearLog()"
+          class="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-2xl px-4 py-3 font-bold"
+        >
+          ล้าง Log
+        </button>
+      </div>
+
+      <div
+        id="logBox"
+        class="log-box bg-slate-950 text-slate-100 rounded-2xl p-4 text-xs font-mono space-y-1"
+      >
+        <div class="text-slate-400">พร้อมทำงาน...</div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    const sb =
+      window.sb ||
+      window.supabaseClient ||
+      window.supabase.createClient(
+        CONFIG.SUPABASE_URL,
+        CONFIG.SUPABASE_ANON_KEY
+      );
+
+    const MODEL_URL =
+      CONFIG.FACE_MODEL_URL ||
+      "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
+
+    const eventSelect = document.getElementById("eventSelect");
+    const eventHelp = document.getElementById("eventHelp");
+    const mediaList = document.getElementById("mediaList");
+    const mediaSummaryText = document.getElementById("mediaSummaryText");
+    const workerUrlText = document.getElementById("workerUrlText");
+    const modelUrlText = document.getElementById("modelUrlText");
+
+    const totalFilesText = document.getElementById("totalFilesText");
+    const imageFilesText = document.getElementById("imageFilesText");
+    const videoFilesText = document.getElementById("videoFilesText");
+    const processedText = document.getElementById("processedText");
+    const facesFoundText = document.getElementById("facesFoundText");
+
+    const loadBtn = document.getElementById("loadBtn");
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+
+    let mediaItems = [];
+    let modelsLoaded = false;
+    let isProcessing = false;
+    let shouldStop = false;
+
+    let processedCount = 0;
+    let facesFoundCount = 0;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      initDarkMode();
+
+      workerUrlText.textContent =
+        CONFIG.R2_WORKER_URL || CONFIG.R2_PUBLIC_BASE_URL || "-";
+
+      modelUrlText.textContent = MODEL_URL;
+
+      await loadEvents();
+
+      const params = new URLSearchParams(window.location.search);
+      const eventId = params.get("event") || params.get("event_id") || params.get("id");
+
+      if (eventId) {
+        eventSelect.value = eventId;
+        await loadMedia();
+      }
+    });
+
+    async function loadEvents() {
+      eventSelect.innerHTML = `<option value="">กำลังโหลด Event...</option>`;
+      eventHelp.textContent = "";
+
+      const { data, error } = await sb
+        .from("events")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error(error);
+
+        eventSelect.innerHTML = `<option value="">โหลด Event ไม่สำเร็จ</option>`;
+        eventHelp.textContent = error.message || "โหลด Event ไม่สำเร็จ";
+        return;
+      }
+
+      if (!data || !data.length) {
+        eventSelect.innerHTML = `<option value="">ยังไม่มี Event</option>`;
+        eventHelp.textContent = "กรุณาสร้าง Event ก่อน";
+        return;
+      }
+
+      eventSelect.innerHTML = data.map(event => {
+        const title = event.title || event.name || event.slug || event.id;
+
+        return `
+          <option value="${escapeAttr(event.id)}">
+            ${escapeHtml(title)}
+          </option>
+        `;
+      }).join("");
+
+      eventHelp.textContent = `พบ Event ทั้งหมด ${data.length} รายการ`;
+    }
+
+    eventSelect.addEventListener("change", async () => {
+      if (eventSelect.value) {
+        await loadMedia();
+      }
+    });
+
+    async function loadMedia() {
+      const eventId = eventSelect.value;
+
+      if (!eventId) {
+        Swal.fire("กรุณาเลือก Event", "", "warning");
+        return;
+      }
+
+      mediaList.innerHTML = `
+        <div class="text-center py-8 text-slate-500 dark:text-slate-400">
+          กำลังโหลดไฟล์...
+        </div>
+      `;
+
+      mediaSummaryText.textContent = "กำลังโหลดไฟล์...";
+
+      const { data, error } = await sb
+        .from("photos")
+        .select("*")
+        .eq("event_id", eventId)
+        .eq("status", "active")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error(error);
+
+        mediaList.innerHTML = `
+          <div class="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200 rounded-2xl p-4">
+            โหลดไฟล์ไม่สำเร็จ: ${escapeHtml(error.message)}
+          </div>
+        `;
+
+        mediaSummaryText.textContent = "โหลดไม่สำเร็จ";
+        return;
+      }
+
+      const includeImages = document.getElementById("includeImages").checked;
+      const includeVideos = document.getElementById("includeVideos").checked;
+
+      mediaItems = (data || [])
+        .map(normalizeMediaItem)
+        .filter(item => {
+          if (item.media_type === "image") return includeImages;
+          if (item.media_type === "video") return includeVideos;
+          return false;
+        });
+
+      renderMediaList();
+      updateStats();
+
+      log(`โหลดไฟล์สำเร็จ: ${mediaItems.length} รายการ`);
+    }
+
+    function normalizeMediaItem(item) {
+      const mediaType = getMediaType(item);
+
+      return {
+        ...item,
+        media_type: mediaType,
+        display_url: mediaType === "video" ? getVideoThumbnailUrl(item) : getImageUrl(item),
+        process_url: mediaType === "video" ? getVideoUrl(item) : getImageUrl(item)
+      };
+    }
+
+    function getMediaType(item) {
+      const mediaType = String(item.media_type || "").toLowerCase();
+      const mime = String(item.mime_type || "").toLowerCase();
+      const filename = String(item.filename || "").toLowerCase();
+
+      if (mediaType === "video") return "video";
+      if (mediaType === "image") return "image";
+
+      if (
+        mime.startsWith("video/") ||
+        filename.endsWith(".mp4") ||
+        filename.endsWith(".mov") ||
+        filename.endsWith(".webm")
+      ) {
+        return "video";
+      }
+
+      return "image";
+    }
+
+    function renderMediaList() {
+      if (!mediaItems.length) {
+        mediaList.innerHTML = `
+          <div class="text-center py-8 text-slate-500 dark:text-slate-400">
+            ไม่มีไฟล์ที่ต้อง Sync
+          </div>
+        `;
+
+        mediaSummaryText.textContent = "ไม่มีไฟล์";
+        return;
+      }
+
+      mediaList.innerHTML = mediaItems.map(item => {
+        const isVideo = item.media_type === "video";
+        const imageUrl = item.display_url || getPlaceholderUrl(isVideo ? "VIDEO" : "NO IMAGE");
+
+        return `
+          <div
+            id="media-${escapeAttr(item.id)}"
+            class="flex gap-3 items-center bg-slate-50 dark:bg-slate-800 rounded-2xl p-3 border border-slate-100 dark:border-slate-700"
+          >
+            <div class="w-20 h-16 rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-700 shrink-0 relative">
+              <img
+                src="${escapeAttr(imageUrl)}"
+                class="w-full h-full object-cover"
+                onerror="this.onerror=null; this.src='${escapeAttr(getPlaceholderUrl(isVideo ? "VIDEO" : "NO IMAGE"))}';"
+              />
+              ${
+                isVideo
+                  ? `<div class="absolute inset-0 flex items-center justify-center text-white text-xl bg-black/20">▶</div>`
+                  : ""
+              }
+            </div>
+
+            <div class="min-w-0 flex-1">
+              <div class="font-bold truncate">
+                ${escapeHtml(item.filename || item.id)}
+              </div>
+
+              <div class="text-xs text-slate-500 dark:text-slate-400 truncate">
+                ${isVideo ? "วิดีโอ" : "รูปภาพ"}
+                ${
+                  isVideo && item.duration_seconds
+                    ? ` · ${formatDuration(item.duration_seconds)}`
+                    : ""
+                }
+              </div>
+
+              <div id="status-${escapeAttr(item.id)}" class="text-xs text-slate-400 mt-1">
+                รอ Sync
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      const imageCount = mediaItems.filter(i => i.media_type === "image").length;
+      const videoCount = mediaItems.filter(i => i.media_type === "video").length;
+
+      mediaSummaryText.textContent =
+        `ทั้งหมด ${mediaItems.length} ไฟล์ · รูปภาพ ${imageCount} · วิดีโอ ${videoCount}`;
+    }
+
+    function updateStats() {
+      const imageCount = mediaItems.filter(i => i.media_type === "image").length;
+      const videoCount = mediaItems.filter(i => i.media_type === "video").length;
+
+      totalFilesText.textContent = mediaItems.length;
+      imageFilesText.textContent = imageCount;
+      videoFilesText.textContent = videoCount;
+      processedText.textContent = processedCount;
+      facesFoundText.textContent = facesFoundCount;
+    }
+
+    function setMediaStatus(itemId, message, type = "normal") {
+      const el = document.getElementById(`status-${itemId}`);
+      const row = document.getElementById(`media-${itemId}`);
+
+      if (!el) return;
+
+      el.textContent = message;
+
+      el.className = "text-xs mt-1";
+
+      if (type === "success") {
+        el.classList.add("text-emerald-600", "dark:text-emerald-300");
+        row?.classList.add("border-emerald-300", "dark:border-emerald-700");
+      } else if (type === "error") {
+        el.classList.add("text-red-600", "dark:text-red-300");
+        row?.classList.add("border-red-300", "dark:border-red-700");
+      } else if (type === "working") {
+        el.classList.add("text-blue-600", "dark:text-blue-300");
+      } else {
+        el.classList.add("text-slate-400");
+      }
+    }
+
+    async function ensureModelsLoaded() {
+      if (modelsLoaded) return;
+
+      if (!window.faceapi) {
+        throw new Error("ไม่พบ face-api.js");
+      }
+
+      log("กำลังโหลด face-api model...");
+
+      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+
+      modelsLoaded = true;
+
+      log("โหลด face-api model สำเร็จ");
+    }
+
+    async function startProcessFaces() {
+      const eventId = eventSelect.value;
+
+      if (!eventId) {
+        Swal.fire("กรุณาเลือก Event", "", "warning");
+        return;
+      }
+
+      if (!mediaItems.length) {
+        await loadMedia();
+      }
+
+      if (!mediaItems.length) {
+        Swal.fire("ไม่มีไฟล์ให้ Sync", "", "info");
+        return;
+      }
+
+      isProcessing = true;
+      shouldStop = false;
+      processedCount = 0;
+      facesFoundCount = 0;
+
+      updateStats();
+      setProcessingUI(true);
+
+      try {
+        await ensureModelsLoaded();
+
+        log(`เริ่ม Sync Faces ทั้งหมด ${mediaItems.length} ไฟล์`);
+
+        for (let i = 0; i < mediaItems.length; i++) {
+          if (shouldStop) {
+            log("หยุดการทำงานตามคำสั่งผู้ใช้", "warn");
+            break;
+          }
+
+          const item = mediaItems[i];
+
+          try {
+            if (item.media_type === "video") {
+              await processVideoItem(item, i + 1, mediaItems.length);
+            } else {
+              await processImageItem(item, i + 1, mediaItems.length);
+            }
+
+            processedCount++;
+            updateStats();
+
+          } catch (err) {
+            console.error(err);
+            setMediaStatus(item.id, `❌ ${err.message || String(err)}`, "error");
+            log(`❌ ${item.filename || item.id}: ${err.message || String(err)}`, "error");
+          }
+        }
+
+        Swal.fire({
+          icon: "success",
+          title: "Sync Faces เสร็จแล้ว",
+          html: `
+            ประมวลผลแล้ว <b>${processedCount}</b> ไฟล์<br>
+            พบใบหน้า <b>${facesFoundCount}</b> รายการ
+          `
+        });
+
+      } catch (err) {
+        console.error(err);
+
+        Swal.fire({
+          icon: "error",
+          title: "Sync ไม่สำเร็จ",
+          text: err.message || String(err)
+        });
+
+      } finally {
+        isProcessing = false;
+        shouldStop = false;
+        setProcessingUI(false);
+      }
+    }
+
+    function stopProcessFaces() {
+      if (!isProcessing) return;
+
+      shouldStop = true;
+      log("กำลังหยุดหลังจบไฟล์ปัจจุบัน...", "warn");
+    }
+
+    function setProcessingUI(active) {
+      loadBtn.disabled = active;
+      startBtn.disabled = active;
+      stopBtn.disabled = !active;
+
+      if (active) {
+        startBtn.textContent = "กำลัง Sync...";
+      } else {
+        startBtn.textContent = "เริ่ม Sync Faces";
+      }
+    }
+
+    async function deleteOldFacesForPhoto(photoId) {
+      const shouldDelete = document.getElementById("deleteOldFaces").checked;
+
+      if (!shouldDelete) return;
+
+      const { error } = await sb
+        .from("faces")
+        .delete()
+        .eq("photo_id", photoId);
+
+      if (error) {
+        throw new Error("ลบ faces เดิมไม่สำเร็จ: " + error.message);
+      }
+    }
+
+    async function processImageItem(item, index, total) {
+      setMediaStatus(item.id, `กำลังสแกนรูปภาพ ${index}/${total}`, "working");
+      log(`สแกนรูปภาพ ${index}/${total}: ${item.filename || item.id}`);
+
+      const imageUrl = getImageUrl(item);
+
+      if (!imageUrl) {
+        throw new Error("ไม่พบ URL รูปภาพ");
+      }
+
+      await deleteOldFacesForPhoto(item.id);
+
+      const img = await loadImageElement(imageUrl);
+      const detections = await detectFaces(img);
+
+      if (!detections.length) {
+        setMediaStatus(item.id, "ไม่พบใบหน้า", "normal");
+        log(`ไม่พบใบหน้า: ${item.filename || item.id}`, "warn");
+        return;
+      }
+
+      const rows = detections.map((det, faceIndex) => {
+        return buildFaceRow({
+          item,
+          descriptor: det.descriptor,
+          faceIndex,
+          mediaType: "image",
+          imageUrl,
+          frameIndex: null,
+          videoTimeSeconds: null
+        });
+      });
+
+      await insertFaceRows(rows);
+
+      facesFoundCount += rows.length;
+      updateStats();
+
+      setMediaStatus(item.id, `✅ พบใบหน้า ${rows.length} หน้า`, "success");
+      log(`✅ ${item.filename || item.id}: พบใบหน้า ${rows.length} หน้า`);
+    }
+
+    async function processVideoItem(item, index, total) {
+      setMediaStatus(item.id, `กำลังสแกนวิดีโอ ${index}/${total}`, "working");
+      log(`สแกนวิดีโอ ${index}/${total}: ${item.filename || item.id}`);
+
+      const videoUrl = getVideoUrl(item);
+      const thumbnailUrl = getVideoThumbnailUrl(item);
+
+      if (!videoUrl) {
+        throw new Error("ไม่พบ URL วิดีโอ");
+      }
+
+      await deleteOldFacesForPhoto(item.id);
+
+      const video = await loadVideoElement(videoUrl);
+      const duration = Number(video.duration || item.duration_seconds || 0);
+      const frameTimes = getFrameTimes(duration);
+
+      if (!frameTimes.length) {
+        cleanupVideo(video);
+        throw new Error("ไม่มีเฟรมที่ใช้สแกนได้");
+      }
+
+      let totalFacesInVideo = 0;
+      let allRows = [];
+
+      for (let i = 0; i < frameTimes.length; i++) {
+        if (shouldStop) break;
+
+        const time = frameTimes[i];
+
+        setMediaStatus(
+          item.id,
+          `กำลังดึงเฟรม ${i + 1}/${frameTimes.length} ที่ ${time.toFixed(2)} วิ`,
+          "working"
+        );
+
+        const canvas = await captureVideoFrame(video, time);
+        const detections = await detectFaces(canvas);
+
+        if (!detections.length) {
+          log(`วิดีโอ ${item.filename || item.id} เฟรม ${time.toFixed(2)} วิ: ไม่พบใบหน้า`, "warn");
+          continue;
+        }
+
+        const rows = detections.map((det, faceIndex) => {
+          return buildFaceRow({
+            item,
+            descriptor: det.descriptor,
+            faceIndex,
+            mediaType: "video",
+            imageUrl: thumbnailUrl || videoUrl,
+            frameIndex: i,
+            videoTimeSeconds: time
+          });
+        });
+
+        allRows = allRows.concat(rows);
+        totalFacesInVideo += rows.length;
+
+        log(`วิดีโอ ${item.filename || item.id} เฟรม ${time.toFixed(2)} วิ: พบ ${rows.length} หน้า`);
+      }
+
+      cleanupVideo(video);
+
+      if (allRows.length) {
+        await insertFaceRows(allRows);
+      }
+
+      facesFoundCount += allRows.length;
+      updateStats();
+
+      if (!allRows.length) {
+        setMediaStatus(item.id, "ไม่พบใบหน้าในวิดีโอ", "normal");
+        log(`ไม่พบใบหน้าในวิดีโอ: ${item.filename || item.id}`, "warn");
+        return;
+      }
+
+      setMediaStatus(item.id, `✅ พบใบหน้า ${totalFacesInVideo} หน้า จาก ${frameTimes.length} เฟรม`, "success");
+      log(`✅ ${item.filename || item.id}: พบใบหน้า ${totalFacesInVideo} หน้า จาก ${frameTimes.length} เฟรม`);
+    }
+
+    function buildFaceRow({
+      item,
+      descriptor,
+      faceIndex,
+      mediaType,
+      imageUrl,
+      frameIndex,
+      videoTimeSeconds
+    }) {
+      return {
+        event_id: item.event_id,
+        photo_id: item.id,
+        descriptor: Array.from(descriptor || []),
+        face_index: Number(faceIndex || 0),
+        image_url: imageUrl || item.display_url || null,
+        filename: item.filename || null,
+        media_type: mediaType,
+        frame_index: frameIndex,
+        video_time_seconds: videoTimeSeconds
+      };
+    }
+
+    async function insertFaceRows(rows) {
+      if (!rows || !rows.length) return;
+
+      const attempts = [
+        rows,
+
+        rows.map(row => {
+          const copy = { ...row };
+          delete copy.media_type;
+          delete copy.frame_index;
+          delete copy.video_time_seconds;
+          return copy;
+        }),
+
+        rows.map(row => ({
+          event_id: row.event_id,
+          photo_id: row.photo_id,
+          descriptor: row.descriptor,
+          face_index: row.face_index,
+          image_url: row.image_url,
+          filename: row.filename
+        })),
+
+        rows.map(row => ({
+          event_id: row.event_id,
+          photo_id: row.photo_id,
+          descriptor: row.descriptor
+        }))
+      ];
+
+      let lastError = null;
+
+      for (const payload of attempts) {
+        const { error } = await sb
+          .from("faces")
+          .insert(payload);
+
+        if (!error) return;
+
+        lastError = error;
+
+        const msg = String(error.message || "").toLowerCase();
+
+        if (
+          !msg.includes("column") &&
+          !msg.includes("schema cache") &&
+          !msg.includes("could not find")
+        ) {
+          break;
+        }
+      }
+
+      throw new Error(lastError?.message || "บันทึก faces ไม่สำเร็จ");
+    }
+
+    async function detectFaces(input) {
+      const options = new faceapi.TinyFaceDetectorOptions({
+        inputSize: 512,
+        scoreThreshold: 0.45
+      });
+
+      const detections = await faceapi
+        .detectAllFaces(input, options)
+        .withFaceLandmarks()
+        .withFaceDescriptors();
+
+      return detections || [];
+    }
+
+    function loadImageElement(url) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+
+        img.crossOrigin = "anonymous";
+        img.referrerPolicy = "no-referrer";
+
+        img.onload = () => resolve(img);
+
+        img.onerror = () => {
+          reject(new Error("โหลดรูปไม่ได้ หรือ CORS ไม่ผ่าน"));
+        };
+
+        img.src = url;
+      });
+    }
+
+    function loadVideoElement(url) {
+      return new Promise((resolve, reject) => {
+        const video = document.createElement("video");
+
+        video.crossOrigin = "anonymous";
+        video.preload = "metadata";
+        video.muted = true;
+        video.playsInline = true;
+        video.controls = false;
+
+        let done = false;
+
+        const timer = setTimeout(() => {
+          if (done) return;
+          done = true;
+          cleanupVideo(video);
+          reject(new Error("โหลดวิดีโอนานเกินไป"));
+        }, 20000);
+
+        video.onloadedmetadata = () => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+
+          if (!video.duration || !isFinite(video.duration)) {
+            cleanupVideo(video);
+            reject(new Error("อ่านความยาววิดีโอไม่ได้"));
+            return;
+          }
+
+          resolve(video);
+        };
+
+        video.onerror = () => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          cleanupVideo(video);
+          reject(new Error("โหลดวิดีโอไม่ได้ หรือ CORS/Range ไม่ผ่าน"));
+        };
+
+        video.src = url;
+        video.load();
+      });
+    }
+
+    function cleanupVideo(video) {
+      try {
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+      } catch (_) {}
+    }
+
+    function captureVideoFrame(video, time) {
+      return new Promise((resolve, reject) => {
+        const safeTime = Math.max(
+          0,
+          Math.min(Number(time || 0), Math.max(Number(video.duration || 0) - 0.1, 0))
+        );
+
+        let done = false;
+
+        const timer = setTimeout(() => {
+          if (done) return;
+          done = true;
+          reject(new Error(`ดึงเฟรมวิดีโอที่ ${safeTime.toFixed(2)} วิ ไม่สำเร็จ`));
+        }, 15000);
+
+        video.onseeked = () => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+
+          try {
+            const canvas = document.createElement("canvas");
+
+            const vw = video.videoWidth || 1280;
+            const vh = video.videoHeight || 720;
+
+            const maxWidth = 960;
+            const ratio = Math.min(1, maxWidth / vw);
+
+            canvas.width = Math.max(1, Math.round(vw * ratio));
+            canvas.height = Math.max(1, Math.round(vh * ratio));
+
+            const ctx = canvas.getContext("2d");
+
+            if (!ctx) {
+              reject(new Error("Browser ไม่รองรับ Canvas"));
+              return;
+            }
+
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            resolve(canvas);
+
+          } catch (err) {
+            reject(new Error(err.message || String(err)));
+          }
+        };
+
+        try {
+          video.currentTime = safeTime;
+        } catch (err) {
+          clearTimeout(timer);
+          reject(new Error(err.message || String(err)));
+        }
+      });
+    }
+
+    function getFrameTimes(duration) {
+      const raw = document.getElementById("frameSecondsInput").value || "1,3,5,7,9";
+
+      let times = raw
+        .split(",")
+        .map(x => Number(String(x).trim()))
+        .filter(x => isFinite(x) && x >= 0);
+
+      const maxTime = Math.max(Number(duration || 0) - 0.15, 0);
+
+      times = times
+        .map(x => Math.min(x, maxTime))
+        .filter((x, index, arr) => {
+          return x >= 0 && arr.findIndex(y => Math.abs(y - x) < 0.05) === index;
+        });
+
+      if (!times.length && duration > 0) {
+        const d = Number(duration || 0);
+
+        if (d <= 2) {
+          times = [Math.max(0.3, d * 0.5)];
+        } else {
+          times = [
+            d * 0.2,
+            d * 0.4,
+            d * 0.6,
+            d * 0.8
+          ].map(x => Math.min(x, maxTime));
+        }
+      }
+
+      return times.slice(0, 8);
+    }
+
+    function getImageUrl(item) {
+      const raw =
+        item.r2_preview_url ||
+        item.preview_url ||
+        item.r2_watermark_url ||
+        item.watermark_url ||
+        item.image_url ||
+        item.public_url ||
+        item.url ||
+        "";
+
+      if (raw) {
+        return normalizeMediaUrl(raw);
+      }
+
+      const key =
+        item.preview_path ||
+        item.watermark_path ||
+        item.r2_key ||
+        item.r2_original_key ||
+        item.original_path ||
+        "";
+
+      if (key) {
+        return normalizeMediaUrl(key);
+      }
+
+      return "";
+    }
+
+    function getVideoUrl(item) {
+      const raw =
+        item.video_preview_url ||
+        item.video_url ||
+        item.r2_video_preview_url ||
+        item.r2_video_url ||
+        item.preview_video_url ||
+        "";
+
+      if (raw) {
+        return normalizeMediaUrl(raw);
+      }
+
+      const key =
+        item.video_preview_path ||
+        item.video_path ||
+        item.r2_video_preview_key ||
+        item.r2_video_key ||
+        item.r2_key ||
+        item.r2_original_key ||
+        item.original_path ||
+        "";
+
+      if (key) {
+        return normalizeMediaUrl(key);
+      }
+
+      return "";
+    }
+
+    function getVideoThumbnailUrl(item) {
+      const raw =
+        item.thumbnail_url ||
+        item.r2_thumbnail_url ||
+        item.preview_url ||
+        item.r2_preview_url ||
+        item.watermark_url ||
+        item.r2_watermark_url ||
+        item.image_url ||
+        "";
+
+      if (raw) {
+        return normalizeMediaUrl(raw);
+      }
+
+      const key =
+        item.thumbnail_path ||
+        item.preview_path ||
+        item.watermark_path ||
+        "";
+
+      if (key) {
+        return normalizeMediaUrl(key);
+      }
+
+      return getPlaceholderUrl("VIDEO");
+    }
+
+    function normalizeMediaUrl(value) {
+      const raw = String(value || "").trim();
+
+      if (!raw) return "";
+
+      if (raw.startsWith("http://") || raw.startsWith("https://")) {
+        return encodeURI(raw);
+      }
+
+      if (CONFIG.R2_WORKER_URL) {
+        const base = String(CONFIG.R2_WORKER_URL).replace(/\/+$/, "");
+        const key = raw.replace(/^\/+/, "");
+        return encodeURI(`${base}/file/${key}`);
+      }
+
+      if (CONFIG.R2_PUBLIC_BASE_URL) {
+        const base = String(CONFIG.R2_PUBLIC_BASE_URL).replace(/\/+$/, "");
+        const key = raw.replace(/^\/+/, "");
+        return encodeURI(`${base}/${key}`);
+      }
+
+      return encodeURI(raw);
+    }
+
+    function getPlaceholderUrl(text) {
+      return `https://placehold.co/600x450/111827/ffffff?text=${encodeURIComponent(text || "NO IMAGE")}`;
+    }
+
+    function formatDuration(seconds) {
+      const s = Number(seconds || 0);
+
+      if (!s || !isFinite(s)) return "";
+
+      const min = Math.floor(s / 60);
+      const sec = Math.round(s % 60);
+
+      return `${min}:${String(sec).padStart(2, "0")}`;
+    }
+
+    function log(message, type = "normal") {
+      const logBox = document.getElementById("logBox");
+      const time = new Date().toLocaleTimeString("th-TH");
+
+      const color =
+        type === "error"
+          ? "text-red-300"
+          : type === "warn"
+            ? "text-amber-300"
+            : "text-slate-100";
+
+      const div = document.createElement("div");
+      div.className = color;
+      div.textContent = `[${time}] ${message}`;
+
+      logBox.prepend(div);
+    }
+
+    function clearLog() {
+      document.getElementById("logBox").innerHTML =
+        `<div class="text-slate-400">ล้าง Log แล้ว...</div>`;
+    }
+
+    function goUpload() {
+      window.location.href = "upload.html";
+    }
+
+    /****************************************
+     * DARK MODE
+     ****************************************/
+
+    function toggleDarkMode() {
+      const html = document.documentElement;
+      html.classList.toggle("dark");
+
+      const isDark = html.classList.contains("dark");
+      localStorage.setItem("darkMode", isDark ? "1" : "0");
+
+      updateDarkButton();
+    }
+
+    function updateDarkButton() {
+      const btn = document.getElementById("darkBtn");
+      if (!btn) return;
+
+      const isDark = document.documentElement.classList.contains("dark");
+      btn.innerHTML = isDark ? "☀️ Light" : "🌙 Dark";
     }
 
     function initDarkMode() {
