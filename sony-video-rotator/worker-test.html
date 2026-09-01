@@ -1,0 +1,14 @@
+<!doctype html><meta charset="utf-8"><body><pre id="out">starting</pre><script>
+(async()=>{
+ const out=document.querySelector('#out');
+ try{
+  const blob=await fetch('./sample.mp4').then(r=>r.blob());
+  const file=new File([blob],'sample.mp4',{type:'video/mp4'});
+  const w=new Worker('./trim-worker.js');
+  const logs=[];
+  w.onmessage=e=>{logs.push(JSON.stringify(e.data)); if(e.data?.type==='result'){out.textContent=logs.join('\n');}};
+  w.onerror=e=>{out.textContent='ERR '+e.message+'\n'+logs.join('\n')};
+  w.postMessage({id:1,type:'trim',file,start:0.5,end:2.0});
+ }catch(e){out.textContent='TOP '+e.stack}
+})();
+</script>
