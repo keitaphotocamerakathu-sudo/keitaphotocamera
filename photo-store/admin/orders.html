@@ -13,12 +13,10 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-  <!-- ถ้าไฟล์นี้อยู่ใน /admin/order.html ต้องใช้ ../js/config.js -->
-  <script src="../js/config.js?v=admin-order-002"></script>
+  <script src="../js/config.js?v=admin-orders-no-login-001"></script>
 
   <style>
-    html,
-    body {
+    html, body {
       width: 100%;
       max-width: 100%;
       overflow-x: hidden;
@@ -38,9 +36,7 @@
       user-select: none;
     }
 
-    button,
-    select,
-    input {
+    button, select, input {
       -webkit-tap-highlight-color: transparent;
       touch-action: manipulation;
     }
@@ -107,7 +103,7 @@
           <p class="text-xs text-slate-500 dark:text-slate-400">Admin Panel</p>
           <h1 class="text-2xl font-black">อนุมัติออเดอร์</h1>
           <p id="adminText" class="text-sm text-slate-500 dark:text-slate-400">
-            กำลังตรวจสอบสิทธิ์...
+            หน้าอนุมัติออเดอร์
           </p>
         </div>
 
@@ -122,19 +118,19 @@
 
           <button
             type="button"
+            onclick="goHome()"
+            class="bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-2xl px-4 py-2 font-bold"
+          >
+            หน้าแรก
+          </button>
+
+          <button
+            type="button"
             onclick="toggleDarkMode()"
             id="darkBtn"
             class="bg-slate-100 dark:bg-slate-800 rounded-2xl px-4 py-2 font-bold"
           >
             🌙 Dark
-          </button>
-
-          <button
-            type="button"
-            onclick="logout()"
-            class="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-300 rounded-2xl px-4 py-2 font-bold"
-          >
-            ออกจากระบบ
           </button>
         </div>
       </div>
@@ -248,7 +244,6 @@
         CONFIG.SUPABASE_ANON_KEY
       );
 
-    let currentUser = null;
     let orders = [];
     let isWorking = false;
 
@@ -260,11 +255,10 @@
           throw new Error("ไม่พบ Supabase client");
         }
 
-        await checkAdmin();
         await loadOrders();
 
       } catch (err) {
-        console.error("ADMIN ORDER INIT ERROR:", err);
+        console.error("ADMIN ORDERS INIT ERROR:", err);
         hideLoading();
 
         Swal.fire(
@@ -275,89 +269,11 @@
       }
     });
 
-    async function checkAdmin() {
-      const { data, error } = await db.auth.getSession();
-
-      if (error) {
-        throw error;
-      }
-
-      const session = data?.session;
-
-      if (!session?.user) {
-        window.location.href = "login.html";
-        return;
-      }
-
-      currentUser = session.user;
-
-      const email = currentUser.email || "-";
-
-      setText("adminText", `เข้าสู่ระบบโดย ${email}`);
-
-      /*
-        ตรวจ admin_users ถ้ามี table นี้
-        ถ้าไม่มี table นี้ จะไม่ block เพื่อกันหน้าอนุมัติพัง
-      */
-      try {
-        const { data: adminRows, error: adminError } = await db
-          .from("admin_users")
-          .select("*")
-          .or(`user_id.eq.${currentUser.id},email.eq.${email}`)
-          .limit(1);
-
-        if (adminError) {
-          console.warn("admin_users check skipped:", adminError);
-          return;
-        }
-
-        const admin = adminRows?.[0];
-
-        if (!admin) {
-          throw new Error("บัญชีนี้ยังไม่ได้รับสิทธิ์ Admin");
-        }
-
-        const status = String(admin.status || "approved").toLowerCase();
-        const role = String(admin.role || "admin").toLowerCase();
-
-        if (
-          admin.is_active === false ||
-          status === "pending" ||
-          status === "rejected" ||
-          status === "disabled"
-        ) {
-          throw new Error("บัญชี Admin นี้ยังไม่พร้อมใช้งาน");
-        }
-
-        setText("adminText", `เข้าสู่ระบบโดย ${email} · ${role}`);
-
-      } catch (err) {
-        const msg = String(err.message || "");
-        const code = String(err.code || "");
-
-        if (
-          code === "42P01" ||
-          msg.includes("does not exist") ||
-          msg.includes("Could not find")
-        ) {
-          console.warn("admin_users table not found, allow authenticated session");
-          return;
-        }
-
-        throw err;
-      }
-    }
-
     async function loadOrders() {
       showLoading();
 
       const limit = Number(document.getElementById("limitSelect")?.value || 50);
 
-      /*
-        สำคัญ:
-        query นี้ไม่เรียก Edge Function
-        จึงไม่เกิด 404 จาก send-order-approved แล้ว
-      */
       let result = await db
         .from("orders")
         .select(`
@@ -372,9 +288,6 @@
         .order("created_at", { ascending: false })
         .limit(limit);
 
-      /*
-        fallback ถ้า relation events ไม่มี หรือ foreign key ไม่ตรง
-      */
       if (result.error) {
         console.warn("Full relation query failed, fallback without events:", result.error);
 
@@ -392,9 +305,6 @@
           .limit(limit);
       }
 
-      /*
-        fallback ถ้า relation payments ไม่มี
-      */
       if (result.error) {
         console.warn("Fallback with payments failed, fallback basic:", result.error);
 
@@ -814,7 +724,6 @@
             <img
               src="${escapeAttr(slipUrl)}"
               style="width:100%;border-radius:16px;background:#e5e7eb"
-              onerror="this.onerror=null;this.replaceWith(document.createTextNode('เปิดรูปสลิปไม่ได้ แต่ยังสามารถกดลิงก์ได้'))"
             />
           </a>
         `,
@@ -1215,14 +1124,8 @@
       return encodeURI(cleanUrl);
     }
 
-    async function logout() {
-      try {
-        await db.auth.signOut();
-      } catch (err) {
-        console.warn("logout error:", err);
-      }
-
-      window.location.href = "login.html";
+    function goHome() {
+      window.location.href = "../index.html";
     }
 
     function toggleDarkMode() {
