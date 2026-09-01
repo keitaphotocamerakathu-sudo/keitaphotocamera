@@ -445,7 +445,120 @@
       color: rgba(255, 255, 255, 0.42);
     }
 
-  </style>
+  
+
+    /****************************************
+     * WATERMARK V4 FIX
+     * - ไม่ให้ลายน้ำลอยทับนอกกรอบรูปจนเละ
+     * - ลายน้ำในรูปใหญ่ถี่เต็มพื้นที่รูป
+     * - ลดความคมชัดรูปที่โชว์บนเว็บ
+     ****************************************/
+
+    /* ปิดลายน้ำแบบเต็มหน้าจอเดิม เพราะมันทับ UI และไม่สวย */
+    #imageModal::before,
+    #imageModal::after {
+      display: none !important;
+      content: none !important;
+    }
+
+    /* ปิด layer เดิมที่เป็น grid เพราะทำให้ช่องว่างเยอะและซ้อนมั่ว */
+    .watermark-layer {
+      display: none !important;
+    }
+
+    /* ลายน้ำแบบ tile ซ้ำเต็มกรอบรูปจริง ไม่ใช่ลอยทับนอกภาพ */
+    .watermark-dense::before {
+      content: "" !important;
+      position: absolute !important;
+      inset: 0 !important;
+      z-index: 18 !important;
+      pointer-events: none !important;
+      transform: none !important;
+      white-space: normal !important;
+      opacity: 0.86 !important;
+      background-repeat: repeat !important;
+      background-size: 150px 78px !important;
+      background-position: center center !important;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='78' viewBox='0 0 150 78'%3E%3Cg transform='rotate(-24 75 39)'%3E%3Ctext x='-18' y='30' fill='rgba(255,255,255,0.42)' stroke='rgba(0,0,0,0.58)' stroke-width='1' font-family='Arial,sans-serif' font-size='17' font-weight='900' letter-spacing='1.2'%3EKEITA PHOTO%3C/text%3E%3Ctext x='8' y='55' fill='rgba(255,255,255,0.38)' stroke='rgba(0,0,0,0.55)' stroke-width='1' font-family='Arial,sans-serif' font-size='15' font-weight='900' letter-spacing='1.1'%3EPREVIEW%3C/text%3E%3C/g%3E%3C/svg%3E") !important;
+    }
+
+    .watermark-dense::after {
+      content: "PREVIEW" !important;
+      position: absolute !important;
+      inset: 0 !important;
+      z-index: 19 !important;
+      pointer-events: none !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      transform: rotate(-18deg) !important;
+      color: rgba(255,255,255,0.23) !important;
+      text-shadow: 0 3px 8px rgba(0,0,0,0.78) !important;
+      font-size: clamp(28px, 9vw, 58px) !important;
+      font-weight: 1000 !important;
+      letter-spacing: 3px !important;
+    }
+
+    /* ภาพแนวตั้ง: tile เล็กลง ลายน้ำถี่ขึ้น */
+    .watermark-dense.portrait::before {
+      background-size: 112px 58px !important;
+      opacity: 0.92 !important;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='112' height='58' viewBox='0 0 112 58'%3E%3Cg transform='rotate(-24 56 29)'%3E%3Ctext x='-20' y='23' fill='rgba(255,255,255,0.48)' stroke='rgba(0,0,0,0.62)' stroke-width='0.9' font-family='Arial,sans-serif' font-size='13' font-weight='900' letter-spacing='0.8'%3EKEITA PHOTO%3C/text%3E%3Ctext x='2' y='43' fill='rgba(255,255,255,0.43)' stroke='rgba(0,0,0,0.60)' stroke-width='0.9' font-family='Arial,sans-serif' font-size='12' font-weight='900' letter-spacing='0.8'%3EPREVIEW%3C/text%3E%3C/g%3E%3C/svg%3E") !important;
+    }
+
+    .watermark-dense.portrait::after {
+      font-size: clamp(28px, 10vw, 52px) !important;
+      color: rgba(255,255,255,0.25) !important;
+    }
+
+    /* ตอนเปิดรูปใหญ่: ให้ลายน้ำเต็มเฉพาะตัวรูปและถี่กว่า grid */
+    .modal-watermark-media.watermark-dense::before {
+      inset: 0 !important;
+      background-size: 118px 60px !important;
+      opacity: 0.96 !important;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='118' height='60' viewBox='0 0 118 60'%3E%3Cg transform='rotate(-24 59 30)'%3E%3Ctext x='-22' y='23' fill='rgba(255,255,255,0.52)' stroke='rgba(0,0,0,0.68)' stroke-width='1' font-family='Arial,sans-serif' font-size='14' font-weight='900' letter-spacing='0.9'%3EKEITA PHOTO%3C/text%3E%3Ctext x='2' y='44' fill='rgba(255,255,255,0.48)' stroke='rgba(0,0,0,0.66)' stroke-width='1' font-family='Arial,sans-serif' font-size='13' font-weight='900' letter-spacing='0.9'%3EPREVIEW%3C/text%3E%3C/g%3E%3C/svg%3E") !important;
+    }
+
+    .modal-watermark-media.watermark-dense.portrait::before {
+      background-size: 92px 48px !important;
+      opacity: 1 !important;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='92' height='48' viewBox='0 0 92 48'%3E%3Cg transform='rotate(-24 46 24)'%3E%3Ctext x='-18' y='19' fill='rgba(255,255,255,0.56)' stroke='rgba(0,0,0,0.70)' stroke-width='0.9' font-family='Arial,sans-serif' font-size='11' font-weight='900' letter-spacing='0.7'%3EKEITA%3C/text%3E%3Ctext x='0' y='35' fill='rgba(255,255,255,0.52)' stroke='rgba(0,0,0,0.68)' stroke-width='0.9' font-family='Arial,sans-serif' font-size='10.5' font-weight='900' letter-spacing='0.7'%3EPREVIEW%3C/text%3E%3C/g%3E%3C/svg%3E") !important;
+    }
+
+    .modal-watermark-media.watermark-dense::after {
+      font-size: clamp(38px, 9vw, 76px) !important;
+      color: rgba(255,255,255,0.20) !important;
+      text-shadow: 0 3px 8px rgba(0,0,0,0.85) !important;
+    }
+
+    .modal-watermark-media.watermark-dense.portrait::after {
+      font-size: clamp(34px, 10vw, 62px) !important;
+      color: rgba(255,255,255,0.22) !important;
+    }
+
+    /* ลดความคมชัดของรูปในหน้าเว็บที่โชว์รูป */
+    .photo-card .watermark-dense > img,
+    .photo-card .watermark-dense > video {
+      filter: blur(1.05px) contrast(0.64) brightness(0.86) saturate(0.74) !important;
+      transform: scale(1.01);
+    }
+
+    /* ลดความคมชัดของรูปตอนขยาย */
+    .modal-watermark-media > img,
+    .modal-watermark-media > video,
+    #modalImage,
+    #modalVideo {
+      filter: blur(1.25px) contrast(0.60) brightness(0.84) saturate(0.70) !important;
+    }
+
+    /* ให้ปุ่มไม่โดนลายน้ำ เพราะตอนนี้ลายน้ำอยู่ในกรอบรูปเท่านั้น */
+    #modalXBtn,
+    #modalAddBtn,
+    #modalCloseBtn {
+      position: relative;
+      z-index: 80;
+    }
+</style>
 </head>
 
 <body class="bg-slate-950 text-white min-h-screen">
