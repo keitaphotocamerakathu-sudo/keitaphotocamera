@@ -22,9 +22,9 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-  <script src="js/config.js?v=new-supabase-008"></script>
-  <script src="js/liff-helper.js?v=new-supabase-008"></script>
-  <script src="js/app-liff.js?v=new-supabase-008"></script>
+  <script src="js/config.js?v=new-supabase-009"></script>
+  <script src="js/liff-helper.js?v=new-supabase-009"></script>
+  <script src="js/app-liff.js?v=new-supabase-009"></script>
 
   <style>
     html,
@@ -147,6 +147,7 @@
         <div class="flex flex-col sm:flex-row gap-2 shrink-0">
 
           <button
+            type="button"
             onclick="goHome()"
             class="bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-full px-4 py-2 font-bold"
           >
@@ -164,6 +165,7 @@
           </select>
 
           <button
+            type="button"
             onclick="toggleDarkMode()"
             id="darkBtn"
             class="rounded-full bg-slate-100 dark:bg-slate-800 dark:text-white px-4 py-2 text-sm font-bold"
@@ -247,6 +249,7 @@
       </p>
 
       <button
+        type="button"
         onclick="goHome()"
         class="mt-5 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-2xl px-5 py-3 font-bold"
       >
@@ -301,7 +304,10 @@
         photoLabel: "PHOTO",
         videoLabel: "VDO",
 
-        errorTitle: "เกิดข้อผิดพลาด"
+        errorTitle: "เกิดข้อผิดพลาด",
+        loadFailed: "โหลดออเดอร์ไม่สำเร็จ",
+        noLineUser: "ไม่พบ LINE user id กรุณาเปิดผ่าน LINE LIFF",
+        supabaseNotFound: "ไม่พบ Supabase client"
       },
 
       en: {
@@ -335,7 +341,10 @@
         photoLabel: "PHOTO",
         videoLabel: "VDO",
 
-        errorTitle: "Error"
+        errorTitle: "Error",
+        loadFailed: "Failed to load orders",
+        noLineUser: "LINE user id not found. Please open via LINE LIFF.",
+        supabaseNotFound: "Supabase client not found"
       },
 
       ru: {
@@ -369,7 +378,10 @@
         photoLabel: "ФОТО",
         videoLabel: "VDO",
 
-        errorTitle: "Ошибка"
+        errorTitle: "Ошибка",
+        loadFailed: "Не удалось загрузить заказы",
+        noLineUser: "LINE user id не найден. Откройте через LINE LIFF.",
+        supabaseNotFound: "Клиент Supabase не найден"
       }
     };
 
@@ -393,7 +405,7 @@
           applyLanguage();
 
           if (!db) {
-            throw new Error("ไม่พบ Supabase client");
+            throw new Error(t().supabaseNotFound);
           }
 
           try {
@@ -413,7 +425,7 @@
           }
 
           if (!profile.userId) {
-            throw new Error("ไม่พบ LINE user id กรุณาเปิดผ่าน LINE LIFF");
+            throw new Error(t().noLineUser);
           }
 
           showProfile();
@@ -421,37 +433,48 @@
           await loadOrders();
 
         } catch (err) {
-          console.error(err);
+          console.error("ORDER PAGE ERROR:", err);
 
-          document
-            .getElementById("loadingBox")
-            .classList.add("hidden");
+          const loadingBox = document.getElementById("loadingBox");
+          if (loadingBox) {
+            loadingBox.classList.add("hidden");
+          }
 
           Swal.fire(
             t().errorTitle,
-            err.message || "โหลดออเดอร์ไม่สำเร็จ",
+            err.message || t().loadFailed,
             "error"
           );
         }
       }
     );
 
+    function setText(id, value) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.textContent = value;
+      }
+    }
+
     function applyLanguage() {
       const x = t();
 
       document.documentElement.lang = currentLang;
 
-      document.getElementById("txtMiniApp").textContent = x.miniApp;
-      document.getElementById("txtPageTitle").textContent = x.pageTitle;
-      document.getElementById("txtPageDesc").textContent = x.pageDesc;
-      document.getElementById("txtHome").textContent = x.home;
-      document.getElementById("txtConnected").textContent = x.connected;
-      document.getElementById("loadingBox").textContent = x.loading;
-      document.getElementById("txtEmptyTitle").textContent = x.emptyTitle;
-      document.getElementById("txtEmptyDesc").textContent = x.emptyDesc;
-      document.getElementById("txtChooseEvent").textContent = x.chooseEvent;
+      setText("txtMiniApp", x.miniApp);
+      setText("txtPageTitle", x.pageTitle);
+      setText("txtPageDesc", x.pageDesc);
+      setText("txtHome", x.home);
+      setText("txtConnected", x.connected);
+      setText("loadingBox", x.loading);
+      setText("txtEmptyTitle", x.emptyTitle);
+      setText("txtEmptyDesc", x.emptyDesc);
+      setText("txtChooseEvent", x.chooseEvent);
 
-      document.getElementById("langSelect").value = currentLang;
+      const langSelect = document.getElementById("langSelect");
+      if (langSelect) {
+        langSelect.value = currentLang;
+      }
 
       updateDarkButton();
     }
@@ -466,74 +489,57 @@
     }
 
     function showProfile() {
-      document.getElementById("profileBox")
-        .classList.remove("hidden");
+      const profileBox = document.getElementById("profileBox");
 
-      document.getElementById("lineName").textContent =
-        profile.displayName || "LINE User";
+      if (profileBox) {
+        profileBox.classList.remove("hidden");
+      }
 
-      document.getElementById("linePicture").src =
-        profile.pictureUrl ||
-        "https://placehold.co/100x100?text=LINE";
+      setText("lineName", profile.displayName || "LINE User");
+
+      const linePicture = document.getElementById("linePicture");
+
+      if (linePicture) {
+        linePicture.src =
+          profile.pictureUrl ||
+          "https://placehold.co/100x100?text=LINE";
+      }
     }
 
     async function loadOrders() {
-      document.getElementById("loadingBox").classList.remove("hidden");
-      document.getElementById("orderList").classList.add("hidden");
-      document.getElementById("emptyBox").classList.add("hidden");
+      const loadingBox = document.getElementById("loadingBox");
+      const orderList = document.getElementById("orderList");
+      const emptyBox = document.getElementById("emptyBox");
 
+      loadingBox.classList.remove("hidden");
+      orderList.classList.add("hidden");
+      emptyBox.classList.add("hidden");
+
+      /*
+        แก้ error สำคัญ:
+        ใช้ photos (*) แทนการระบุ column ทีละตัว
+        เพื่อไม่ให้พังถ้าบาง column ของ VDO ยังไม่มีใน database
+      */
       const { data, error } = await db
         .from("orders")
         .select(`
           *,
           order_items (
             *,
-            photos (
-              id,
-              event_id,
-              filename,
-              price,
-              status,
-
-              media_type,
-              mime_type,
-              file_size,
-              duration_seconds,
-
-              preview_url,
-              watermark_url,
-              r2_preview_url,
-              r2_watermark_url,
-
-              original_path,
-              preview_path,
-              watermark_path,
-              r2_key,
-              r2_original_key,
-
-              video_url,
-              video_path,
-              video_preview_url,
-              video_preview_path,
-
-              thumbnail_url,
-              thumbnail_path,
-              r2_thumbnail_url
-            )
+            photos (*)
           )
         `)
         .eq("line_user_id", profile.userId)
         .order("created_at", { ascending: false });
 
       if (error) {
+        console.error("LOAD ORDERS SUPABASE ERROR:", error);
         throw error;
       }
 
       orders = data || [];
 
-      document
-        .getElementById("loadingBox")
-        .classList.add("hidden");
+      loadingBox.classList.add("hidden");
 
       renderOrders();
     }
@@ -544,6 +550,8 @@
 
       const empty =
         document.getElementById("emptyBox");
+
+      if (!list || !empty) return;
 
       list.innerHTML = "";
 
@@ -601,11 +609,11 @@
             <div>
 
               <p class="text-xs text-slate-500 dark:text-slate-400">
-                ${t().amount}
+                ${escapeHtml(t().amount)}
               </p>
 
               <p class="font-bold">
-                ${buildMediaCountText(counts)}
+                ${escapeHtml(buildMediaCountText(counts))}
               </p>
 
             </div>
@@ -613,7 +621,7 @@
             <div class="text-right">
 
               <p class="text-xs text-slate-500 dark:text-slate-400">
-                ${t().total}
+                ${escapeHtml(t().total)}
               </p>
 
               <p class="font-black text-emerald-600">
@@ -676,7 +684,7 @@
       if (!items.length) {
         return `
           <div class="col-span-4 text-center text-sm text-slate-400 py-6">
-            ${t().noPhoto}
+            ${escapeHtml(t().noPhoto)}
           </div>
         `;
       }
@@ -730,30 +738,45 @@
         .join("");
     }
 
-    function getMediaType(item, photo) {
-      const mediaType = String(item.media_type || photo.media_type || "").toLowerCase();
-      const mimeType = String(item.mime_type || photo.mime_type || "").toLowerCase();
-      const filename = String(
-        item.filename ||
-        item.file_name ||
-        photo.filename ||
+    function getMediaType(item, photo = {}) {
+      const mediaType = String(
+        item?.media_type ||
+        item?.item_type ||
+        photo?.media_type ||
         ""
       ).toLowerCase();
 
-      if (mediaType === "video") return "video";
-      if (mediaType === "image") return "image";
+      const mimeType = String(
+        item?.mime_type ||
+        photo?.mime_type ||
+        ""
+      ).toLowerCase();
+
+      const filename = String(
+        item?.filename ||
+        item?.file_name ||
+        photo?.filename ||
+        ""
+      ).toLowerCase();
+
+      if (mediaType === "video" || mediaType === "vdo") return "video";
+      if (mediaType === "image" || mediaType === "photo") return "image";
 
       if (
         mimeType.startsWith("video/") ||
         filename.endsWith(".mp4") ||
         filename.endsWith(".mov") ||
         filename.endsWith(".webm") ||
-        item.video_url ||
-        item.video_path ||
-        photo.video_url ||
-        photo.video_path ||
-        photo.video_preview_url ||
-        photo.video_preview_path
+        item?.video_url ||
+        item?.video_path ||
+        item?.video_preview_url ||
+        item?.video_preview_path ||
+        photo?.video_url ||
+        photo?.video_path ||
+        photo?.video_preview_url ||
+        photo?.video_preview_path ||
+        photo?.r2_video_url ||
+        photo?.r2_video_key
       ) {
         return "video";
       }
@@ -761,11 +784,11 @@
       return "image";
     }
 
-    function isVideoItem(item, photo) {
+    function isVideoItem(item, photo = {}) {
       return getMediaType(item, photo) === "video";
     }
 
-    function getOrderItemImage(item, photo) {
+    function getOrderItemImage(item, photo = {}) {
       const mediaIsVideo = isVideoItem(item, photo);
 
       const raw = mediaIsVideo
@@ -834,10 +857,11 @@
       ) {
         return `
           <button
+            type="button"
             onclick="downloadOrder('${escapeAttr(order.id)}')"
             class="w-full bg-emerald-600 text-white rounded-2xl py-3 font-bold"
           >
-            ${t().download}
+            ${escapeHtml(t().download)}
           </button>
         `;
       }
@@ -850,10 +874,11 @@
       ) {
         return `
           <button
+            type="button"
             disabled
             class="w-full bg-orange-100 text-orange-700 rounded-2xl py-3 font-bold"
           >
-            ${t().waitingApprove}
+            ${escapeHtml(t().waitingApprove)}
           </button>
         `;
       }
@@ -861,10 +886,11 @@
       if (status === "rejected") {
         return `
           <button
+            type="button"
             disabled
             class="w-full bg-red-100 text-red-700 rounded-2xl py-3 font-bold"
           >
-            ${t().rejected}
+            ${escapeHtml(t().rejected)}
           </button>
         `;
       }
@@ -875,10 +901,11 @@
       ) {
         return `
           <button
+            type="button"
             disabled
             class="w-full bg-yellow-100 text-yellow-700 rounded-2xl py-3 font-bold"
           >
-            ${t().pendingPayment}
+            ${escapeHtml(t().pendingPayment)}
           </button>
         `;
       }
@@ -889,16 +916,18 @@
       ) {
         return `
           <button
+            type="button"
             disabled
             class="w-full bg-slate-100 text-slate-600 rounded-2xl py-3 font-bold"
           >
-            ${t().cancelled}
+            ${escapeHtml(t().cancelled)}
           </button>
         `;
       }
 
       return `
         <button
+          type="button"
           disabled
           class="w-full bg-slate-100 text-slate-600 rounded-2xl py-3 font-bold"
         >
@@ -1076,7 +1105,7 @@
     }
 
     function escapeAttr(text) {
-      return escapeHtml(text);
+      return escapeHtml(text).replace(/`/g, "&#096;");
     }
 
     document.addEventListener("contextmenu", function(e) {
