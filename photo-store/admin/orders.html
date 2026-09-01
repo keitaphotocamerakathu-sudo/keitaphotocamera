@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Admin Orders</title>
+  <title>อนุมัติออเดอร์</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -13,122 +13,183 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-  <script src="../js/config.js?v=new-supabase-011"></script>
+  <script src="../js/config.js?v=admin-order-001"></script>
 
   <style>
-    html,
-    body {
+    html, body {
       width: 100%;
       max-width: 100%;
       overflow-x: hidden;
     }
 
+    body {
+      min-height: 100vh;
+    }
+
+    .safe-bottom {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
     img {
+      -webkit-user-drag: none;
       -webkit-touch-callout: none;
-      -webkit-user-select: none;
       user-select: none;
+    }
+
+    .media-badge {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      z-index: 5;
+      background: rgba(0,0,0,.65);
+      color: #fff;
+      border-radius: 999px;
+      padding: 3px 7px;
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: .04em;
+    }
+
+    .play-layer {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .play-circle {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.6);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
     }
   </style>
 </head>
 
-<body class="bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-white transition">
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-white safe-bottom">
 
-  <main class="max-w-6xl mx-auto p-4 pb-24">
+  <main class="max-w-7xl mx-auto p-4 pb-24">
 
-    <header class="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm mb-4 transition">
-      <div class="flex justify-between items-start gap-3">
-        <div class="min-w-0">
-          <p class="text-xs text-slate-500 dark:text-slate-400">Admin Dashboard</p>
-          <h1 class="text-2xl font-black">จัดการคำสั่งซื้อ</h1>
-          <p class="text-sm text-slate-500 dark:text-slate-400">
-            ตรวจสลิป / อนุมัติ / ปฏิเสธ Order
-          </p>
+    <header class="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm mb-4 border border-slate-100 dark:border-slate-800">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Admin Panel</p>
+          <h1 class="text-2xl font-black">อนุมัติออเดอร์</h1>
+          <p id="adminText" class="text-sm text-slate-500 dark:text-slate-400">กำลังตรวจสอบสิทธิ์...</p>
         </div>
 
-        <div class="flex flex-col sm:flex-row gap-2 shrink-0">
+        <div class="flex flex-wrap gap-2">
           <button
+            type="button"
+            onclick="loadOrders()"
+            class="bg-emerald-600 text-white rounded-2xl px-4 py-2 font-bold"
+          >
+            🔄 โหลดใหม่
+          </button>
+
+          <button
+            type="button"
             onclick="toggleDarkMode()"
             id="darkBtn"
-            class="bg-slate-100 dark:bg-slate-800 dark:text-white rounded-2xl px-4 py-3 font-bold transition"
+            class="bg-slate-100 dark:bg-slate-800 rounded-2xl px-4 py-2 font-bold"
           >
             🌙 Dark
           </button>
 
           <button
-            onclick="loadOrders()"
-            class="bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-2xl px-5 py-3 font-bold"
+            type="button"
+            onclick="logout()"
+            class="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-300 rounded-2xl px-4 py-2 font-bold"
           >
-            รีเฟรช
+            ออกจากระบบ
           </button>
         </div>
       </div>
     </header>
 
-    <section class="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm mb-4 transition">
-      <label class="font-bold block mb-2">ค้นหาตาม Event</label>
-
-      <select
-        id="eventFilter"
-        onchange="setEventFilter(this.value)"
-        class="w-full bg-slate-50 dark:bg-slate-800 dark:text-white rounded-2xl p-4 outline-none border border-slate-200 dark:border-slate-700"
-      >
-        <option value="all">ทุก Event</option>
-      </select>
-    </section>
-
-    <section class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-      <button onclick="setFilter('all')" id="filter-all" class="filter-btn bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-2xl p-3 font-bold transition">
-        ทั้งหมด
-      </button>
-
-      <button onclick="setFilter('pending')" id="filter-pending" class="filter-btn bg-white dark:bg-slate-900 rounded-2xl p-3 font-bold transition">
-        รอตรวจ
-      </button>
-
-      <button onclick="setFilter('approved')" id="filter-approved" class="filter-btn bg-white dark:bg-slate-900 rounded-2xl p-3 font-bold transition">
-        อนุมัติแล้ว
-      </button>
-
-      <button onclick="setFilter('rejected')" id="filter-rejected" class="filter-btn bg-white dark:bg-slate-900 rounded-2xl p-3 font-bold transition">
-        ไม่ผ่าน
-      </button>
-
-      <button onclick="setFilter('pending_payment')" id="filter-pending_payment" class="filter-btn bg-white dark:bg-slate-900 rounded-2xl p-3 font-bold transition">
-        รอชำระ
-      </button>
-    </section>
-
-    <section id="summaryBox" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-      <div class="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm transition">
-        <p class="text-xs text-slate-500 dark:text-slate-400">ทั้งหมด</p>
-        <p id="sumAll" class="text-2xl font-black">0</p>
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+      <div class="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm border border-slate-100 dark:border-slate-800">
+        <p class="text-xs text-slate-500 dark:text-slate-400">รอตรวจสอบ</p>
+        <p id="statPending" class="text-2xl font-black text-orange-600">0</p>
       </div>
 
-      <div class="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm transition">
-        <p class="text-xs text-slate-500 dark:text-slate-400">รอตรวจ</p>
-        <p id="sumWaiting" class="text-2xl font-black text-orange-600">0</p>
-      </div>
-
-      <div class="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm transition">
+      <div class="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm border border-slate-100 dark:border-slate-800">
         <p class="text-xs text-slate-500 dark:text-slate-400">อนุมัติแล้ว</p>
-        <p id="sumApproved" class="text-2xl font-black text-emerald-600">0</p>
+        <p id="statApproved" class="text-2xl font-black text-emerald-600">0</p>
       </div>
 
-      <div class="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm transition">
-        <p class="text-xs text-slate-500 dark:text-slate-400">ยอดรวม</p>
-        <p id="sumAmount" class="text-2xl font-black">฿0</p>
+      <div class="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm border border-slate-100 dark:border-slate-800">
+        <p class="text-xs text-slate-500 dark:text-slate-400">ปฏิเสธ</p>
+        <p id="statRejected" class="text-2xl font-black text-red-600">0</p>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm border border-slate-100 dark:border-slate-800">
+        <p class="text-xs text-slate-500 dark:text-slate-400">ทั้งหมด</p>
+        <p id="statAll" class="text-2xl font-black">0</p>
       </div>
     </section>
 
-    <section id="loadingBox" class="text-center py-10 text-slate-500 dark:text-slate-400">
-      กำลังโหลด Orders...
+    <section class="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm mb-4 border border-slate-100 dark:border-slate-800">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div>
+          <label class="text-xs font-bold text-slate-500 dark:text-slate-400">สถานะ</label>
+          <select
+            id="statusFilter"
+            onchange="renderOrders()"
+            class="mt-1 w-full rounded-2xl bg-slate-100 dark:bg-slate-800 px-4 py-3 outline-none"
+          >
+            <option value="pending">รอตรวจสอบ</option>
+            <option value="all">ทั้งหมด</option>
+            <option value="approved">อนุมัติแล้ว</option>
+            <option value="rejected">ปฏิเสธ</option>
+            <option value="paid">ชำระเงินแล้ว</option>
+          </select>
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="text-xs font-bold text-slate-500 dark:text-slate-400">ค้นหา</label>
+          <input
+            id="searchInput"
+            oninput="renderOrders()"
+            placeholder="ค้นหาเลขออเดอร์ / ชื่อลูกค้า / LINE user id"
+            class="mt-1 w-full rounded-2xl bg-slate-100 dark:bg-slate-800 px-4 py-3 outline-none"
+          />
+        </div>
+
+        <div>
+          <label class="text-xs font-bold text-slate-500 dark:text-slate-400">แสดง</label>
+          <select
+            id="limitSelect"
+            onchange="loadOrders()"
+            class="mt-1 w-full rounded-2xl bg-slate-100 dark:bg-slate-800 px-4 py-3 outline-none"
+          >
+            <option value="50">50 รายการ</option>
+            <option value="100">100 รายการ</option>
+            <option value="200">200 รายการ</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <section id="loadingBox" class="text-center py-12 text-slate-500 dark:text-slate-400">
+      กำลังโหลดข้อมูล...
     </section>
 
     <section id="orderList" class="space-y-4 hidden"></section>
 
     <section id="emptyBox" class="hidden text-center py-16">
       <p class="text-5xl">🧾</p>
-      <h2 class="mt-3 text-lg font-bold">ยังไม่มี Order</h2>
+      <h2 class="mt-3 text-lg font-bold">ไม่พบออเดอร์</h2>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+        ยังไม่มีรายการตามเงื่อนไขที่เลือก
+      </p>
     </section>
 
   </main>
@@ -142,331 +203,859 @@
         CONFIG.SUPABASE_ANON_KEY
       );
 
-    let allOrders = [];
-    let allEvents = [];
-    let currentFilter = "all";
-    let currentEventFilter = "all";
+    let currentUser = null;
+    let orders = [];
+    let isWorking = false;
 
     document.addEventListener("DOMContentLoaded", async () => {
       try {
         initDarkMode();
-
-        if (!db) {
-          throw new Error("ไม่พบ Supabase client กรุณาตรวจสอบ ../js/config.js");
-        }
-
-        await loadEventsForFilter();
+        await checkAdmin();
         await loadOrders();
-
       } catch (err) {
-        console.error(err);
+        console.error("ADMIN ORDER INIT ERROR:", err);
+        hideLoading();
 
         Swal.fire(
           "เกิดข้อผิดพลาด",
-          err.message || "โหลดข้อมูลไม่สำเร็จ",
+          err.message || "โหลดหน้าอนุมัติไม่สำเร็จ",
           "error"
         );
       }
     });
 
-    async function loadEventsForFilter() {
-      const select = document.getElementById("eventFilter");
-
-      const { data, error } = await db
-        .from("events")
-        .select("id,title,name,event_date,created_at")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.warn("load events error:", error.message);
-        return;
-      }
-
-      allEvents = data || [];
-
-      select.innerHTML = `
-        <option value="all">ทุก Event</option>
-        ${allEvents.map(event => `
-          <option value="${escapeAttr(event.id)}">
-            ${escapeHtml(event.title || event.name || event.id)}
-          </option>
-        `).join("")}
-      `;
-    }
-
-    async function loadOrders() {
-      document.getElementById("loadingBox").classList.remove("hidden");
-      document.getElementById("orderList").classList.add("hidden");
-      document.getElementById("emptyBox").classList.add("hidden");
-
-      const { data, error } = await db
-        .from("orders")
-        .select(`
-          *,
-          order_items (
-            id,
-            photo_id,
-            event_id,
-            filename,
-            photo_url,
-            price,
-            photos (
-              id,
-              filename,
-              preview_url,
-              watermark_url,
-              r2_preview_url,
-              r2_watermark_url,
-              r2_key,
-              preview_path,
-              watermark_path,
-              original_path
-            )
-          ),
-          payments (
-            id,
-            amount,
-            slip_url,
-            slip_path,
-            status,
-            created_at
-          )
-        `)
-        .order("created_at", { ascending: false });
+    async function checkAdmin() {
+      const { data, error } = await db.auth.getSession();
 
       if (error) throw error;
 
-      allOrders = data || [];
+      const session = data?.session;
 
-      document.getElementById("loadingBox").classList.add("hidden");
+      if (!session?.user) {
+        window.location.href = "login.html";
+        return;
+      }
 
-      renderSummary();
+      currentUser = session.user;
+
+      const email = currentUser.email || "-";
+      document.getElementById("adminText").textContent = `เข้าสู่ระบบโดย ${email}`;
+
+      try {
+        const { data: adminRows, error: adminError } = await db
+          .from("admin_users")
+          .select("*")
+          .or(`user_id.eq.${currentUser.id},email.eq.${email}`)
+          .limit(1);
+
+        if (adminError) {
+          console.warn("admin_users check skipped:", adminError);
+          return;
+        }
+
+        const admin = adminRows?.[0];
+
+        if (!admin) {
+          throw new Error("บัญชีนี้ยังไม่ได้รับสิทธิ์ Admin");
+        }
+
+        const status = String(admin.status || "approved").toLowerCase();
+        const role = String(admin.role || "admin").toLowerCase();
+
+        if (
+          admin.is_active === false ||
+          status === "pending" ||
+          status === "rejected" ||
+          status === "disabled"
+        ) {
+          throw new Error("บัญชี Admin นี้ยังไม่พร้อมใช้งาน");
+        }
+
+        document.getElementById("adminText").textContent =
+          `เข้าสู่ระบบโดย ${email} · ${role}`;
+
+      } catch (err) {
+        if (
+          String(err.message || "").includes("does not exist") ||
+          String(err.message || "").includes("Could not find") ||
+          String(err.code || "") === "42P01"
+        ) {
+          console.warn("admin_users table not found, allow authenticated admin session");
+          return;
+        }
+
+        throw err;
+      }
+    }
+
+    async function loadOrders() {
+      showLoading();
+
+      const limit = Number(document.getElementById("limitSelect")?.value || 50);
+
+      let result = await db
+        .from("orders")
+        .select(`
+          *,
+          payments (*),
+          events (*),
+          order_items (
+            *,
+            photos (*)
+          )
+        `)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+      if (result.error) {
+        console.warn("Full relation query failed, fallback query:", result.error);
+
+        result = await db
+          .from("orders")
+          .select(`
+            *,
+            payments (*),
+            order_items (
+              *,
+              photos (*)
+            )
+          `)
+          .order("created_at", { ascending: false })
+          .limit(limit);
+      }
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      orders = result.data || [];
+
+      hideLoading();
+      updateStats();
       renderOrders();
     }
 
-    function getFilteredOrders() {
-      let orders = [...allOrders];
-
-      if (currentFilter !== "all") {
-        orders = orders.filter(o => normalizeStatus(o.status) === currentFilter);
-      }
-
-      if (currentEventFilter !== "all") {
-        orders = orders.filter(o => String(o.event_id) === String(currentEventFilter));
-      }
-
-      return orders;
+    function showLoading() {
+      document.getElementById("loadingBox").classList.remove("hidden");
+      document.getElementById("orderList").classList.add("hidden");
+      document.getElementById("emptyBox").classList.add("hidden");
     }
 
-    function normalizeStatus(status) {
-      const s = String(status || "").toLowerCase();
-
-      if (
-        s === "waiting_approve" ||
-        s === "uploaded" ||
-        s === "paid_pending"
-      ) {
-        return "pending";
-      }
-
-      if (s === "paid") {
-        return "approved";
-      }
-
-      if (s === "unpaid") {
-        return "pending_payment";
-      }
-
-      if (s === "cancelled" || s === "canceled") {
-        return "cancelled";
-      }
-
-      return s || "unknown";
+    function hideLoading() {
+      document.getElementById("loadingBox").classList.add("hidden");
     }
 
-    function renderSummary() {
-      const orders = getFilteredOrders();
+    function updateStats() {
+      const pending = orders.filter(o => isPendingStatus(o.status)).length;
+      const approved = orders.filter(o => isApprovedStatus(o.status)).length;
+      const rejected = orders.filter(o => String(o.status || "").toLowerCase() === "rejected").length;
 
-      const total = orders.length;
-      const waiting = orders.filter(o => normalizeStatus(o.status) === "pending").length;
-      const approved = orders.filter(o => normalizeStatus(o.status) === "approved").length;
-
-      const amount = orders.reduce((sum, o) => {
-        return sum + Number(o.total_amount || o.amount || 0);
-      }, 0);
-
-      document.getElementById("sumAll").textContent = total;
-      document.getElementById("sumWaiting").textContent = waiting;
-      document.getElementById("sumApproved").textContent = approved;
-      document.getElementById("sumAmount").textContent = "฿" + formatMoney(amount);
+      setText("statPending", pending);
+      setText("statApproved", approved);
+      setText("statRejected", rejected);
+      setText("statAll", orders.length);
     }
 
     function renderOrders() {
       const list = document.getElementById("orderList");
       const empty = document.getElementById("emptyBox");
 
-      const orders = getFilteredOrders();
-
       list.innerHTML = "";
 
-      if (!orders.length) {
+      const filtered = getFilteredOrders();
+
+      if (!filtered.length) {
         list.classList.add("hidden");
         empty.classList.remove("hidden");
-        renderSummary();
         return;
       }
 
       empty.classList.add("hidden");
       list.classList.remove("hidden");
 
-      orders.forEach(order => {
+      filtered.forEach(order => {
         const items = order.order_items || [];
-        const payment = getLatestPayment(order.payments || []);
-        const slipUrl = normalizeImageUrl(order.slip_url || payment?.slip_url || "");
-        const total = Number(order.total_amount || order.amount || 0);
-        const status = normalizeStatus(order.status);
+        const payment = getLatestPayment(order);
+        const counts = countMediaItems(items);
+        const slipUrl = getSlipUrl(payment, order);
+        const total = Number(order.total_amount || payment?.amount || items.reduce((s, i) => s + Number(i.price || 0), 0));
 
         const card = document.createElement("article");
 
         card.className =
-          "bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm transition border border-slate-100 dark:border-slate-800";
+          "bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm border border-slate-100 dark:border-slate-800";
 
         card.innerHTML = `
-          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+          <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
 
-            <div class="min-w-0">
+            <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2 flex-wrap">
-                <h2 class="text-lg font-black truncate">
+                <h2 class="font-black text-lg truncate">
                   ${escapeHtml(order.order_no || order.id)}
                 </h2>
-
                 ${statusBadge(order.status)}
               </div>
 
               <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                ${formatDate(order.created_at)}
+                ${escapeHtml(formatDate(order.created_at))}
               </p>
 
-              <div class="mt-3 text-sm text-slate-600 dark:text-slate-300 break-all">
-                <p><b>Event:</b> ${escapeHtml(getEventName(order.event_id))}</p>
-                <p><b>LINE:</b> ${escapeHtml(order.line_display_name || "-")}</p>
-                <p><b>User ID:</b> ${escapeHtml(order.line_user_id || "-")}</p>
-                <p><b>จำนวนภาพ:</b> ${items.length} ภาพ</p>
-                <p><b>ยอดรวม:</b> ฿${formatMoney(total)}</p>
-                <p><b>Payment:</b> ${escapeHtml(payment?.status || "-")}</p>
+              <div class="mt-3 flex items-center gap-3">
+                <img
+                  src="${escapeAttr(order.line_picture_url || "https://placehold.co/100x100?text=LINE")}"
+                  class="w-11 h-11 rounded-full object-cover bg-slate-200 dark:bg-slate-800"
+                  referrerpolicy="no-referrer"
+                  onerror="this.onerror=null;this.src='https://placehold.co/100x100?text=LINE';"
+                />
+
+                <div class="min-w-0">
+                  <p class="font-bold truncate">
+                    ${escapeHtml(order.line_display_name || "LINE User")}
+                  </p>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 truncate">
+                    ${escapeHtml(order.line_user_id || "-")}
+                  </p>
+                </div>
+              </div>
+
+              <div class="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                <div class="bg-slate-50 dark:bg-slate-800 rounded-2xl p-3">
+                  <p class="text-xs text-slate-500 dark:text-slate-400">Event</p>
+                  <p class="font-bold truncate">
+                    ${escapeHtml(getEventTitle(order))}
+                  </p>
+                </div>
+
+                <div class="bg-slate-50 dark:bg-slate-800 rounded-2xl p-3">
+                  <p class="text-xs text-slate-500 dark:text-slate-400">จำนวน</p>
+                  <p class="font-bold">
+                    ${escapeHtml(buildMediaCountText(counts))}
+                  </p>
+                </div>
+
+                <div class="bg-slate-50 dark:bg-slate-800 rounded-2xl p-3">
+                  <p class="text-xs text-slate-500 dark:text-slate-400">ยอดเงิน</p>
+                  <p class="font-black text-emerald-600">
+                    ฿${formatMoney(total)}
+                  </p>
+                </div>
+
+                <div class="bg-slate-50 dark:bg-slate-800 rounded-2xl p-3">
+                  <p class="text-xs text-slate-500 dark:text-slate-400">สลิป</p>
+                  <p class="font-bold ${slipUrl ? "text-emerald-600" : "text-red-600"}">
+                    ${slipUrl ? "มีสลิป" : "ไม่มีสลิป"}
+                  </p>
+                </div>
               </div>
             </div>
 
-            <div class="flex md:flex-col gap-2 shrink-0">
-              ${
-                slipUrl
-                  ? `
-                    <button
-                      onclick="viewSlip('${escapeAttr(slipUrl)}')"
-                      class="bg-blue-600 text-white rounded-2xl px-4 py-3 font-bold"
-                    >
-                      ดูสลิป
-                    </button>
-                  `
-                  : `
-                    <button
-                      disabled
-                      class="bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-2xl px-4 py-3 font-bold"
-                    >
-                      ไม่มีสลิป
-                    </button>
-                  `
-              }
+            <div class="lg:w-80">
+              <div class="grid grid-cols-4 gap-2">
+                ${renderMediaPreview(items)}
+              </div>
+
+              <div class="mt-4 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onclick="openDetail('${escapeAttr(order.id)}')"
+                  class="bg-slate-100 dark:bg-slate-800 rounded-2xl py-3 font-bold"
+                >
+                  รายละเอียด
+                </button>
+
+                <button
+                  type="button"
+                  onclick="openSlip('${escapeAttr(order.id)}')"
+                  class="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-2xl py-3 font-bold ${slipUrl ? "" : "opacity-40"}"
+                >
+                  ดูสลิป
+                </button>
+              </div>
+
+              <div class="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onclick="approveOrder('${escapeAttr(order.id)}')"
+                  ${isApprovedStatus(order.status) ? "disabled" : ""}
+                  class="bg-emerald-600 text-white rounded-2xl py-3 font-bold disabled:opacity-40"
+                >
+                  อนุมัติ
+                </button>
+
+                <button
+                  type="button"
+                  onclick="rejectOrder('${escapeAttr(order.id)}')"
+                  ${String(order.status || "").toLowerCase() === "rejected" ? "disabled" : ""}
+                  class="bg-red-600 text-white rounded-2xl py-3 font-bold disabled:opacity-40"
+                >
+                  ปฏิเสธ
+                </button>
+              </div>
             </div>
-          </div>
-
-          <div class="mt-4 grid grid-cols-4 md:grid-cols-8 gap-2">
-            ${renderPhotos(items)}
-          </div>
-
-          <div class="mt-4 grid grid-cols-1 md:grid-cols-${status === "pending" ? "3" : "1"} gap-2">
-
-            ${
-              status === "pending"
-                ? `
-                  <button
-                    onclick="approveOrder('${escapeAttr(order.id)}')"
-                    class="bg-emerald-600 text-white rounded-2xl py-3 font-bold"
-                  >
-                    อนุมัติ
-                  </button>
-
-                  <button
-                    onclick="rejectOrder('${escapeAttr(order.id)}')"
-                    class="bg-red-600 text-white rounded-2xl py-3 font-bold"
-                  >
-                    ปฏิเสธ
-                  </button>
-                `
-                : ""
-            }
-
-            <button
-              onclick="viewDetail('${escapeAttr(order.id)}')"
-              class="bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-2xl py-3 font-bold"
-            >
-              รายละเอียด
-            </button>
 
           </div>
         `;
 
         list.appendChild(card);
       });
-
-      renderSummary();
     }
 
-    function renderPhotos(items) {
+    function getFilteredOrders() {
+      const status = document.getElementById("statusFilter")?.value || "pending";
+      const q = String(document.getElementById("searchInput")?.value || "").trim().toLowerCase();
+
+      return orders.filter(order => {
+        let okStatus = true;
+
+        if (status === "pending") {
+          okStatus = isPendingStatus(order.status);
+        } else if (status === "approved") {
+          okStatus = isApprovedStatus(order.status);
+        } else if (status !== "all") {
+          okStatus = String(order.status || "").toLowerCase() === status;
+        }
+
+        if (!okStatus) return false;
+
+        if (!q) return true;
+
+        const haystack = [
+          order.id,
+          order.order_no,
+          order.line_user_id,
+          order.line_display_name,
+          getEventTitle(order)
+        ].join(" ").toLowerCase();
+
+        return haystack.includes(q);
+      });
+    }
+
+    async function approveOrder(orderId) {
+      if (isWorking) return;
+
+      const order = orders.find(o => String(o.id) === String(orderId));
+      if (!order) return;
+
+      const confirm = await Swal.fire({
+        icon: "question",
+        title: "ยืนยันอนุมัติออเดอร์?",
+        html: `
+          <div style="text-align:left">
+            <p><b>Order:</b> ${escapeHtml(order.order_no || order.id)}</p>
+            <p><b>ลูกค้า:</b> ${escapeHtml(order.line_display_name || "-")}</p>
+            <p><b>ยอดเงิน:</b> ฿${formatMoney(order.total_amount || 0)}</p>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: "อนุมัติ",
+        cancelButtonText: "ยกเลิก",
+        confirmButtonColor: "#059669"
+      });
+
+      if (!confirm.isConfirmed) return;
+
+      try {
+        isWorking = true;
+
+        Swal.fire({
+          title: "กำลังอนุมัติ...",
+          allowOutsideClick: false,
+          showConfirmButton: false,
+          didOpen: () => Swal.showLoading()
+        });
+
+        const { error } = await db
+          .from("orders")
+          .update({ status: "approved" })
+          .eq("id", orderId);
+
+        if (error) throw error;
+
+        await updatePaymentStatus(orderId, "approved");
+
+        let notifyWarning = "";
+
+        try {
+          await notifyCustomerApproved(orderId);
+        } catch (notifyErr) {
+          console.warn("Notify customer failed:", notifyErr);
+          notifyWarning = `<p style="color:#f97316;margin-top:8px">อนุมัติแล้ว แต่แจ้ง LINE ไม่สำเร็จ: ${escapeHtml(notifyErr.message || String(notifyErr))}</p>`;
+        }
+
+        await loadOrders();
+
+        Swal.fire({
+          icon: "success",
+          title: "อนุมัติสำเร็จ",
+          html: `ลูกค้าสามารถดาวน์โหลดไฟล์ได้แล้ว${notifyWarning}`,
+          confirmButtonText: "ตกลง"
+        });
+
+      } catch (err) {
+        console.error("APPROVE ERROR:", err);
+
+        Swal.fire(
+          "เกิดข้อผิดพลาด",
+          err.message || "อนุมัติไม่สำเร็จ",
+          "error"
+        );
+
+      } finally {
+        isWorking = false;
+      }
+    }
+
+    async function rejectOrder(orderId) {
+      if (isWorking) return;
+
+      const order = orders.find(o => String(o.id) === String(orderId));
+      if (!order) return;
+
+      const confirm = await Swal.fire({
+        icon: "warning",
+        title: "ยืนยันปฏิเสธออเดอร์?",
+        html: `
+          <div style="text-align:left">
+            <p><b>Order:</b> ${escapeHtml(order.order_no || order.id)}</p>
+            <p><b>ลูกค้า:</b> ${escapeHtml(order.line_display_name || "-")}</p>
+            <p><b>ยอดเงิน:</b> ฿${formatMoney(order.total_amount || 0)}</p>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: "ปฏิเสธ",
+        cancelButtonText: "ยกเลิก",
+        confirmButtonColor: "#dc2626"
+      });
+
+      if (!confirm.isConfirmed) return;
+
+      try {
+        isWorking = true;
+
+        Swal.fire({
+          title: "กำลังบันทึก...",
+          allowOutsideClick: false,
+          showConfirmButton: false,
+          didOpen: () => Swal.showLoading()
+        });
+
+        const { error } = await db
+          .from("orders")
+          .update({ status: "rejected" })
+          .eq("id", orderId);
+
+        if (error) throw error;
+
+        await updatePaymentStatus(orderId, "rejected");
+
+        await loadOrders();
+
+        Swal.fire("สำเร็จ", "ปฏิเสธออเดอร์แล้ว", "success");
+
+      } catch (err) {
+        console.error("REJECT ERROR:", err);
+
+        Swal.fire(
+          "เกิดข้อผิดพลาด",
+          err.message || "ปฏิเสธไม่สำเร็จ",
+          "error"
+        );
+
+      } finally {
+        isWorking = false;
+      }
+    }
+
+    async function updatePaymentStatus(orderId, status) {
+      const { error } = await db
+        .from("payments")
+        .update({ status })
+        .eq("order_id", orderId);
+
+      if (error) {
+        console.warn("Update payment status failed:", error);
+      }
+    }
+
+    async function notifyCustomerApproved(orderId) {
+      const functionUrl = `${CONFIG.SUPABASE_URL}/functions/v1/send-order-approved`;
+
+      const res = await fetch(functionUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: CONFIG.SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({ order_id: orderId })
+      });
+
+      const text = await res.text();
+
+      let data = null;
+
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { raw: text };
+      }
+
+      if (!res.ok || data.success === false) {
+        throw new Error(
+          data.message ||
+          data.error ||
+          data.raw ||
+          `send-order-approved failed ${res.status}`
+        );
+      }
+
+      return data;
+    }
+
+    function openSlip(orderId) {
+      const order = orders.find(o => String(o.id) === String(orderId));
+      if (!order) return;
+
+      const payment = getLatestPayment(order);
+      const slipUrl = getSlipUrl(payment, order);
+
+      if (!slipUrl) {
+        Swal.fire("ไม่พบสลิป", "ออเดอร์นี้ยังไม่มีสลิป", "warning");
+        return;
+      }
+
+      Swal.fire({
+        title: "สลิปชำระเงิน",
+        html: `
+          <div style="text-align:left;margin-bottom:10px">
+            <p><b>Order:</b> ${escapeHtml(order.order_no || order.id)}</p>
+            <p><b>ยอดเงิน:</b> ฿${formatMoney(order.total_amount || payment?.amount || 0)}</p>
+          </div>
+          <a href="${escapeAttr(slipUrl)}" target="_blank" rel="noopener noreferrer">
+            <img src="${escapeAttr(slipUrl)}" style="width:100%;border-radius:16px" />
+          </a>
+        `,
+        width: 720,
+        confirmButtonText: "ปิด"
+      });
+    }
+
+    function openDetail(orderId) {
+      const order = orders.find(o => String(o.id) === String(orderId));
+      if (!order) return;
+
+      const items = order.order_items || [];
+      const payment = getLatestPayment(order);
+      const counts = countMediaItems(items);
+
+      const rows = items.map(item => {
+        const photo = item.photos || {};
+        const media = isVideoItem(item, photo) ? "VDO" : "PHOTO";
+        const filename = item.filename || item.file_name || photo.filename || item.photo_id || "-";
+
+        return `
+          <tr>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">${escapeHtml(media)}</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">${escapeHtml(filename)}</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:right">฿${formatMoney(item.price || 0)}</td>
+          </tr>
+        `;
+      }).join("");
+
+      Swal.fire({
+        title: "รายละเอียดออเดอร์",
+        width: 820,
+        html: `
+          <div style="text-align:left">
+            <p><b>Order:</b> ${escapeHtml(order.order_no || order.id)}</p>
+            <p><b>ลูกค้า:</b> ${escapeHtml(order.line_display_name || "-")}</p>
+            <p><b>Event:</b> ${escapeHtml(getEventTitle(order))}</p>
+            <p><b>จำนวน:</b> ${escapeHtml(buildMediaCountText(counts))}</p>
+            <p><b>ยอดรวม:</b> ฿${formatMoney(order.total_amount || payment?.amount || 0)}</p>
+            <p><b>สถานะ:</b> ${escapeHtml(order.status || "-")}</p>
+
+            <div style="overflow:auto;margin-top:14px">
+              <table style="width:100%;border-collapse:collapse;font-size:14px">
+                <thead>
+                  <tr>
+                    <th style="padding:8px;text-align:left;border-bottom:1px solid #e5e7eb">ชนิด</th>
+                    <th style="padding:8px;text-align:left;border-bottom:1px solid #e5e7eb">ไฟล์</th>
+                    <th style="padding:8px;text-align:right;border-bottom:1px solid #e5e7eb">ราคา</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${rows || `<tr><td colspan="3" style="padding:10px;text-align:center">ไม่มีรายการ</td></tr>`}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `,
+        confirmButtonText: "ปิด"
+      });
+    }
+
+    function getLatestPayment(order) {
+      const payments = Array.isArray(order.payments)
+        ? order.payments
+        : order.payments
+          ? [order.payments]
+          : [];
+
+      if (!payments.length) return null;
+
+      return payments
+        .slice()
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0];
+    }
+
+    function getSlipUrl(payment, order) {
+      const direct =
+        payment?.slip_url ||
+        payment?.payment_slip_url ||
+        order?.slip_url ||
+        "";
+
+      if (direct) return normalizeStorageUrl(direct);
+
+      const path =
+        payment?.slip_path ||
+        payment?.payment_slip_path ||
+        order?.slip_path ||
+        "";
+
+      if (!path) return "";
+
+      if (String(path).startsWith("http://") || String(path).startsWith("https://")) {
+        return path;
+      }
+
+      try {
+        const bucket = CONFIG.STORAGE_BUCKETS?.SLIPS || "slips";
+        const { data } = db.storage.from(bucket).getPublicUrl(path);
+        return data?.publicUrl || "";
+      } catch {
+        return "";
+      }
+    }
+
+    function countMediaItems(items) {
+      let imageCount = 0;
+      let videoCount = 0;
+
+      (items || []).forEach(item => {
+        const photo = item.photos || {};
+
+        if (isVideoItem(item, photo)) {
+          videoCount++;
+        } else {
+          imageCount++;
+        }
+      });
+
+      return { imageCount, videoCount, total: imageCount + videoCount };
+    }
+
+    function buildMediaCountText(counts) {
+      const parts = [];
+
+      if (counts.imageCount > 0) parts.push(`${counts.imageCount} รูป`);
+      if (counts.videoCount > 0) parts.push(`${counts.videoCount} คลิป`);
+
+      return parts.length ? parts.join(" + ") : "0 ไฟล์";
+    }
+
+    function renderMediaPreview(items) {
       if (!items.length) {
         return `
-          <div class="col-span-4 text-center text-sm text-slate-400 py-6">
-            ไม่มีภาพ
+          <div class="col-span-4 text-center text-xs text-slate-400 py-6">
+            ไม่มีไฟล์
           </div>
         `;
       }
 
-      return items.map(item => {
+      return items.slice(0, 4).map((item, index) => {
         const photo = item.photos || {};
+        const mediaIsVideo = isVideoItem(item, photo);
         const img = getOrderItemImage(item, photo);
+        const hasMore = index === 3 && items.length > 4;
+        const moreCount = items.length - 4;
 
         return `
-          <img
-            src="${escapeAttr(img)}"
-            class="w-full h-20 object-cover rounded-2xl bg-slate-200 dark:bg-slate-800"
-            alt="${escapeAttr(photo.filename || item.filename || item.photo_id || "photo")}"
-            referrerpolicy="no-referrer"
-            onerror="this.onerror=null; this.src='https://placehold.co/300x400/111827/ffffff?text=Photo';"
-          />
+          <div class="relative w-full h-20 rounded-2xl overflow-hidden bg-slate-200 dark:bg-slate-800">
+            <img
+              src="${escapeAttr(img)}"
+              class="w-full h-full object-cover"
+              referrerpolicy="no-referrer"
+              draggable="false"
+              onerror="this.onerror=null;this.src='https://placehold.co/300x400/111827/ffffff?text=${mediaIsVideo ? "VDO" : "Photo"}';"
+            />
+
+            <div class="media-badge">
+              ${mediaIsVideo ? "VDO" : "PHOTO"}
+            </div>
+
+            ${
+              mediaIsVideo
+                ? `<div class="play-layer"><div class="play-circle">▶</div></div>`
+                : ""
+            }
+
+            ${
+              hasMore
+                ? `<div class="absolute inset-0 bg-black/60 text-white flex items-center justify-center font-black text-lg">+${moreCount}</div>`
+                : ""
+            }
+          </div>
         `;
       }).join("");
     }
 
-    function getOrderItemImage(item, photo) {
-      const raw =
-        item.photo_url ||
-        photo.r2_watermark_url ||
-        photo.r2_preview_url ||
-        photo.watermark_url ||
-        photo.preview_url ||
-        photo.r2_key ||
-        photo.preview_path ||
-        photo.watermark_path ||
-        photo.original_path ||
-        "";
+    function getMediaType(item, photo = {}) {
+      const mediaType = String(
+        item?.media_type ||
+        item?.item_type ||
+        photo?.media_type ||
+        ""
+      ).toLowerCase();
 
-      return normalizeImageUrl(raw) || "https://placehold.co/300x400/111827/ffffff?text=Photo";
+      const mimeType = String(
+        item?.mime_type ||
+        photo?.mime_type ||
+        ""
+      ).toLowerCase();
+
+      const filename = String(
+        item?.filename ||
+        item?.file_name ||
+        photo?.filename ||
+        ""
+      ).toLowerCase();
+
+      if (mediaType === "video" || mediaType === "vdo") return "video";
+      if (mediaType === "image" || mediaType === "photo") return "image";
+
+      if (
+        mimeType.startsWith("video/") ||
+        filename.endsWith(".mp4") ||
+        filename.endsWith(".mov") ||
+        filename.endsWith(".webm") ||
+        item?.video_url ||
+        item?.video_path ||
+        item?.video_preview_url ||
+        item?.video_preview_path ||
+        photo?.video_url ||
+        photo?.video_path ||
+        photo?.video_preview_url ||
+        photo?.video_preview_path ||
+        photo?.r2_video_url ||
+        photo?.r2_video_key
+      ) {
+        return "video";
+      }
+
+      return "image";
     }
 
-    function normalizeImageUrl(url) {
+    function isVideoItem(item, photo = {}) {
+      return getMediaType(item, photo) === "video";
+    }
+
+    function getOrderItemImage(item, photo = {}) {
+      const mediaIsVideo = isVideoItem(item, photo);
+
+      const raw = mediaIsVideo
+        ? (
+            photo.thumbnail_url ||
+            photo.r2_thumbnail_url ||
+            item.thumbnail_url ||
+            item.photo_url ||
+            photo.preview_url ||
+            photo.r2_preview_url ||
+            photo.watermark_url ||
+            photo.r2_watermark_url ||
+            photo.thumbnail_path ||
+            photo.preview_path ||
+            ""
+          )
+        : (
+            item.photo_url ||
+            photo.r2_watermark_url ||
+            photo.r2_preview_url ||
+            photo.watermark_url ||
+            photo.preview_url ||
+            photo.r2_key ||
+            photo.preview_path ||
+            photo.watermark_path ||
+            photo.original_path ||
+            ""
+          );
+
+      return normalizeImageUrl(raw, mediaIsVideo ? "VDO" : "Photo");
+    }
+
+    function getEventTitle(order) {
+      const event = Array.isArray(order.events)
+        ? order.events[0]
+        : order.events;
+
+      return (
+        event?.title ||
+        event?.event_name ||
+        order.event_title_snapshot ||
+        order.event_name ||
+        "-"
+      );
+    }
+
+    function isPendingStatus(status) {
+      const s = String(status || "").toLowerCase();
+
+      return [
+        "pending",
+        "waiting_approve",
+        "paid_pending",
+        "uploaded",
+        "waiting",
+        ""
+      ].includes(s);
+    }
+
+    function isApprovedStatus(status) {
+      const s = String(status || "").toLowerCase();
+      return s === "approved" || s === "paid";
+    }
+
+    function statusBadge(status) {
+      const s = String(status || "").toLowerCase();
+
+      const map = {
+        pending: ["รอตรวจสอบ", "bg-orange-100 text-orange-700"],
+        waiting_approve: ["รอตรวจสอบ", "bg-orange-100 text-orange-700"],
+        uploaded: ["รอตรวจสอบ", "bg-orange-100 text-orange-700"],
+        paid_pending: ["รอตรวจสอบ", "bg-orange-100 text-orange-700"],
+        approved: ["อนุมัติแล้ว", "bg-emerald-100 text-emerald-700"],
+        paid: ["ชำระเงินแล้ว", "bg-emerald-100 text-emerald-700"],
+        rejected: ["ปฏิเสธ", "bg-red-100 text-red-700"],
+        cancelled: ["ยกเลิก", "bg-slate-100 text-slate-600"],
+        canceled: ["ยกเลิก", "bg-slate-100 text-slate-600"]
+      };
+
+      const item = map[s] || [status || "รอดำเนินการ", "bg-slate-100 text-slate-600"];
+
+      return `
+        <span class="rounded-full px-3 py-1 text-xs font-bold shrink-0 ${item[1]}">
+          ${escapeHtml(item[0])}
+        </span>
+      `;
+    }
+
+    function normalizeImageUrl(url, fallbackText = "Photo") {
       const cleanUrl = String(url || "").trim();
 
-      if (!cleanUrl) return "";
+      if (!cleanUrl) {
+        return `https://placehold.co/300x400/111827/ffffff?text=${encodeURIComponent(fallbackText)}`;
+      }
 
       if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://")) {
         return encodeURI(cleanUrl);
@@ -475,11 +1064,6 @@
       if (CONFIG.R2_WORKER_URL) {
         const base = String(CONFIG.R2_WORKER_URL).replace(/\/+$/, "");
         const key = cleanUrl.replace(/^\/+/, "");
-
-        if (key.startsWith("events/")) {
-          return encodeURI(`${base}/file/${key}`);
-        }
-
         return encodeURI(`${base}/file/${key}`);
       }
 
@@ -492,269 +1076,53 @@
       return encodeURI(cleanUrl);
     }
 
-    function setFilter(status) {
-      currentFilter = status;
+    function normalizeStorageUrl(url) {
+      const cleanUrl = String(url || "").trim();
+      if (!cleanUrl) return "";
+      if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://")) return encodeURI(cleanUrl);
+      return encodeURI(cleanUrl);
+    }
 
-      document.querySelectorAll(".filter-btn").forEach(btn => {
-        btn.className =
-          "filter-btn bg-white dark:bg-slate-900 rounded-2xl p-3 font-bold transition";
-      });
+    async function logout() {
+      await db.auth.signOut();
+      window.location.href = "login.html";
+    }
 
-      const active = document.getElementById("filter-" + status);
+    function goHome() {
+      window.location.href = "../index.html";
+    }
 
-      if (active) {
-        active.className =
-          "filter-btn bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-2xl p-3 font-bold transition";
+    function toggleDarkMode() {
+      const html = document.documentElement;
+      html.classList.toggle("dark");
+
+      const isDark = html.classList.contains("dark");
+      localStorage.setItem("darkMode", isDark ? "1" : "0");
+
+      updateDarkButton();
+    }
+
+    function updateDarkButton() {
+      const btn = document.getElementById("darkBtn");
+      if (!btn) return;
+
+      const isDark = document.documentElement.classList.contains("dark");
+      btn.innerHTML = isDark ? "☀️ Light" : "🌙 Dark";
+    }
+
+    function initDarkMode() {
+      const saved = localStorage.getItem("darkMode");
+
+      if (saved === "1") {
+        document.documentElement.classList.add("dark");
       }
 
-      renderOrders();
+      updateDarkButton();
     }
 
-    function setEventFilter(eventId) {
-      currentEventFilter = eventId || "all";
-      renderOrders();
-    }
-
-    function getEventName(eventId) {
-      const event = allEvents.find(e => String(e.id) === String(eventId));
-      return event?.title || event?.name || eventId || "-";
-    }
-
-    async function approveOrder(orderId) {
-      const result = await Swal.fire({
-        icon: "question",
-        title: "อนุมัติ Order?",
-        text: "ระบบจะแจ้ง LINE ให้ลูกค้าทันที และลูกค้าจะดาวน์โหลดรูปได้",
-        showCancelButton: true,
-        confirmButtonText: "อนุมัติ",
-        cancelButtonText: "ยกเลิก"
-      });
-
-      if (!result.isConfirmed) return;
-
-      try {
-        Swal.fire({
-          title: "กำลังอนุมัติ...",
-          text: "กำลังบันทึกสถานะและส่งแจ้งเตือน LINE",
-          allowOutsideClick: false,
-          showConfirmButton: false,
-          didOpen: () => Swal.showLoading()
-        });
-
-        const { error: orderError } = await db
-          .from("orders")
-          .update({
-            status: "approved",
-            updated_at: new Date().toISOString()
-          })
-          .eq("id", orderId);
-
-        if (orderError) throw orderError;
-
-        const { error: paymentError } = await db
-          .from("payments")
-          .update({
-            status: "approved"
-          })
-          .eq("order_id", orderId);
-
-        if (paymentError) {
-          console.warn("payments update error:", paymentError.message);
-        }
-
-        await notifyOrderApproved(orderId);
-
-        Swal.fire(
-          "สำเร็จ",
-          "อนุมัติ Order แล้ว ลูกค้าดาวน์โหลดภาพได้แล้ว",
-          "success"
-        );
-
-        await loadOrders();
-
-      } catch (err) {
-        console.error(err);
-
-        Swal.fire(
-          "เกิดข้อผิดพลาด",
-          err.message || "อนุมัติไม่สำเร็จ",
-          "error"
-        );
-      }
-    }
-
-    async function notifyOrderApproved(orderId) {
-      try {
-        const res = await fetch(
-          `${CONFIG.SUPABASE_URL}/functions/v1/send-order-approved`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: CONFIG.SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`
-            },
-            body: JSON.stringify({
-              order_id: orderId
-            })
-          }
-        );
-
-        const data = await res.json().catch(() => ({}));
-
-        if (!res.ok || data.success === false) {
-          console.warn("LINE notify error:", data);
-
-          Swal.fire(
-            "อนุมัติแล้ว แต่แจ้ง LINE ไม่สำเร็จ",
-            data.error || data.message || "กรุณาตรวจสอบ Edge Function / LINE Token",
-            "warning"
-          );
-        }
-
-      } catch (err) {
-        console.warn("notifyOrderApproved error:", err.message);
-
-        Swal.fire(
-          "อนุมัติแล้ว แต่แจ้ง LINE ไม่สำเร็จ",
-          err.message || "กรุณาตรวจสอบ Edge Function",
-          "warning"
-        );
-      }
-    }
-
-    async function rejectOrder(orderId) {
-      const result = await Swal.fire({
-        icon: "warning",
-        title: "ปฏิเสธ Order?",
-        text: "สถานะ Order จะเปลี่ยนเป็นสลิปไม่ผ่าน",
-        showCancelButton: true,
-        confirmButtonText: "ปฏิเสธ",
-        cancelButtonText: "ยกเลิก"
-      });
-
-      if (!result.isConfirmed) return;
-
-      try {
-        Swal.fire({
-          title: "กำลังบันทึก...",
-          allowOutsideClick: false,
-          showConfirmButton: false,
-          didOpen: () => Swal.showLoading()
-        });
-
-        const { error: orderError } = await db
-          .from("orders")
-          .update({
-            status: "rejected",
-            updated_at: new Date().toISOString()
-          })
-          .eq("id", orderId);
-
-        if (orderError) throw orderError;
-
-        const { error: paymentError } = await db
-          .from("payments")
-          .update({
-            status: "rejected"
-          })
-          .eq("order_id", orderId);
-
-        if (paymentError) {
-          console.warn(paymentError.message);
-        }
-
-        Swal.fire("บันทึกแล้ว", "ปฏิเสธ Order แล้ว", "success");
-
-        await loadOrders();
-
-      } catch (err) {
-        console.error(err);
-
-        Swal.fire(
-          "เกิดข้อผิดพลาด",
-          err.message || "ปฏิเสธไม่สำเร็จ",
-          "error"
-        );
-      }
-    }
-
-    function viewSlip(url) {
-      const safeUrl = normalizeImageUrl(url);
-
-      Swal.fire({
-        title: "สลิปชำระเงิน",
-        html: `
-          <img src="${escapeAttr(safeUrl)}" style="width:100%;border-radius:18px;" />
-          <a
-            href="${escapeAttr(safeUrl)}"
-            target="_blank"
-            rel="noopener"
-            style="display:block;margin-top:12px;font-weight:bold;color:#2563eb;"
-          >
-            เปิดรูปสลิป
-          </a>
-        `,
-        width: 520,
-        confirmButtonText: "ปิด"
-      });
-    }
-
-    function viewDetail(orderId) {
-      const order = allOrders.find(o => String(o.id) === String(orderId));
-      if (!order) return;
-
-      const items = order.order_items || [];
-      const payment = getLatestPayment(order.payments || []);
-      const total = Number(order.total_amount || order.amount || 0);
-
-      Swal.fire({
-        title: "รายละเอียด Order",
-        html: `
-          <div style="text-align:left;font-size:14px;color:#334155;word-break:break-word">
-            <p><b>Order:</b> ${escapeHtml(order.order_no || order.id)}</p>
-            <p><b>Event:</b> ${escapeHtml(getEventName(order.event_id))}</p>
-            <p><b>วันที่:</b> ${formatDate(order.created_at)}</p>
-            <p><b>LINE:</b> ${escapeHtml(order.line_display_name || "-")}</p>
-            <p><b>User ID:</b> ${escapeHtml(order.line_user_id || "-")}</p>
-            <p><b>สถานะ:</b> ${escapeHtml(order.status || "-")}</p>
-            <p><b>จำนวนภาพ:</b> ${items.length}</p>
-            <p><b>ยอดรวม:</b> ฿${formatMoney(total)}</p>
-            <p><b>Payment:</b> ${escapeHtml(payment?.status || "-")}</p>
-          </div>
-        `,
-        confirmButtonText: "ปิด"
-      });
-    }
-
-    function getLatestPayment(payments) {
-      if (!payments.length) return null;
-
-      return [...payments].sort((a, b) => {
-        return new Date(b.created_at) - new Date(a.created_at);
-      })[0];
-    }
-
-    function statusBadge(status) {
-      const s = normalizeStatus(status);
-
-      const map = {
-        pending: ["รอตรวจสอบ", "bg-orange-100 text-orange-700"],
-        approved: ["อนุมัติแล้ว", "bg-emerald-100 text-emerald-700"],
-        rejected: ["ไม่ผ่าน", "bg-red-100 text-red-700"],
-        pending_payment: ["รอชำระเงิน", "bg-yellow-100 text-yellow-700"],
-        cancelled: ["ยกเลิก", "bg-slate-100 text-slate-600"]
-      };
-
-      const item =
-        map[s] ||
-        [status || "ไม่ทราบ", "bg-slate-100 text-slate-600"];
-
-      return `
-        <span class="rounded-full px-3 py-1 text-xs font-bold ${item[1]}">
-          ${escapeHtml(item[0])}
-        </span>
-      `;
+    function setText(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
     }
 
     function formatMoney(value) {
@@ -774,45 +1142,6 @@
         hour: "2-digit",
         minute: "2-digit"
       });
-    }
-
-    function toggleDarkMode() {
-      const html = document.documentElement;
-
-      html.classList.toggle("dark");
-
-      const isDark = html.classList.contains("dark");
-
-      localStorage.setItem(
-        "darkMode",
-        isDark ? "1" : "0"
-      );
-
-      updateDarkButton();
-    }
-
-    function updateDarkButton() {
-      const btn = document.getElementById("darkBtn");
-
-      if (!btn) return;
-
-      const isDark =
-        document.documentElement.classList.contains("dark");
-
-      btn.innerHTML =
-        isDark
-          ? "☀️ Light"
-          : "🌙 Dark";
-    }
-
-    function initDarkMode() {
-      const saved = localStorage.getItem("darkMode");
-
-      if (saved === "1") {
-        document.documentElement.classList.add("dark");
-      }
-
-      updateDarkButton();
     }
 
     function escapeHtml(text) {
