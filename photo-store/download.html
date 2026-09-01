@@ -14,9 +14,9 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-  <script src="js/config.js?v=new-supabase-011"></script>
-  <script src="js/liff-helper.js?v=new-supabase-011"></script>
-  <script src="js/app-liff.js?v=new-supabase-011"></script>
+  <script src="js/config.js?v=new-supabase-012"></script>
+  <script src="js/liff-helper.js?v=new-supabase-012"></script>
+  <script src="js/app-liff.js?v=new-supabase-012"></script>
 
   <style>
     html,
@@ -43,6 +43,12 @@
       -webkit-user-select: none;
       user-select: none;
       -webkit-user-drag: none;
+    }
+
+    button,
+    select {
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
 
     .media-badge {
@@ -106,38 +112,64 @@
         </div>
 
         <div class="flex flex-col sm:flex-row gap-2 shrink-0">
-          <button onclick="goOrder()" class="bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-full px-4 py-2 font-bold">
+          <button
+            onclick="goOrder()"
+            class="bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-full px-4 py-2 font-bold"
+          >
             <span id="txtOrderBtn">ออเดอร์</span>
           </button>
 
-          <select id="langSelect" onchange="changeLanguage(this.value)" class="rounded-full bg-slate-100 dark:bg-slate-800 dark:text-white px-3 py-2 text-sm font-bold outline-none">
+          <select
+            id="langSelect"
+            onchange="changeLanguage(this.value)"
+            class="rounded-full bg-slate-100 dark:bg-slate-800 dark:text-white px-3 py-2 text-sm font-bold outline-none"
+          >
             <option value="th">🇹🇭 TH</option>
             <option value="en">🇺🇸 EN</option>
             <option value="ru">🇷🇺 RU</option>
           </select>
 
-          <button onclick="toggleDarkMode()" id="darkBtn" class="rounded-full bg-slate-100 dark:bg-slate-800 dark:text-white px-4 py-2 text-sm font-bold">
+          <button
+            onclick="toggleDarkMode()"
+            id="darkBtn"
+            class="rounded-full bg-slate-100 dark:bg-slate-800 dark:text-white px-4 py-2 text-sm font-bold"
+          >
             🌙 Dark
           </button>
         </div>
       </div>
     </header>
 
-    <section id="downloadAllBox" class="hidden bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm mb-4 transition">
-      <button onclick="downloadAllFiles()" class="w-full bg-emerald-600 text-white rounded-2xl py-3 font-bold">
+    <section
+      id="downloadAllBox"
+      class="hidden bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm mb-4 transition"
+    >
+      <button
+        onclick="downloadAllFiles()"
+        class="w-full bg-emerald-600 text-white rounded-2xl py-3 font-bold"
+      >
         ⬇️ <span id="txtDownloadAll">เปิดไฟล์ทั้งหมดเพื่อบันทึก</span>
       </button>
 
-      <p id="txtDownloadAllHint" class="mt-3 text-center text-xs text-slate-500 dark:text-slate-400">
+      <p
+        id="txtDownloadAllHint"
+        class="mt-3 text-center text-xs text-slate-500 dark:text-slate-400"
+      >
         มือถือให้กดเปิดไฟล์ แล้วบันทึกรูปหรือวิดีโอจากหน้าที่เปิดขึ้น
       </p>
     </section>
 
-    <section id="loadingBox" class="text-center py-10 text-slate-500 dark:text-slate-400">
+    <section
+      id="loadingBox"
+      class="text-center py-10 text-slate-500 dark:text-slate-400"
+    >
       กำลังโหลดไฟล์...
     </section>
 
-    <section id="photoGrid" class="hidden grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></section>
+    <section
+      id="photoGrid"
+      class="hidden grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"
+    ></section>
 
     <section id="blockedBox" class="hidden text-center py-16">
       <p class="text-5xl">🔒</p>
@@ -150,7 +182,10 @@
         กรุณารอแอดมินอนุมัติคำสั่งซื้อก่อน
       </p>
 
-      <button onclick="goOrder()" class="mt-5 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-2xl px-5 py-3 font-bold">
+      <button
+        onclick="goOrder()"
+        class="mt-5 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-2xl px-5 py-3 font-bold"
+      >
         <span id="txtBackOrder">กลับไปหน้าออเดอร์</span>
       </button>
     </section>
@@ -313,7 +348,10 @@
       } catch (err) {
         console.error(err);
 
-        document.getElementById("loadingBox").classList.add("hidden");
+        const loadingBox = document.getElementById("loadingBox");
+        if (loadingBox) {
+          loadingBox.classList.add("hidden");
+        }
 
         Swal.fire(
           t().errorTitle,
@@ -328,18 +366,29 @@
 
       document.documentElement.lang = currentLang;
 
-      document.getElementById("txtMiniApp").textContent = x.miniApp;
-      document.getElementById("txtPageTitle").textContent = x.pageTitle;
-      document.getElementById("loadingBox").textContent = x.loadingPhoto;
-      document.getElementById("txtOrderBtn").textContent = x.orderBtn;
-      document.getElementById("txtBlockedTitle").textContent = x.blockedTitle;
-      document.getElementById("txtBlockedDesc").textContent = x.blockedDesc;
-      document.getElementById("txtBackOrder").textContent = x.backOrder;
-      document.getElementById("txtDownloadAll").textContent = x.downloadAll;
-      document.getElementById("txtDownloadAllHint").textContent = x.downloadAllHint;
-      document.getElementById("langSelect").value = currentLang;
+      setText("txtMiniApp", x.miniApp);
+      setText("txtPageTitle", x.pageTitle);
+      setText("loadingBox", x.loadingPhoto);
+      setText("txtOrderBtn", x.orderBtn);
+      setText("txtBlockedTitle", x.blockedTitle);
+      setText("txtBlockedDesc", x.blockedDesc);
+      setText("txtBackOrder", x.backOrder);
+      setText("txtDownloadAll", x.downloadAll);
+      setText("txtDownloadAllHint", x.downloadAllHint);
+
+      const langSelect = document.getElementById("langSelect");
+      if (langSelect) {
+        langSelect.value = currentLang;
+      }
 
       updateDarkButton();
+    }
+
+    function setText(id, value) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.textContent = value;
+      }
     }
 
     function changeLanguage(lang) {
@@ -495,6 +544,7 @@
     function getMediaType(item, photo) {
       const mediaType = String(item.media_type || photo.media_type || "").toLowerCase();
       const mimeType = String(item.mime_type || photo.mime_type || "").toLowerCase();
+
       const filename = String(
         item.filename ||
         item.file_name ||
@@ -512,10 +562,14 @@
         filename.endsWith(".webm") ||
         item.video_url ||
         item.video_path ||
+        item.video_preview_url ||
+        item.video_preview_path ||
         photo.video_url ||
         photo.video_path ||
         photo.video_preview_url ||
-        photo.video_preview_path
+        photo.video_preview_path ||
+        photo.r2_video_url ||
+        photo.r2_video_key
       ) {
         return "video";
       }
@@ -565,8 +619,9 @@
 
       /*
         สำคัญ:
-        - VDO ห้ามเอา item.photo_url มาก่อน เพราะ checkout มักเก็บ thumbnail/preview ไว้ตรงนั้น
-        - ภาพนิ่งให้พยายามใช้ original/r2_key ก่อน
+        - VDO ห้ามใช้ item.photo_url เป็นอันดับแรก เพราะมักเป็น thumbnail/preview
+        - VDO ต้องใช้ video_url / video_path ก่อน
+        - ภาพนิ่งให้พยายามใช้ original / r2_original_key ก่อน
       */
       const raw = mediaIsVideo
         ? (
@@ -649,8 +704,32 @@
       return encodeURI(cleanUrl);
     }
 
-    function getPlaceholder(text) {
-      return `https://placehold.co/600x800/111827/ffffff?text=${encodeURIComponent(text || "File")}`;
+    function makeForceDownloadUrl(url, filename) {
+      if (!url) return "";
+
+      const absoluteUrl = new URL(url, window.location.href);
+
+      const workerBase = String(CONFIG.R2_WORKER_URL || "").replace(/\/+$/, "");
+
+      if (workerBase) {
+        const workerUrl = new URL(workerBase);
+
+        if (
+          absoluteUrl.origin === workerUrl.origin &&
+          absoluteUrl.pathname.startsWith("/file/")
+        ) {
+          absoluteUrl.pathname =
+            absoluteUrl.pathname.replace("/file/", "/download/");
+
+          if (filename) {
+            absoluteUrl.searchParams.set("filename", filename);
+          }
+
+          return absoluteUrl.href;
+        }
+      }
+
+      return absoluteUrl.href;
     }
 
     function downloadFile(url, filename) {
@@ -659,18 +738,18 @@
         return;
       }
 
-      const absoluteUrl = new URL(url, window.location.href).href;
+      const finalUrl = makeForceDownloadUrl(url, filename);
 
       if (window.liff && liff.isInClient()) {
         liff.openWindow({
-          url: absoluteUrl,
+          url: finalUrl,
           external: true
         });
         return;
       }
 
       const a = document.createElement("a");
-      a.href = absoluteUrl;
+      a.href = finalUrl;
       a.target = "_blank";
       a.rel = "noopener noreferrer";
       a.download = filename || "file";
@@ -734,6 +813,10 @@
           setTimeout(resolve, 900)
         );
       }
+    }
+
+    function getPlaceholder(text) {
+      return `https://placehold.co/600x800/111827/ffffff?text=${encodeURIComponent(text || "File")}`;
     }
 
     function goOrder() {
