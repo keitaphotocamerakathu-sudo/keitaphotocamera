@@ -558,6 +558,124 @@
       position: relative;
       z-index: 80;
     }
+
+
+    /****************************************
+     * WATERMARK V6 BALANCED FINAL
+     * เป้าหมาย: รูปยังดูรู้เรื่อง + ลายน้ำชัดพอ + ไม่ทับ UI
+     ****************************************/
+
+    /* ปิดลายน้ำที่เคยลอยเต็มจอแน่นอน */
+    #imageModal::before,
+    #imageModal::after {
+      display: none !important;
+      content: none !important;
+    }
+
+    /* ปิด layer เก่าที่ซ้อนซ้ำ ทำให้ลายน้ำมั่ว */
+    .watermark-layer {
+      display: none !important;
+    }
+
+    /* ให้รูปยังมีรายละเอียด ไม่เบลอจนดูไม่รู้เรื่อง */
+    .photo-card .watermark-dense > img,
+    .photo-card .watermark-dense > video {
+      filter: contrast(0.92) brightness(0.94) saturate(0.88) !important;
+      transform: none !important;
+    }
+
+    .modal-watermark-media > img,
+    .modal-watermark-media > video,
+    #modalImage,
+    #modalVideo {
+      filter: contrast(0.94) brightness(0.95) saturate(0.90) !important;
+      transform: none !important;
+    }
+
+    /* ลายน้ำหลัก: ใหญ่ขึ้น อ่านออก ไม่ถี่เล็กจนเละ */
+    .watermark-dense::before {
+      content: "" !important;
+      position: absolute !important;
+      inset: 0 !important;
+      z-index: 18 !important;
+      pointer-events: none !important;
+      transform: none !important;
+      white-space: normal !important;
+      opacity: 0.86 !important;
+      background-repeat: repeat !important;
+      background-position: center center !important;
+      background-size: 190px 96px !important;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='190' height='96' viewBox='0 0 190 96'%3E%3Cg transform='rotate(-24 95 48)'%3E%3Ctext x='10' y='38' fill='rgba(255,255,255,0.42)' stroke='rgba(0,0,0,0.70)' stroke-width='1.2' paint-order='stroke' font-family='Arial,sans-serif' font-size='20' font-weight='900' letter-spacing='1.2'%3EKEITA PHOTO%3C/text%3E%3Ctext x='36' y='64' fill='rgba(255,255,255,0.40)' stroke='rgba(0,0,0,0.68)' stroke-width='1.1' paint-order='stroke' font-family='Arial,sans-serif' font-size='18' font-weight='900' letter-spacing='1.1'%3EPREVIEW%3C/text%3E%3C/g%3E%3C/svg%3E") !important;
+    }
+
+    .watermark-dense::after {
+      content: "PREVIEW" !important;
+      position: absolute !important;
+      inset: 0 !important;
+      z-index: 19 !important;
+      pointer-events: none !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      transform: rotate(-18deg) !important;
+      color: rgba(255,255,255,0.12) !important;
+      text-shadow: 0 3px 8px rgba(0,0,0,0.68) !important;
+      font-size: clamp(30px, 8vw, 58px) !important;
+      font-weight: 1000 !important;
+      letter-spacing: 3px !important;
+    }
+
+    /* ภาพแนวตั้ง: ถี่ขึ้น แต่ไม่เล็กเกินไป */
+    .watermark-dense.portrait::before {
+      background-size: 165px 84px !important;
+      opacity: 0.90 !important;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='165' height='84' viewBox='0 0 165 84'%3E%3Cg transform='rotate(-24 82.5 42)'%3E%3Ctext x='7' y='33' fill='rgba(255,255,255,0.45)' stroke='rgba(0,0,0,0.72)' stroke-width='1.15' paint-order='stroke' font-family='Arial,sans-serif' font-size='18' font-weight='900' letter-spacing='1'%3EKEITA PHOTO%3C/text%3E%3Ctext x='30' y='58' fill='rgba(255,255,255,0.43)' stroke='rgba(0,0,0,0.70)' stroke-width='1.05' paint-order='stroke' font-family='Arial,sans-serif' font-size='16.5' font-weight='900' letter-spacing='1'%3EPREVIEW%3C/text%3E%3C/g%3E%3C/svg%3E") !important;
+    }
+
+    .watermark-dense.portrait::after {
+      font-size: clamp(30px, 9vw, 54px) !important;
+      color: rgba(255,255,255,0.13) !important;
+    }
+
+    /* Modal รูปใหญ่: ลายน้ำอยู่เต็มเฉพาะรูป ใหญ่พออ่านออก แต่ไม่บดภาพ */
+    .modal-watermark-media.watermark-dense::before {
+      inset: 0 !important;
+      opacity: 0.88 !important;
+      background-size: 180px 92px !important;
+      background-position: center center !important;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='92' viewBox='0 0 180 92'%3E%3Cg transform='rotate(-24 90 46)'%3E%3Ctext x='9' y='36' fill='rgba(255,255,255,0.44)' stroke='rgba(0,0,0,0.74)' stroke-width='1.25' paint-order='stroke' font-family='Arial,sans-serif' font-size='19' font-weight='900' letter-spacing='1.1'%3EKEITA PHOTO%3C/text%3E%3Ctext x='34' y='62' fill='rgba(255,255,255,0.42)' stroke='rgba(0,0,0,0.72)' stroke-width='1.15' paint-order='stroke' font-family='Arial,sans-serif' font-size='17.5' font-weight='900' letter-spacing='1.05'%3EPREVIEW%3C/text%3E%3C/g%3E%3C/svg%3E") !important;
+    }
+
+    .modal-watermark-media.watermark-dense.portrait::before {
+      background-size: 155px 80px !important;
+      opacity: 0.92 !important;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='155' height='80' viewBox='0 0 155 80'%3E%3Cg transform='rotate(-24 77.5 40)'%3E%3Ctext x='6' y='32' fill='rgba(255,255,255,0.47)' stroke='rgba(0,0,0,0.75)' stroke-width='1.2' paint-order='stroke' font-family='Arial,sans-serif' font-size='17' font-weight='900' letter-spacing='0.95'%3EKEITA PHOTO%3C/text%3E%3Ctext x='28' y='56' fill='rgba(255,255,255,0.45)' stroke='rgba(0,0,0,0.73)' stroke-width='1.1' paint-order='stroke' font-family='Arial,sans-serif' font-size='15.8' font-weight='900' letter-spacing='0.95'%3EPREVIEW%3C/text%3E%3C/g%3E%3C/svg%3E") !important;
+    }
+
+    .modal-watermark-media.watermark-dense::after {
+      font-size: clamp(36px, 8vw, 70px) !important;
+      color: rgba(255,255,255,0.11) !important;
+      text-shadow: 0 3px 8px rgba(0,0,0,0.70) !important;
+    }
+
+    .modal-watermark-media.watermark-dense.portrait::after {
+      font-size: clamp(34px, 9vw, 62px) !important;
+      color: rgba(255,255,255,0.12) !important;
+    }
+
+    /* ป้ายชนิดไฟล์และปุ่มต้องอยู่เหนือรูป แต่ปุ่มไม่โดนลายน้ำทับ */
+    .media-type-badge,
+    .duration-badge,
+    .play-badge {
+      z-index: 25 !important;
+    }
+
+    #modalXBtn,
+    #modalAddBtn,
+    #modalCloseBtn {
+      position: relative !important;
+      z-index: 80 !important;
+    }
 </style>
 </head>
 
