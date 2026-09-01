@@ -325,6 +325,126 @@
       pointer-events: auto;
       -webkit-tap-highlight-color: transparent;
     }
+
+
+    /****************************************
+     * V3: FULL PAGE WATERMARK + SOFT PREVIEW
+     * ใช้เฉพาะภาพ Preview ในหน้าเว็บ / ตอนเปิดรูปใหญ่
+     ****************************************/
+
+    /* ลดความคมชัดของรูปที่โชว์ในหน้าเว็บ เพื่อกันแคปไปใช้ต่อ */
+    .watermark-dense > img,
+    .watermark-dense > video,
+    #modalImage,
+    #modalVideo {
+      filter: blur(0.55px) contrast(0.78) brightness(0.90) saturate(0.86);
+      transform: scale(1.012);
+    }
+
+    /* ภาพใน grid ให้ยังดูรู้ว่าเป็นภาพอะไร แต่ไม่คมเกินไป */
+    .photo-card .watermark-dense > img {
+      filter: blur(0.45px) contrast(0.80) brightness(0.90) saturate(0.88);
+    }
+
+    /* ตอนเปิดรูปใหญ่ ลดความคมชัดเพิ่มอีกนิด */
+    .modal-watermark-media > img,
+    .modal-watermark-media > video {
+      filter: blur(0.75px) contrast(0.74) brightness(0.88) saturate(0.82);
+    }
+
+    /* ให้ modal มีชั้นลายน้ำคลุมเต็มหน้าจอ ไม่ใช่เฉพาะกรอบรูป */
+    #imageModal::before {
+      content:
+        "KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW\A"
+        "PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO\A"
+        "KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW\A"
+        "PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO\A"
+        "KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW\A"
+        "PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO\A"
+        "KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW\A"
+        "PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO\A"
+        "KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW\A"
+        "PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO\A"
+        "KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW\A"
+        "PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO\A"
+        "KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW\A"
+        "PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO\A"
+        "KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW\A"
+        "PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO\A"
+        "KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW\A"
+        "PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO PREVIEW KEITA PHOTO";
+      position: fixed;
+      inset: -260px;
+      z-index: 35;
+      pointer-events: none;
+      white-space: pre;
+      transform: rotate(-28deg) scale(1.22);
+      transform-origin: center;
+      color: rgba(255, 255, 255, 0.34);
+      text-shadow: 0 2px 5px rgba(0, 0, 0, 0.92);
+      font-size: clamp(15px, 2.5vw, 28px);
+      line-height: clamp(22px, 3.1vw, 34px);
+      font-weight: 950;
+      letter-spacing: 1px;
+    }
+
+    /* ตรากลางจอซ้ำอีกชั้น เวลาเปิดรูปใหญ่ */
+    #imageModal::after {
+      content: "PREVIEW";
+      position: fixed;
+      inset: 0;
+      z-index: 36;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform: rotate(-18deg);
+      color: rgba(255, 255, 255, 0.24);
+      text-shadow: 0 4px 10px rgba(0, 0, 0, 0.92);
+      font-size: clamp(52px, 12vw, 150px);
+      font-weight: 1000;
+      letter-spacing: 4px;
+    }
+
+    /* ให้ปุ่มยังอยู่เหนือชั้นลายน้ำเต็มหน้า */
+    #modalXBtn,
+    #modalAddBtn,
+    #modalCloseBtn {
+      position: relative;
+      z-index: 60;
+    }
+
+    #imageModal > div {
+      position: relative;
+      z-index: 20;
+    }
+
+    /* ลายน้ำบนตัวรูปใน modal ให้ถี่มากขึ้นอีก */
+    .modal-watermark-media.watermark-dense::before {
+      inset: -520px;
+      font-size: clamp(14px, 2.2vw, 24px);
+      line-height: clamp(18px, 2.6vw, 28px);
+      color: rgba(255, 255, 255, 0.52);
+      transform: rotate(-28deg) scale(1.62);
+      letter-spacing: .6px;
+    }
+
+    .modal-watermark-media.watermark-dense::after {
+      color: rgba(255, 255, 255, 0.36);
+    }
+
+    .modal-watermark-media.watermark-dense.portrait::before {
+      inset: -620px;
+      font-size: clamp(13px, 2.8vw, 22px);
+      line-height: clamp(16px, 2.4vw, 24px);
+      color: rgba(255, 255, 255, 0.58);
+      transform: rotate(-28deg) scale(1.82);
+    }
+
+    .modal-watermark-media.watermark-dense.portrait::after {
+      color: rgba(255, 255, 255, 0.42);
+    }
+
   </style>
 </head>
 
