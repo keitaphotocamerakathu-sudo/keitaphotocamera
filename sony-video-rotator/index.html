@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#09090b" />
+  <title>Sony Video Rotator & Trimmer</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <span class="eyebrow">LOCAL · LOSSLESS · PRIVATE</span>
+        <h1>Sony Video Rotator</h1>
+        <p>ดูตัวอย่าง หมุน และเลือกช่วงตัดได้จากหน้าเดียว วิดีโอไม่ถูกอัปโหลดขึ้นเซิร์ฟเวอร์ และการหมุน/ตัดใช้การคัดลอกสตรีมโดยไม่ Encode ใหม่</p>
+      </div>
+      <div class="privacy-badge" title="ไฟล์วิดีโอประมวลผลอยู่ในเครื่องของคุณ">🔒 ไฟล์อยู่ในเครื่อง</div>
+    </header>
+
+    <section id="browserWarning" class="notice warning hidden">
+      <strong>เบราว์เซอร์นี้ยังไม่รองรับการเลือกโฟลเดอร์แบบเขียนไฟล์กลับ</strong>
+      <span>กรุณาเปิดด้วย Chrome หรือ Edge รุ่นใหม่ ผ่าน HTTPS หรือ localhost</span>
+    </section>
+
+    <section class="panel picker-panel">
+      <div class="picker-copy">
+        <h2>1. เลือกโฟลเดอร์วิดีโอ</h2>
+        <p>รองรับ .MP4 และ .MOV ระบบจะสร้างโฟลเดอร์ <b>Output</b> แยกจากต้นฉบับให้อัตโนมัติ</p>
+      </div>
+      <button id="chooseFolderBtn" class="btn primary">📁 เลือกโฟลเดอร์</button>
+    </section>
+
+    <section class="dashboard-grid">
+      <div class="stat-card"><span>โฟลเดอร์</span><strong id="folderName">—</strong></div>
+      <div class="stat-card"><span>จำนวนวิดีโอ</span><strong id="fileCount">0 ไฟล์</strong></div>
+      <div class="stat-card"><span>ขนาดรวม</span><strong id="totalSize">0 B</strong></div>
+      <div class="stat-card"><span>ผลลัพธ์</span><strong>Output/</strong></div>
+    </section>
+
+    <section class="panel preview-panel">
+      <div class="section-heading">
+        <div>
+          <h2>2. Preview + หมุน + ตัด</h2>
+          <p id="previewMeta">เลือกโฟลเดอร์เพื่อเริ่มแก้ไขคลิป</p>
+        </div>
+        <div class="preview-actions">
+          <button id="prevBtn" class="btn ghost" disabled>←</button>
+          <span id="previewIndex">0 / 0</span>
+          <button id="nextBtn" class="btn ghost" disabled>→</button>
+        </div>
+      </div>
+
+      <div class="editor-layout">
+        <div class="video-column">
+          <div class="video-stage">
+            <video id="previewVideo" controls playsinline preload="metadata"></video>
+            <div id="emptyPreview" class="empty-preview">🎬<span>ยังไม่ได้เลือกวิดีโอ</span></div>
+          </div>
+
+          <div class="trim-panel">
+            <div class="trim-header">
+              <div>
+                <span class="control-kicker">✂️ เลือกช่วงตัดของคลิปนี้</span>
+                <strong id="selectedDuration">ยังไม่ได้เลือกคลิป</strong>
+              </div>
+              <label class="switch-row">
+                <input id="trimEnabled" type="checkbox" disabled />
+                <span>ตัดคลิปนี้</span>
+              </label>
+            </div>
+
+            <div class="trim-time-grid">
+              <div class="time-card">
+                <span>จุดเริ่ม</span>
+                <strong id="trimStartText">00:00.000</strong>
+                <button id="setStartBtn" class="btn ghost compact" disabled>ตั้งจากตำแหน่งปัจจุบัน</button>
+              </div>
+              <div class="time-card">
+                <span>ตำแหน่งเล่น</span>
+                <strong id="currentTimeText">00:00.000</strong>
+                <button id="previewSelectionBtn" class="btn primary compact" disabled>▶ ดูช่วงที่เลือก</button>
+              </div>
+              <div class="time-card">
+                <span>จุดจบ</span>
+                <strong id="trimEndText">00:00.000</strong>
+                <button id="setEndBtn" class="btn ghost compact" disabled>ตั้งจากตำแหน่งปัจจุบัน</button>
+              </div>
+            </div>
+
+            <div class="range-block">
+              <label><span>เริ่ม</span><input id="startRange" type="range" min="0" max="1" value="0" step="0.01" disabled /></label>
+              <label><span>จบ</span><input id="endRange" type="range" min="0" max="1" value="1" step="0.01" disabled /></label>
+            </div>
+
+            <div class="trim-actions">
+              <button id="jumpStartBtn" class="btn ghost compact" disabled>⏮ ไปจุดเริ่ม</button>
+              <button id="jumpEndBtn" class="btn ghost compact" disabled>⏭ ไปจุดจบ</button>
+              <button id="clearTrimBtn" class="btn ghost compact" disabled>ล้างช่วงตัด</button>
+            </div>
+
+            <div class="trim-note">
+              <b>ตัดแบบ Lossless:</b> ไม่ Encode ใหม่ จึงไม่ลดคุณภาพ แต่จุดเริ่มของไฟล์ที่ Export อาจขยับไปยัง Keyframe ใกล้ที่สุดเล็กน้อย
+            </div>
+          </div>
+        </div>
+
+        <aside class="editor-sidebar">
+          <div class="preview-control-card">
+            <span class="preview-control-label">ROTATION</span>
+            <strong id="previewRotationText">ยังไม่หมุน</strong>
+            <p>กดจนภาพตั้งตรง ค่านี้จะใช้กับทุกไฟล์ตอน Export</p>
+            <div class="preview-rotate-buttons">
+              <button id="rotateLeftBtn" class="btn rotate-btn" type="button">↺<span>ซ้าย 90°</span></button>
+              <button id="rotateResetBtn" class="btn rotate-btn active" type="button">⟳<span>ไม่หมุน</span></button>
+              <button id="rotateRightBtn" class="btn rotate-btn" type="button">↻<span>ขวา 90°</span></button>
+              <button id="rotate180Btn" class="btn rotate-btn" type="button">↕<span>180°</span></button>
+            </div>
+            <div class="preview-tip">💡 ทดลองหมุนบน Preview ได้ทันที โดยยังไม่แก้ไขไฟล์ต้นฉบับ</div>
+          </div>
+
+          <div class="clip-summary-card">
+            <span class="preview-control-label">คลิปปัจจุบัน</span>
+            <strong id="clipName">—</strong>
+            <div class="summary-line"><span>ความยาว</span><b id="clipDuration">—</b></div>
+            <div class="summary-line"><span>ช่วงที่จะ Export</span><b id="clipExportRange">ทั้งคลิป</b></div>
+            <div class="summary-line"><span>สถานะ</span><b id="clipTrimStatus">ไม่ตัด</b></div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="panel files-panel">
+      <div class="section-heading">
+        <div>
+          <h2>3. รายการไฟล์</h2>
+          <p>คลิกชื่อไฟล์เพื่อเปิด Preview และกำหนดช่วงตัดแยกแต่ละคลิปได้</p>
+        </div>
+      </div>
+      <div id="fileList" class="file-list"><div class="empty-list">ยังไม่มีไฟล์</div></div>
+    </section>
+
+    <section class="panel process-panel">
+      <div class="process-top">
+        <div>
+          <h2>4. Export</h2>
+          <p id="processMessage">ไฟล์ต้นฉบับจะไม่ถูกแก้ไข</p>
+        </div>
+        <button id="startBtn" class="btn success" disabled>Export ทั้งหมด</button>
+      </div>
+
+      <div class="export-note">
+        ไฟล์ที่เปิด “ตัดคลิปนี้” จะลงท้ายด้วย <b>_cut</b> ส่วนไฟล์อื่นจะคงชื่อเดิม · ครั้งแรกที่ใช้การตัด Browser จะดาวน์โหลด FFmpeg WebAssembly engine เท่านั้น วิดีโอของคุณยังคงอยู่ในเครื่อง
+      </div>
+
+      <div class="progress-wrap">
+        <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+        <div class="progress-meta"><span id="progressText">0%</span><span id="progressCount">0 / 0</span></div>
+      </div>
+
+      <div class="process-footer">
+        <button id="cancelBtn" class="btn danger hidden">ยกเลิกหลังจบไฟล์ปัจจุบัน</button>
+        <button id="openOutputBtn" class="btn ghost hidden">📂 ดูตำแหน่งไฟล์ Output</button>
+      </div>
+    </section>
+
+    <footer>
+      <span>Sony Video Rotator & Trimmer · Browser-only</span>
+      <span>ไม่อัปโหลดวิดีโอออกจากอุปกรณ์</span>
+    </footer>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
