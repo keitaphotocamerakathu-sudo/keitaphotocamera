@@ -13,10 +13,12 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-  <script src="../js/config.js?v=admin-order-001"></script>
+  <!-- ถ้าไฟล์นี้อยู่ใน /admin/order.html ต้องใช้ ../js/config.js -->
+  <script src="../js/config.js?v=admin-order-002"></script>
 
   <style>
-    html, body {
+    html,
+    body {
       width: 100%;
       max-width: 100%;
       overflow-x: hidden;
@@ -36,12 +38,19 @@
       user-select: none;
     }
 
+    button,
+    select,
+    input {
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
     .media-badge {
       position: absolute;
       top: 6px;
       left: 6px;
       z-index: 5;
-      background: rgba(0,0,0,.65);
+      background: rgba(0, 0, 0, .65);
       color: #fff;
       border-radius: 999px;
       padding: 3px 7px;
@@ -53,6 +62,7 @@
     .play-layer {
       position: absolute;
       inset: 0;
+      z-index: 4;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -63,11 +73,25 @@
       width: 34px;
       height: 34px;
       border-radius: 999px;
-      background: rgba(0,0,0,.6);
+      background: rgba(0, 0, 0, .60);
       color: white;
       display: flex;
       align-items: center;
       justify-content: center;
+      font-weight: 900;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, .35);
+    }
+
+    .more-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 8;
+      background: rgba(0, 0, 0, .58);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
       font-weight: 900;
     }
   </style>
@@ -82,7 +106,9 @@
         <div>
           <p class="text-xs text-slate-500 dark:text-slate-400">Admin Panel</p>
           <h1 class="text-2xl font-black">อนุมัติออเดอร์</h1>
-          <p id="adminText" class="text-sm text-slate-500 dark:text-slate-400">กำลังตรวจสอบสิทธิ์...</p>
+          <p id="adminText" class="text-sm text-slate-500 dark:text-slate-400">
+            กำลังตรวจสอบสิทธิ์...
+          </p>
         </div>
 
         <div class="flex flex-wrap gap-2">
@@ -139,7 +165,10 @@
     <section class="bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm mb-4 border border-slate-100 dark:border-slate-800">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div>
-          <label class="text-xs font-bold text-slate-500 dark:text-slate-400">สถานะ</label>
+          <label class="text-xs font-bold text-slate-500 dark:text-slate-400">
+            สถานะ
+          </label>
+
           <select
             id="statusFilter"
             onchange="renderOrders()"
@@ -150,11 +179,15 @@
             <option value="approved">อนุมัติแล้ว</option>
             <option value="rejected">ปฏิเสธ</option>
             <option value="paid">ชำระเงินแล้ว</option>
+            <option value="pending_payment">รอชำระเงิน</option>
           </select>
         </div>
 
         <div class="md:col-span-2">
-          <label class="text-xs font-bold text-slate-500 dark:text-slate-400">ค้นหา</label>
+          <label class="text-xs font-bold text-slate-500 dark:text-slate-400">
+            ค้นหา
+          </label>
+
           <input
             id="searchInput"
             oninput="renderOrders()"
@@ -164,7 +197,10 @@
         </div>
 
         <div>
-          <label class="text-xs font-bold text-slate-500 dark:text-slate-400">แสดง</label>
+          <label class="text-xs font-bold text-slate-500 dark:text-slate-400">
+            แสดง
+          </label>
+
           <select
             id="limitSelect"
             onchange="loadOrders()"
@@ -178,13 +214,22 @@
       </div>
     </section>
 
-    <section id="loadingBox" class="text-center py-12 text-slate-500 dark:text-slate-400">
+    <section
+      id="loadingBox"
+      class="text-center py-12 text-slate-500 dark:text-slate-400"
+    >
       กำลังโหลดข้อมูล...
     </section>
 
-    <section id="orderList" class="space-y-4 hidden"></section>
+    <section
+      id="orderList"
+      class="space-y-4 hidden"
+    ></section>
 
-    <section id="emptyBox" class="hidden text-center py-16">
+    <section
+      id="emptyBox"
+      class="hidden text-center py-16"
+    >
       <p class="text-5xl">🧾</p>
       <h2 class="mt-3 text-lg font-bold">ไม่พบออเดอร์</h2>
       <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -210,8 +255,14 @@
     document.addEventListener("DOMContentLoaded", async () => {
       try {
         initDarkMode();
+
+        if (!db) {
+          throw new Error("ไม่พบ Supabase client");
+        }
+
         await checkAdmin();
         await loadOrders();
+
       } catch (err) {
         console.error("ADMIN ORDER INIT ERROR:", err);
         hideLoading();
@@ -227,7 +278,9 @@
     async function checkAdmin() {
       const { data, error } = await db.auth.getSession();
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       const session = data?.session;
 
@@ -239,8 +292,13 @@
       currentUser = session.user;
 
       const email = currentUser.email || "-";
-      document.getElementById("adminText").textContent = `เข้าสู่ระบบโดย ${email}`;
 
+      setText("adminText", `เข้าสู่ระบบโดย ${email}`);
+
+      /*
+        ตรวจ admin_users ถ้ามี table นี้
+        ถ้าไม่มี table นี้ จะไม่ block เพื่อกันหน้าอนุมัติพัง
+      */
       try {
         const { data: adminRows, error: adminError } = await db
           .from("admin_users")
@@ -271,16 +329,18 @@
           throw new Error("บัญชี Admin นี้ยังไม่พร้อมใช้งาน");
         }
 
-        document.getElementById("adminText").textContent =
-          `เข้าสู่ระบบโดย ${email} · ${role}`;
+        setText("adminText", `เข้าสู่ระบบโดย ${email} · ${role}`);
 
       } catch (err) {
+        const msg = String(err.message || "");
+        const code = String(err.code || "");
+
         if (
-          String(err.message || "").includes("does not exist") ||
-          String(err.message || "").includes("Could not find") ||
-          String(err.code || "") === "42P01"
+          code === "42P01" ||
+          msg.includes("does not exist") ||
+          msg.includes("Could not find")
         ) {
-          console.warn("admin_users table not found, allow authenticated admin session");
+          console.warn("admin_users table not found, allow authenticated session");
           return;
         }
 
@@ -293,6 +353,11 @@
 
       const limit = Number(document.getElementById("limitSelect")?.value || 50);
 
+      /*
+        สำคัญ:
+        query นี้ไม่เรียก Edge Function
+        จึงไม่เกิด 404 จาก send-order-approved แล้ว
+      */
       let result = await db
         .from("orders")
         .select(`
@@ -307,14 +372,36 @@
         .order("created_at", { ascending: false })
         .limit(limit);
 
+      /*
+        fallback ถ้า relation events ไม่มี หรือ foreign key ไม่ตรง
+      */
       if (result.error) {
-        console.warn("Full relation query failed, fallback query:", result.error);
+        console.warn("Full relation query failed, fallback without events:", result.error);
 
         result = await db
           .from("orders")
           .select(`
             *,
             payments (*),
+            order_items (
+              *,
+              photos (*)
+            )
+          `)
+          .order("created_at", { ascending: false })
+          .limit(limit);
+      }
+
+      /*
+        fallback ถ้า relation payments ไม่มี
+      */
+      if (result.error) {
+        console.warn("Fallback with payments failed, fallback basic:", result.error);
+
+        result = await db
+          .from("orders")
+          .select(`
+            *,
             order_items (
               *,
               photos (*)
@@ -336,13 +423,13 @@
     }
 
     function showLoading() {
-      document.getElementById("loadingBox").classList.remove("hidden");
-      document.getElementById("orderList").classList.add("hidden");
-      document.getElementById("emptyBox").classList.add("hidden");
+      document.getElementById("loadingBox")?.classList.remove("hidden");
+      document.getElementById("orderList")?.classList.add("hidden");
+      document.getElementById("emptyBox")?.classList.add("hidden");
     }
 
     function hideLoading() {
-      document.getElementById("loadingBox").classList.add("hidden");
+      document.getElementById("loadingBox")?.classList.add("hidden");
     }
 
     function updateStats() {
@@ -359,6 +446,8 @@
     function renderOrders() {
       const list = document.getElementById("orderList");
       const empty = document.getElementById("emptyBox");
+
+      if (!list || !empty) return;
 
       list.innerHTML = "";
 
@@ -378,7 +467,12 @@
         const payment = getLatestPayment(order);
         const counts = countMediaItems(items);
         const slipUrl = getSlipUrl(payment, order);
-        const total = Number(order.total_amount || payment?.amount || items.reduce((s, i) => s + Number(i.price || 0), 0));
+
+        const total = Number(
+          order.total_amount ||
+          payment?.amount ||
+          items.reduce((s, i) => s + Number(i.price || 0), 0)
+        );
 
         const card = document.createElement("article");
 
@@ -389,10 +483,12 @@
           <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
 
             <div class="min-w-0 flex-1">
+
               <div class="flex items-center gap-2 flex-wrap">
                 <h2 class="font-black text-lg truncate">
                   ${escapeHtml(order.order_no || order.id)}
                 </h2>
+
                 ${statusBadge(order.status)}
               </div>
 
@@ -412,6 +508,7 @@
                   <p class="font-bold truncate">
                     ${escapeHtml(order.line_display_name || "LINE User")}
                   </p>
+
                   <p class="text-xs text-slate-500 dark:text-slate-400 truncate">
                     ${escapeHtml(order.line_user_id || "-")}
                   </p>
@@ -419,6 +516,7 @@
               </div>
 
               <div class="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+
                 <div class="bg-slate-50 dark:bg-slate-800 rounded-2xl p-3">
                   <p class="text-xs text-slate-500 dark:text-slate-400">Event</p>
                   <p class="font-bold truncate">
@@ -446,10 +544,12 @@
                     ${slipUrl ? "มีสลิป" : "ไม่มีสลิป"}
                   </p>
                 </div>
+
               </div>
             </div>
 
             <div class="lg:w-80">
+
               <div class="grid grid-cols-4 gap-2">
                 ${renderMediaPreview(items)}
               </div>
@@ -491,6 +591,7 @@
                   ปฏิเสธ
                 </button>
               </div>
+
             </div>
 
           </div>
@@ -516,7 +617,6 @@
         }
 
         if (!okStatus) return false;
-
         if (!q) return true;
 
         const haystack = [
@@ -545,6 +645,9 @@
             <p><b>Order:</b> ${escapeHtml(order.order_no || order.id)}</p>
             <p><b>ลูกค้า:</b> ${escapeHtml(order.line_display_name || "-")}</p>
             <p><b>ยอดเงิน:</b> ฿${formatMoney(order.total_amount || 0)}</p>
+            <p style="margin-top:8px;color:#64748b">
+              หลังอนุมัติ ลูกค้าจะเข้า download.html เพื่อดาวน์โหลดไฟล์ได้
+            </p>
           </div>
         `,
         showCancelButton: true,
@@ -567,28 +670,24 @@
 
         const { error } = await db
           .from("orders")
-          .update({ status: "approved" })
+          .update({
+            status: "approved",
+            updated_at: new Date().toISOString()
+          })
           .eq("id", orderId);
 
-        if (error) throw error;
+        if (error) {
+          throw error;
+        }
 
         await updatePaymentStatus(orderId, "approved");
-
-        let notifyWarning = "";
-
-        try {
-          await notifyCustomerApproved(orderId);
-        } catch (notifyErr) {
-          console.warn("Notify customer failed:", notifyErr);
-          notifyWarning = `<p style="color:#f97316;margin-top:8px">อนุมัติแล้ว แต่แจ้ง LINE ไม่สำเร็จ: ${escapeHtml(notifyErr.message || String(notifyErr))}</p>`;
-        }
 
         await loadOrders();
 
         Swal.fire({
           icon: "success",
           title: "อนุมัติสำเร็จ",
-          html: `ลูกค้าสามารถดาวน์โหลดไฟล์ได้แล้ว${notifyWarning}`,
+          text: "ลูกค้าสามารถดาวน์โหลดไฟล์ได้แล้ว",
           confirmButtonText: "ตกลง"
         });
 
@@ -642,10 +741,15 @@
 
         const { error } = await db
           .from("orders")
-          .update({ status: "rejected" })
+          .update({
+            status: "rejected",
+            updated_at: new Date().toISOString()
+          })
           .eq("id", orderId);
 
-        if (error) throw error;
+        if (error) {
+          throw error;
+        }
 
         await updatePaymentStatus(orderId, "rejected");
 
@@ -668,49 +772,21 @@
     }
 
     async function updatePaymentStatus(orderId, status) {
-      const { error } = await db
-        .from("payments")
-        .update({ status })
-        .eq("order_id", orderId);
-
-      if (error) {
-        console.warn("Update payment status failed:", error);
-      }
-    }
-
-    async function notifyCustomerApproved(orderId) {
-      const functionUrl = `${CONFIG.SUPABASE_URL}/functions/v1/send-order-approved`;
-
-      const res = await fetch(functionUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: CONFIG.SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({ order_id: orderId })
-      });
-
-      const text = await res.text();
-
-      let data = null;
-
       try {
-        data = JSON.parse(text);
-      } catch {
-        data = { raw: text };
-      }
+        const { error } = await db
+          .from("payments")
+          .update({
+            status,
+            updated_at: new Date().toISOString()
+          })
+          .eq("order_id", orderId);
 
-      if (!res.ok || data.success === false) {
-        throw new Error(
-          data.message ||
-          data.error ||
-          data.raw ||
-          `send-order-approved failed ${res.status}`
-        );
+        if (error) {
+          console.warn("Update payment status failed:", error);
+        }
+      } catch (err) {
+        console.warn("payments table update skipped:", err);
       }
-
-      return data;
     }
 
     function openSlip(orderId) {
@@ -730,10 +806,16 @@
         html: `
           <div style="text-align:left;margin-bottom:10px">
             <p><b>Order:</b> ${escapeHtml(order.order_no || order.id)}</p>
+            <p><b>ลูกค้า:</b> ${escapeHtml(order.line_display_name || "-")}</p>
             <p><b>ยอดเงิน:</b> ฿${formatMoney(order.total_amount || payment?.amount || 0)}</p>
           </div>
+
           <a href="${escapeAttr(slipUrl)}" target="_blank" rel="noopener noreferrer">
-            <img src="${escapeAttr(slipUrl)}" style="width:100%;border-radius:16px" />
+            <img
+              src="${escapeAttr(slipUrl)}"
+              style="width:100%;border-radius:16px;background:#e5e7eb"
+              onerror="this.onerror=null;this.replaceWith(document.createTextNode('เปิดรูปสลิปไม่ได้ แต่ยังสามารถกดลิงก์ได้'))"
+            />
           </a>
         `,
         width: 720,
@@ -752,13 +834,27 @@
       const rows = items.map(item => {
         const photo = item.photos || {};
         const media = isVideoItem(item, photo) ? "VDO" : "PHOTO";
-        const filename = item.filename || item.file_name || photo.filename || item.photo_id || "-";
+
+        const filename =
+          item.filename ||
+          item.file_name ||
+          photo.filename ||
+          item.photo_id ||
+          "-";
 
         return `
           <tr>
-            <td style="padding:8px;border-bottom:1px solid #e5e7eb">${escapeHtml(media)}</td>
-            <td style="padding:8px;border-bottom:1px solid #e5e7eb">${escapeHtml(filename)}</td>
-            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:right">฿${formatMoney(item.price || 0)}</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">
+              ${escapeHtml(media)}
+            </td>
+
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb">
+              ${escapeHtml(filename)}
+            </td>
+
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:right">
+              ฿${formatMoney(item.price || 0)}
+            </td>
           </tr>
         `;
       }).join("");
@@ -770,6 +866,7 @@
           <div style="text-align:left">
             <p><b>Order:</b> ${escapeHtml(order.order_no || order.id)}</p>
             <p><b>ลูกค้า:</b> ${escapeHtml(order.line_display_name || "-")}</p>
+            <p><b>LINE user id:</b> ${escapeHtml(order.line_user_id || "-")}</p>
             <p><b>Event:</b> ${escapeHtml(getEventTitle(order))}</p>
             <p><b>จำนวน:</b> ${escapeHtml(buildMediaCountText(counts))}</p>
             <p><b>ยอดรวม:</b> ฿${formatMoney(order.total_amount || payment?.amount || 0)}</p>
@@ -784,6 +881,7 @@
                     <th style="padding:8px;text-align:right;border-bottom:1px solid #e5e7eb">ราคา</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   ${rows || `<tr><td colspan="3" style="padding:10px;text-align:center">ไม่มีรายการ</td></tr>`}
                 </tbody>
@@ -816,7 +914,9 @@
         order?.slip_url ||
         "";
 
-      if (direct) return normalizeStorageUrl(direct);
+      if (direct) {
+        return normalizeStorageUrl(direct);
+      }
 
       const path =
         payment?.slip_path ||
@@ -824,10 +924,12 @@
         order?.slip_path ||
         "";
 
-      if (!path) return "";
+      if (!path) {
+        return "";
+      }
 
       if (String(path).startsWith("http://") || String(path).startsWith("https://")) {
-        return path;
+        return encodeURI(path);
       }
 
       try {
@@ -853,14 +955,23 @@
         }
       });
 
-      return { imageCount, videoCount, total: imageCount + videoCount };
+      return {
+        imageCount,
+        videoCount,
+        total: imageCount + videoCount
+      };
     }
 
     function buildMediaCountText(counts) {
       const parts = [];
 
-      if (counts.imageCount > 0) parts.push(`${counts.imageCount} รูป`);
-      if (counts.videoCount > 0) parts.push(`${counts.videoCount} คลิป`);
+      if (counts.imageCount > 0) {
+        parts.push(`${counts.imageCount} รูป`);
+      }
+
+      if (counts.videoCount > 0) {
+        parts.push(`${counts.videoCount} คลิป`);
+      }
 
       return parts.length ? parts.join(" + ") : "0 ไฟล์";
     }
@@ -903,7 +1014,7 @@
 
             ${
               hasMore
-                ? `<div class="absolute inset-0 bg-black/60 text-white flex items-center justify-center font-black text-lg">+${moreCount}</div>`
+                ? `<div class="more-layer">+${moreCount}</div>`
                 : ""
             }
           </div>
@@ -932,8 +1043,13 @@
         ""
       ).toLowerCase();
 
-      if (mediaType === "video" || mediaType === "vdo") return "video";
-      if (mediaType === "image" || mediaType === "photo") return "image";
+      if (mediaType === "video" || mediaType === "vdo") {
+        return "video";
+      }
+
+      if (mediaType === "image" || mediaType === "photo") {
+        return "image";
+      }
 
       if (
         mimeType.startsWith("video/") ||
@@ -1002,8 +1118,10 @@
       return (
         event?.title ||
         event?.event_name ||
+        event?.name ||
         order.event_title_snapshot ||
         order.event_name ||
+        order.event_id ||
         "-"
       );
     }
@@ -1012,12 +1130,13 @@
       const s = String(status || "").toLowerCase();
 
       return [
+        "",
         "pending",
+        "waiting",
         "waiting_approve",
         "paid_pending",
         "uploaded",
-        "waiting",
-        ""
+        "pending_review"
       ].includes(s);
     }
 
@@ -1031,12 +1150,20 @@
 
       const map = {
         pending: ["รอตรวจสอบ", "bg-orange-100 text-orange-700"],
+        waiting: ["รอตรวจสอบ", "bg-orange-100 text-orange-700"],
         waiting_approve: ["รอตรวจสอบ", "bg-orange-100 text-orange-700"],
         uploaded: ["รอตรวจสอบ", "bg-orange-100 text-orange-700"],
         paid_pending: ["รอตรวจสอบ", "bg-orange-100 text-orange-700"],
+        pending_review: ["รอตรวจสอบ", "bg-orange-100 text-orange-700"],
+
         approved: ["อนุมัติแล้ว", "bg-emerald-100 text-emerald-700"],
         paid: ["ชำระเงินแล้ว", "bg-emerald-100 text-emerald-700"],
+
         rejected: ["ปฏิเสธ", "bg-red-100 text-red-700"],
+
+        pending_payment: ["รอชำระเงิน", "bg-yellow-100 text-yellow-700"],
+        unpaid: ["รอชำระเงิน", "bg-yellow-100 text-yellow-700"],
+
         cancelled: ["ยกเลิก", "bg-slate-100 text-slate-600"],
         canceled: ["ยกเลิก", "bg-slate-100 text-slate-600"]
       };
@@ -1078,36 +1205,55 @@
 
     function normalizeStorageUrl(url) {
       const cleanUrl = String(url || "").trim();
+
       if (!cleanUrl) return "";
-      if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://")) return encodeURI(cleanUrl);
+
+      if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://")) {
+        return encodeURI(cleanUrl);
+      }
+
       return encodeURI(cleanUrl);
     }
 
     async function logout() {
-      await db.auth.signOut();
-      window.location.href = "login.html";
-    }
+      try {
+        await db.auth.signOut();
+      } catch (err) {
+        console.warn("logout error:", err);
+      }
 
-    function goHome() {
-      window.location.href = "../index.html";
+      window.location.href = "login.html";
     }
 
     function toggleDarkMode() {
       const html = document.documentElement;
+
       html.classList.toggle("dark");
 
       const isDark = html.classList.contains("dark");
-      localStorage.setItem("darkMode", isDark ? "1" : "0");
+
+      localStorage.setItem(
+        "darkMode",
+        isDark ? "1" : "0"
+      );
 
       updateDarkButton();
     }
 
     function updateDarkButton() {
       const btn = document.getElementById("darkBtn");
+
       if (!btn) return;
 
-      const isDark = document.documentElement.classList.contains("dark");
-      btn.innerHTML = isDark ? "☀️ Light" : "🌙 Dark";
+      const isDark =
+        document.documentElement
+          .classList
+          .contains("dark");
+
+      btn.innerHTML =
+        isDark
+          ? "☀️ Light"
+          : "🌙 Dark";
     }
 
     function initDarkMode() {
@@ -1122,7 +1268,9 @@
 
     function setText(id, value) {
       const el = document.getElementById(id);
-      if (el) el.textContent = value;
+      if (el) {
+        el.textContent = value;
+      }
     }
 
     function formatMoney(value) {
