@@ -139,8 +139,10 @@
       max-height: 90vh;
       object-fit: contain;
       display: block;
-      filter: contrast(.9) saturate(.86) blur(.35px);
-      transform: scale(.995);
+      filter: contrast(0.94) brightness(0.95) saturate(0.90);
+      transform: none;
+      position: relative;
+      z-index: 1;
     }
 
     .photo-modal-video {
@@ -152,7 +154,9 @@
       background: #000;
       pointer-events: auto;
       position: relative;
-      z-index: 2;
+      z-index: 1;
+      filter: contrast(0.94) brightness(0.95) saturate(0.90);
+      transform: none;
     }
 
     .hidden-media {
@@ -181,7 +185,7 @@
       left: 14px;
       right: 14px;
       bottom: 14px;
-      z-index: 5;
+      z-index: 30;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -197,85 +201,20 @@
       pointer-events: none;
     }
 
-    .watermark-layer {
-      position: absolute;
-      inset: -28%;
-      pointer-events: none;
-      z-index: 3;
-      transform: rotate(-24deg);
-      opacity: .30;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-around;
-      gap: clamp(42px, 7vw, 92px);
-    }
-
-    .wm-row {
-      display: flex;
-      gap: clamp(58px, 9vw, 130px);
-      white-space: nowrap;
-      color: rgba(255,255,255,.92);
-      font-size: clamp(18px, 3vw, 42px);
-      font-weight: 900;
-      letter-spacing: .12em;
-      line-height: 1;
-      text-shadow: 0 2px 12px rgba(0,0,0,.78);
-    }
-
-    .wm-row:nth-child(even) {
-      transform: translateX(-12%);
-    }
-
-    .wm-row:nth-child(odd) {
-      transform: translateX(4%);
-    }
-
-    .watermark-center {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      pointer-events: none;
-      z-index: 4;
-      transform: rotate(-24deg);
-    }
-
-    .watermark-center span {
-      color: rgba(255,255,255,.28);
-      font-size: clamp(30px, 6vw, 78px);
-      font-weight: 950;
-      letter-spacing: .12em;
-      white-space: nowrap;
-      padding: .35em .7em;
-      border: 2px solid rgba(255,255,255,.22);
-      border-radius: 18px;
-      text-shadow: 0 4px 18px rgba(0,0,0,.75);
-      background: rgba(0,0,0,.08);
-    }
-
-    .preview-noise {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      z-index: 2;
-      mix-blend-mode: overlay;
-      opacity: .08;
-      background-image:
-        repeating-radial-gradient(circle at center,
-        #fff 0px,
-        transparent 1px,
-        transparent 3px);
-    }
-
     .preview-soft-mask {
       position: absolute;
       inset: 0;
       pointer-events: none;
-      z-index: 1;
+      z-index: 2;
       background:
-        linear-gradient(to bottom, rgba(0,0,0,.12), transparent 20%, transparent 70%, rgba(0,0,0,.42)),
-        linear-gradient(90deg, rgba(0,0,0,.16), transparent 18%, transparent 82%, rgba(0,0,0,.16));
+        linear-gradient(to bottom, rgba(0,0,0,.08), transparent 20%, transparent 72%, rgba(0,0,0,.24)),
+        linear-gradient(90deg, rgba(0,0,0,.08), transparent 18%, transparent 82%, rgba(0,0,0,.08));
+    }
+
+    .preview-noise,
+    .watermark-layer,
+    .watermark-center {
+      display: none !important;
     }
 
     .open-preview-btn {
@@ -286,7 +225,7 @@
       position: absolute;
       top: 8px;
       left: 8px;
-      z-index: 20;
+      z-index: 25;
       background: rgba(0,0,0,.62);
       color: white;
       border-radius: 999px;
@@ -302,7 +241,7 @@
     .video-play-badge {
       position: absolute;
       inset: 0;
-      z-index: 18;
+      z-index: 25;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -329,7 +268,7 @@
       position: absolute;
       right: 8px;
       bottom: 42px;
-      z-index: 20;
+      z-index: 25;
       background: rgba(0,0,0,.62);
       color: white;
       border-radius: 999px;
@@ -339,6 +278,103 @@
       pointer-events: none;
       backdrop-filter: blur(6px);
       -webkit-backdrop-filter: blur(6px);
+    }
+
+    /****************************************
+     * WATERMARK แบบเดียวกับ event.html ล่าสุด
+     * รูปยังดูรู้เรื่อง + ลายน้ำอ่านออก + ไม่ทับปุ่มมั่ว
+     ****************************************/
+
+    .watermark-dense {
+      position: relative;
+      overflow: hidden;
+      background: #020617;
+    }
+
+    .watermark-dense > img,
+    .watermark-dense > video {
+      position: relative;
+      z-index: 1;
+    }
+
+    .result-card-media.watermark-dense > img,
+    .result-card-media.watermark-dense > video {
+      filter: contrast(0.92) brightness(0.94) saturate(0.88) !important;
+      transform: none !important;
+    }
+
+    .modal-watermark-media > img,
+    .modal-watermark-media > video {
+      filter: contrast(0.94) brightness(0.95) saturate(0.90) !important;
+      transform: none !important;
+    }
+
+    .watermark-dense::before {
+      content: "" !important;
+      position: absolute !important;
+      inset: 0 !important;
+      z-index: 18 !important;
+      pointer-events: none !important;
+      transform: none !important;
+      white-space: normal !important;
+      opacity: 0.86 !important;
+      background-repeat: repeat !important;
+      background-position: center center !important;
+      background-size: 190px 96px !important;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='190' height='96' viewBox='0 0 190 96'%3E%3Cg transform='rotate(-24 95 48)'%3E%3Ctext x='10' y='38' fill='rgba(255,255,255,0.42)' stroke='rgba(0,0,0,0.70)' stroke-width='1.2' paint-order='stroke' font-family='Arial,sans-serif' font-size='20' font-weight='900' letter-spacing='1.2'%3EKEITA PHOTO%3C/text%3E%3Ctext x='36' y='64' fill='rgba(255,255,255,0.40)' stroke='rgba(0,0,0,0.68)' stroke-width='1.1' paint-order='stroke' font-family='Arial,sans-serif' font-size='18' font-weight='900' letter-spacing='1.1'%3EPREVIEW%3C/text%3E%3C/g%3E%3C/svg%3E") !important;
+    }
+
+    .watermark-dense::after {
+      content: "PREVIEW" !important;
+      position: absolute !important;
+      inset: 0 !important;
+      z-index: 19 !important;
+      pointer-events: none !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      transform: rotate(-18deg) !important;
+      color: rgba(255,255,255,0.12) !important;
+      text-shadow: 0 3px 8px rgba(0,0,0,0.68) !important;
+      font-size: clamp(30px, 8vw, 58px) !important;
+      font-weight: 1000 !important;
+      letter-spacing: 3px !important;
+    }
+
+    .watermark-dense.portrait::before {
+      background-size: 165px 84px !important;
+      opacity: 0.90 !important;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='165' height='84' viewBox='0 0 165 84'%3E%3Cg transform='rotate(-24 82.5 42)'%3E%3Ctext x='7' y='33' fill='rgba(255,255,255,0.45)' stroke='rgba(0,0,0,0.72)' stroke-width='1.15' paint-order='stroke' font-family='Arial,sans-serif' font-size='18' font-weight='900' letter-spacing='1'%3EKEITA PHOTO%3C/text%3E%3Ctext x='30' y='58' fill='rgba(255,255,255,0.43)' stroke='rgba(0,0,0,0.70)' stroke-width='1.05' paint-order='stroke' font-family='Arial,sans-serif' font-size='16.5' font-weight='900' letter-spacing='1'%3EPREVIEW%3C/text%3E%3C/g%3E%3C/svg%3E") !important;
+    }
+
+    .watermark-dense.portrait::after {
+      font-size: clamp(30px, 9vw, 54px) !important;
+      color: rgba(255,255,255,0.13) !important;
+    }
+
+    .modal-watermark-media.watermark-dense::before {
+      inset: 0 !important;
+      opacity: 0.88 !important;
+      background-size: 180px 92px !important;
+      background-position: center center !important;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='92' viewBox='0 0 180 92'%3E%3Cg transform='rotate(-24 90 46)'%3E%3Ctext x='9' y='36' fill='rgba(255,255,255,0.44)' stroke='rgba(0,0,0,0.74)' stroke-width='1.25' paint-order='stroke' font-family='Arial,sans-serif' font-size='19' font-weight='900' letter-spacing='1.1'%3EKEITA PHOTO%3C/text%3E%3Ctext x='34' y='62' fill='rgba(255,255,255,0.42)' stroke='rgba(0,0,0,0.72)' stroke-width='1.15' paint-order='stroke' font-family='Arial,sans-serif' font-size='17.5' font-weight='900' letter-spacing='1.05'%3EPREVIEW%3C/text%3E%3C/g%3E%3C/svg%3E") !important;
+    }
+
+    .modal-watermark-media.watermark-dense.portrait::before {
+      background-size: 155px 80px !important;
+      opacity: 0.92 !important;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='155' height='80' viewBox='0 0 155 80'%3E%3Cg transform='rotate(-24 77.5 40)'%3E%3Ctext x='6' y='32' fill='rgba(255,255,255,0.47)' stroke='rgba(0,0,0,0.75)' stroke-width='1.2' paint-order='stroke' font-family='Arial,sans-serif' font-size='17' font-weight='900' letter-spacing='0.95'%3EKEITA PHOTO%3C/text%3E%3Ctext x='28' y='56' fill='rgba(255,255,255,0.45)' stroke='rgba(0,0,0,0.73)' stroke-width='1.1' paint-order='stroke' font-family='Arial,sans-serif' font-size='15.8' font-weight='900' letter-spacing='0.95'%3EPREVIEW%3C/text%3E%3C/g%3E%3C/svg%3E") !important;
+    }
+
+    .modal-watermark-media.watermark-dense::after {
+      font-size: clamp(36px, 8vw, 70px) !important;
+      color: rgba(255,255,255,0.11) !important;
+      text-shadow: 0 3px 8px rgba(0,0,0,0.70) !important;
+    }
+
+    .modal-watermark-media.watermark-dense.portrait::after {
+      font-size: clamp(34px, 9vw, 62px) !important;
+      color: rgba(255,255,255,0.12) !important;
     }
   </style>
 </head>
@@ -466,7 +502,7 @@
   <div id="photoModal" class="photo-modal" onclick="closePhotoModal()">
     <button class="photo-close" onclick="closePhotoModal()" aria-label="Close">✕</button>
 
-    <div class="photo-modal-box" onclick="event.stopPropagation()">
+    <div class="photo-modal-box watermark-dense modal-watermark-media" onclick="event.stopPropagation()">
       <img
         id="photoModalImg"
         class="photo-modal-img"
@@ -474,6 +510,7 @@
         alt="Photo Preview"
         draggable="false"
         referrerpolicy="no-referrer"
+        onload="markPreviewOrientation(this)"
       >
 
       <video
@@ -951,13 +988,13 @@
         });
 
         const data = await callFaceSearchFunction({
-  event_id: eventId,
-  descriptor,
-  threshold: 0.42,
-  max_results: 50,
-  gap_limit: 0.06,
-  strict: true
-});
+          event_id: eventId,
+          descriptor,
+          threshold: 0.42,
+          max_results: 50,
+          gap_limit: 0.06,
+          strict: true
+        });
 
         results = normalizeResults(data.results || data.matches || []);
 
@@ -1176,14 +1213,15 @@
           "bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-sm transition border border-slate-100 dark:border-slate-800";
 
         card.innerHTML = `
-          <div class="relative aspect-[3/4] bg-slate-200 dark:bg-slate-800">
+          <div class="relative aspect-[3/4] bg-slate-200 dark:bg-slate-800 overflow-hidden watermark-dense result-card-media">
             <img
               src="${escapeAttribute(img)}"
               class="w-full h-full object-cover bg-slate-200 dark:bg-slate-800"
               draggable="false"
               referrerpolicy="no-referrer"
               alt="${escapeAttribute(mediaIsVideo ? t().mediaVideo : t().photoFallback)}"
-              onerror="this.onerror=null; this.src='https://placehold.co/600x800/111827/ffffff?text=${mediaIsVideo ? "VIDEO" : "NO+IMAGE"}';"
+              onload="markPreviewOrientation(this)"
+              onerror="this.onerror=null; this.src='https://placehold.co/600x800/111827/ffffff?text=${mediaIsVideo ? "VIDEO" : "NO+IMAGE"}'; markPreviewOrientation(this);"
             >
 
             <div class="media-type-badge">
@@ -1221,7 +1259,7 @@
               ${mediaIsVideo ? "▶" : "🔍"} ${escapeHtml(t().viewPhoto)}
             </button>
 
-            <div class="absolute bottom-0 left-0 right-0 z-20 bg-black/50 text-white p-2 text-xs pointer-events-none truncate">
+            <div class="absolute bottom-0 left-0 right-0 z-30 bg-black/50 text-white p-2 text-xs pointer-events-none truncate">
               ${fileName}
             </div>
           </div>
@@ -1259,6 +1297,19 @@
       });
 
       protectMedia();
+    }
+
+    function markPreviewOrientation(img) {
+      if (!img || !img.parentElement) return;
+
+      const box = img.closest(".watermark-dense");
+      if (!box) return;
+
+      if (img.naturalHeight > img.naturalWidth) {
+        box.classList.add("portrait");
+      } else {
+        box.classList.remove("portrait");
+      }
     }
 
     function formatConfidence(confidence, distance) {
@@ -1482,8 +1533,13 @@
       const photo = item.photo;
       const mediaIsVideo = isVideo(photo);
 
+      const modalBox = document.querySelector(".photo-modal-box");
       const modalImg = document.getElementById("photoModalImg");
       const modalVideo = document.getElementById("photoModalVideo");
+
+      if (modalBox) {
+        modalBox.classList.remove("portrait");
+      }
 
       modalVideo.pause();
       modalVideo.removeAttribute("src");
