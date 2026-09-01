@@ -554,9 +554,10 @@
           <div style="text-align:left">
             <p><b>Order:</b> ${escapeHtml(order.order_no || order.id)}</p>
             <p><b>ลูกค้า:</b> ${escapeHtml(order.line_display_name || "-")}</p>
+            <p><b>LINE user id:</b> ${escapeHtml(order.line_user_id || "-")}</p>
             <p><b>ยอดเงิน:</b> ฿${formatMoney(order.total_amount || 0)}</p>
             <p style="margin-top:8px;color:#64748b">
-              หลังอนุมัติ ลูกค้าจะเข้า download.html เพื่อดาวน์โหลดไฟล์ได้
+              หลังอนุมัติ ระบบจะส่ง Flex Message ไปหาลูกค้า และลูกค้าจะเข้า download.html เพื่อดาวน์โหลดไฟล์ได้
             </p>
           </div>
         `,
@@ -573,6 +574,7 @@
 
         Swal.fire({
           title: "กำลังอนุมัติ...",
+          text: "กำลังบันทึกสถานะออเดอร์",
           allowOutsideClick: false,
           showConfirmButton: false,
           didOpen: () => Swal.showLoading()
@@ -592,12 +594,58 @@
 
         await updatePaymentStatus(orderId, "approved");
 
+        Swal.update({
+          title: "กำลังส่งข้อความ LINE...",
+          text: "กำลังส่ง Flex Message ให้ลูกค้า"
+        });
+
+        let notifyData = null;
+
+        try {
+          notifyData = await sendOrderApprovedFlex(orderId);
+        } catch (notifyErr) {
+          console.error("SEND ORDER APPROVED FLEX ERROR:", notifyErr);
+
+          await loadOrders();
+
+          Swal.fire({
+            icon: "warning",
+            title: "อนุมัติแล้ว แต่ส่ง LINE ไม่สำเร็จ",
+            html: `
+              <div style="text-align:left">
+                <p>ออเดอร์ถูกอนุมัติแล้ว ลูกค้าดาวน์โหลดได้แล้ว</p>
+                <p style="margin-top:8px;color:#dc2626">
+                  แต่ระบบส่ง Flex Message ไม่สำเร็จ
+                </p>
+                <p style="margin-top:8px;font-size:13px;color:#64748b;word-break:break-all">
+                  ${escapeHtml(notifyErr.message || "ไม่ทราบสาเหตุ")}
+                </p>
+              </div>
+            `,
+            confirmButtonText: "ตกลง"
+          });
+
+          return;
+        }
+
         await loadOrders();
 
         Swal.fire({
           icon: "success",
           title: "อนุมัติสำเร็จ",
-          text: "ลูกค้าสามารถดาวน์โหลดไฟล์ได้แล้ว",
+          html: `
+            <div style="text-align:left">
+              <p>ลูกค้าสามารถดาวน์โหลดไฟล์ได้แล้ว</p>
+              <p style="margin-top:8px;color:#059669">
+                ส่ง Flex Message ให้ลูกค้าเรียบร้อยแล้ว
+              </p>
+              ${
+                notifyData?.language
+                  ? `<p style="margin-top:8px;font-size:13px;color:#64748b">ภาษา: ${escapeHtml(notifyData.language)}</p>`
+                  : ""
+              }
+            </div>
+          `,
           confirmButtonText: "ตกลง"
         });
 
@@ -697,6 +745,36 @@
       } catch (err) {
         console.warn("payments table update skipped:", err);
       }
+    }
+
+    async function sendOrderApprovedFlex(orderId) {
+      const functionUrl =
+        `${String(CONFIG.SUPABASE_URL).replace(/\/+$/, "")}/functions/v1/send-order-approved`;
+
+      const res = await fetch(functionUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: CONFIG.SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({
+          order_id: orderId
+        })
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || data?.success === false) {
+        throw new Error(
+          data?.error ||
+          data?.message ||
+          data?.line_response ||
+          `ส่ง Flex Message ไม่สำเร็จ (${res.status})`
+        );
+      }
+
+      return data;
     }
 
     function openSlip(orderId) {
