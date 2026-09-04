@@ -1,0 +1,938 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f172a">
+<title>KEITA PHOTO TOOLS v14</title>
+<style>
+:root{
+  --bg:#f7f8fa;--surface:#fff;--surface-2:#f8fafc;--text:#0f172a;--muted:#64748b;
+  --line:#e2e8f0;--line-strong:#cbd5e1;--accent:#0f172a;--accent-soft:#eef2f7;
+  --green:#0f766e;--green-soft:#ecfdf5;--amber:#b45309;--amber-soft:#fffbeb;--red:#b91c1c;--red-soft:#fef2f2;
+  --radius:18px;--shadow:0 1px 2px rgba(15,23,42,.04),0 8px 28px rgba(15,23,42,.04)
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit}
+button,input,select,label{touch-action:manipulation}
+.app{max-width:1160px;margin:0 auto;padding:24px 20px 56px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:8px 0 20px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}.brandmark{width:42px;height:42px;border-radius:13px;background:#0f172a;color:#fff;display:grid;place-items:center;font-weight:900;letter-spacing:-.04em;flex:0 0 auto}.brandtext b{display:block;font-size:16px;letter-spacing:.02em}.brandtext span{display:block;margin-top:2px;color:var(--muted);font-size:12px}
+.top-pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.pill{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff;color:#475569;font-size:12px;font-weight:700}.dot{width:7px;height:7px;border-radius:50%;background:var(--green)}
+.intro{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:end;padding:26px 0 18px}.intro h1{margin:0;font-size:clamp(28px,4.4vw,46px);line-height:1.03;letter-spacing:-.045em}.intro p{margin:10px 0 0;color:var(--muted);line-height:1.65;max-width:780px}.safe-note{max-width:290px;border:1px solid #bbf7d0;background:var(--green-soft);padding:12px 14px;border-radius:14px;color:#065f46;font-size:12px;line-height:1.5}.safe-note b{display:block;margin-bottom:2px}
+.workflow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin:0 0 18px}.flow-item{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.68);color:#475569;font-size:12px;font-weight:700}.flow-no{width:24px;height:24px;border-radius:8px;background:var(--accent-soft);display:grid;place-items:center;color:#334155;font-size:11px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin:12px 0;box-shadow:var(--shadow)}
+.panel.primary-panel{border-color:#dbe3ee}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px}.section-title{display:flex;align-items:center;gap:11px;min-width:0}.section-icon{width:34px;height:34px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);display:grid;place-items:center;font-size:15px;flex:0 0 auto}.section-title h2{margin:0;font-size:17px;letter-spacing:-.01em}.section-title p{margin:3px 0 0;color:var(--muted);font-size:12px}.section-actions,.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn,.filebtn{appearance:none;border:1px solid var(--line-strong);background:#fff;color:#0f172a;min-height:42px;padding:9px 13px;border-radius:11px;font-weight:750;cursor:pointer;text-align:center;transition:.15s ease}.btn:hover,.filebtn:hover{border-color:#94a3b8;background:#f8fafc}.btn.primary,.filebtn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}.btn.primary:hover,.filebtn.primary:hover{background:#1e293b}.btn.good{background:var(--green);border-color:var(--green);color:#fff}.btn.good:hover{background:#0d6b64}.btn.danger{color:var(--red);background:var(--red-soft);border-color:#fecaca}.btn:disabled,.filebtn:has(+input:disabled){opacity:.42;cursor:not-allowed}.btn:focus-visible,.filebtn:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid rgba(15,118,110,.16);outline-offset:2px}
+.upload-zone{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;padding:18px;border:1px dashed var(--line-strong);border-radius:15px;background:var(--surface-2)}.upload-copy b{display:block;font-size:15px}.upload-copy span{display:block;margin-top:5px;color:var(--muted);font-size:12px}.upload-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.summary{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.chip{padding:7px 10px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;color:#475569;font-size:12px;font-weight:700}
+.switch{display:inline-flex;align-items:center;gap:9px;color:#334155;font-size:13px;font-weight:700;min-height:40px;cursor:pointer}.switch input{appearance:none;width:40px;height:23px;border-radius:999px;background:#cbd5e1;position:relative;transition:.15s;border:0;margin:0}.switch input:after{content:"";position:absolute;width:17px;height:17px;left:3px;top:3px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(15,23,42,.25);transition:.15s}.switch input:checked{background:var(--green)}.switch input:checked:after{transform:translateX(17px)}
+.quick-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.field{min-width:0}.field label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.045em;font-weight:800;color:#64748b;margin-bottom:6px}.field input,.field select{width:100%;height:43px;border:1px solid var(--line-strong);border-radius:10px;background:#fff;color:#0f172a;padding:0 11px;font-size:15px}.field input:disabled,.field select:disabled{background:#f8fafc;color:#94a3b8}
+.auto-core{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:end}.auto-actions{display:flex;gap:8px;flex-wrap:wrap}.status{display:block;margin-top:12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:#475569;font-size:12px}.status.good{background:var(--green-soft);color:#065f46;border-color:#bbf7d0}.status.warn{background:var(--amber-soft);color:#92400e;border-color:#fde68a}.status.bad{background:var(--red-soft);color:#991b1b;border-color:#fecaca}
+.progress{height:7px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-top:10px}.progress>div{height:100%;width:0;background:var(--green);transition:width .15s}
+.feature-strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin-top:14px}.feature{padding:10px;border-radius:11px;background:var(--surface-2);border:1px solid var(--line)}.feature b{display:block;font-size:12px}.feature span{display:block;color:var(--muted);font-size:10.5px;margin-top:3px;line-height:1.35}
+.details{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}.details summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;color:#475569;font-size:12px;font-weight:800}.details summary::-webkit-details-marker{display:none}.details summary:after{content:"＋";font-size:16px;color:#94a3b8}.details[open] summary:after{content:"−"}.details-body{padding:8px 0 2px}.check-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.check{display:flex;align-items:center;gap:8px;min-height:40px;color:#334155;font-size:12px;font-weight:650}.check input{width:17px;height:17px;accent-color:var(--green)}
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.setting-card{border:1px solid var(--line);border-radius:14px;padding:15px;background:#fff}.setting-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}.setting-card-head b{display:block;font-size:14px}.setting-card-head span{display:block;margin-top:3px;color:var(--muted);font-size:11px}.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.muted{color:var(--muted);font-size:12px;line-height:1.55}.tiny{font-size:10.5px;color:var(--muted);line-height:1.45}.rename-preview{margin:10px 0 0;padding:9px 11px;background:var(--surface-2);border-radius:9px;color:#475569;font-size:12px;overflow-wrap:anywhere}
+.preview-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:12px;max-height:430px}table{border-collapse:collapse;width:100%;min-width:1030px;font-size:11.5px}th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}th{position:sticky;top:0;z-index:1;background:#f8fafc;color:#475569;font-size:10.5px;text-transform:uppercase;letter-spacing:.035em}tr:last-child td{border-bottom:0}.goodtxt{color:var(--green);font-weight:800}.warntxt{color:var(--amber);font-weight:800}.badtxt{color:var(--red);font-weight:800}
+.export-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:14px;background:var(--surface-2)}.export-path b{display:block;font-size:13px}.export-path span{display:block;margin-top:4px;color:var(--muted);font-size:11.5px}.export-bottom{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}.export-buttons{display:flex;gap:8px;flex-wrap:wrap}.export-all{min-width:160px}
+
+.cull-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}.metric{border:1px solid var(--line);border-radius:12px;background:var(--surface-2);padding:11px}.metric b{display:block;font-size:12px}.metric span{display:block;margin-top:4px;color:var(--muted);font-size:10.5px;line-height:1.4}.cull-counts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.count{border:1px solid var(--line);border-radius:999px;padding:7px 11px;font-size:12px;font-weight:800;background:#fff}.count.pass{color:var(--green);background:var(--green-soft);border-color:#bbf7d0}.count.review{color:var(--amber);background:var(--amber-soft);border-color:#fde68a}.count.reject{color:var(--red);background:var(--red-soft);border-color:#fecaca}.status-select{height:32px;border:1px solid var(--line-strong);border-radius:8px;background:#fff;padding:0 7px;font-size:11px;font-weight:700}.thumb-btn{border:0;background:transparent;padding:0;cursor:zoom-in}.thumb{width:72px;height:52px;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:block;background:#e2e8f0}dialog.photo-dialog{border:0;border-radius:16px;padding:0;max-width:min(920px,94vw);width:100%;box-shadow:0 24px 70px rgba(15,23,42,.28)}dialog.photo-dialog::backdrop{background:rgba(15,23,42,.68)}.dialog-body{padding:14px;background:#0f172a}.dialog-img{display:block;width:100%;max-height:72vh;object-fit:contain;background:#020617;border-radius:10px}.dialog-foot{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px 14px;background:#fff}.dialog-info{min-width:0;font-size:12px;color:#475569}.dialog-actions{display:flex;gap:7px;flex-wrap:wrap}.dialog-actions .btn{min-height:36px;padding:7px 10px;font-size:12px}.filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.filter-row select{height:36px;border:1px solid var(--line-strong);border-radius:9px;background:#fff;padding:0 9px}.focus-meter{display:inline-flex;align-items:center;gap:6px}.focus-bar{width:54px;height:6px;background:#e2e8f0;border-radius:999px;overflow:hidden}.focus-bar i{display:block;height:100%;background:var(--green);border-radius:999px}.tag-best{display:inline-block;margin-left:4px;padding:2px 5px;border-radius:6px;background:#fef3c7;color:#92400e;font-size:9px;font-weight:900}.tag-keep{display:inline-block;margin-left:4px;padding:2px 5px;border-radius:6px;background:#e0f2fe;color:#075985;font-size:9px;font-weight:900}.export-options{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px}.export-options .check{min-height:32px}.queue-note{margin-top:8px;color:var(--muted);font-size:10.5px;line-height:1.45}
+.resume-box{margin-top:12px;border:1px solid #bfdbfe;background:#eff6ff;border-radius:13px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.resume-copy b{display:block;font-size:12px;color:#1e3a8a}.resume-copy span{display:block;margin-top:3px;color:#475569;font-size:11px}.resume-actions{display:flex;gap:7px;flex-wrap:wrap}.session-note{font-size:10.5px;color:#64748b;margin-top:7px}
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.compare-pane{position:relative;min-width:0;background:#020617;border-radius:10px;overflow:hidden}.compare-label{position:absolute;top:8px;left:8px;z-index:2;padding:4px 7px;border-radius:999px;background:rgba(15,23,42,.78);color:white;font-size:10px;font-weight:800}.compare-img{display:block;width:100%;height:min(62vh,620px);object-fit:contain;background:#020617}.compare-loading{position:absolute;inset:0;display:grid;place-items:center;background:rgba(2,6,23,.64);color:#fff;font-size:12px;font-weight:800}.review-toolbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.review-badge{padding:6px 9px;border-radius:999px;background:var(--amber-soft);color:#92400e;border:1px solid #fde68a;font-size:11px;font-weight:800}
+.highlight-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.highlight-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}.highlight-counts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.highlight-count{padding:7px 11px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:12px;font-weight:800}.highlight-count.selected{background:#fef3c7;color:#92400e;border-color:#fde68a}.highlight-count.pinned{background:#ede9fe;color:#5b21b6;border-color:#ddd6fe}.tag-highlight{display:inline-flex;align-items:center;gap:3px;padding:3px 7px;border-radius:999px;background:#fef3c7;color:#92400e;font-size:9px;font-weight:900}.tag-pinned{display:inline-flex;align-items:center;gap:3px;padding:3px 7px;border-radius:999px;background:#ede9fe;color:#5b21b6;font-size:9px;font-weight:900}.highlight-photo-check{width:18px;height:18px;accent-color:#b45309;cursor:pointer}.dialog-highlight.on{background:#b45309;color:#fff;border-color:#b45309}.highlight-score{font-weight:900;color:#92400e}.highlight-breakdown{font-size:10px;color:var(--muted);line-height:1.4}.highlight-note{margin-top:8px;color:var(--muted);font-size:10.5px;line-height:1.5}
+.hl-category{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;background:#eef2ff;color:#3730a3;font-size:9px;font-weight:900;margin-left:4px}.hl-grade{font-size:9px;font-weight:900}.hl-grade.portfolio{color:#7c3aed}.hl-grade.reserve{color:#b45309}.category-strip{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.category-chip{padding:5px 8px;border-radius:999px;background:#f8fafc;border:1px solid var(--line);font-size:10px;font-weight:800;color:#475569}
+
+
+.hidden{display:none!important}.footer{text-align:center;padding:24px 0 4px;color:#94a3b8;font-size:11px}
+
+.watermark-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,.8fr);gap:14px;align-items:start}.wm-stage-wrap{min-width:0}.wm-stage-shell{display:flex;justify-content:center;align-items:flex-start;padding:12px;border:1px solid var(--line);border-radius:14px;background:#0b1220;min-height:220px}.wm-stage{position:relative;width:100%;max-width:760px;aspect-ratio:3/2;background:#111827 center/100% 100% no-repeat;border-radius:10px;overflow:hidden;touch-action:none;user-select:none}.wm-stage.empty{background:#111827}.wm-stage-empty{position:absolute;inset:0;display:grid;place-items:center;color:#94a3b8;font-size:12px;text-align:center;padding:20px}.wm-layer{position:absolute;left:5%;top:5%;width:28%;cursor:move;border:2px solid transparent;border-radius:4px;touch-action:none}.wm-layer.active{border-color:#fff;box-shadow:0 0 0 1px rgba(15,23,42,.65)}.wm-layer img{display:block;width:100%;height:auto;pointer-events:none;user-select:none}.wm-resize{position:absolute;right:-7px;bottom:-7px;width:15px;height:15px;border-radius:50%;background:#fff;border:2px solid #0f172a;cursor:nwse-resize;touch-action:none}.wm-side{border:1px solid var(--line);border-radius:14px;padding:14px;background:var(--surface-2)}.wm-side-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.wm-layer-list{display:flex;flex-direction:column;gap:7px;margin-top:10px;max-height:280px;overflow:auto}.wm-layer-row{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:10px;background:#fff}.wm-layer-row.active{border-color:#94a3b8;background:#f8fafc}.wm-layer-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:700}.wm-mini{min-height:32px;padding:5px 8px;border-radius:8px;font-size:11px}.wm-selection{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}.wm-count{font-size:13px;font-weight:800}.wm-photo-check{width:18px;height:18px;accent-color:var(--green);cursor:pointer}.wm-badge{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;background:#e0f2fe;color:#075985;font-size:9px;font-weight:900}.dialog-watermark.on{background:#075985;color:#fff;border-color:#075985}.wm-help{margin-top:8px;color:var(--muted);font-size:10.5px;line-height:1.5}.wm-tabs{display:flex;gap:6px;margin-bottom:10px}.wm-tab{appearance:none;border:1px solid var(--line-strong);background:#fff;color:#475569;border-radius:10px;min-height:38px;padding:7px 11px;font-weight:800;cursor:pointer}.wm-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}.wm-orientation-note{margin:8px 0 0;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:#475569;font-size:11px;line-height:1.45}
+@media(max-width:900px){.highlight-grid{grid-template-columns:1fr 1fr}.watermark-layout{grid-template-columns:1fr}.wm-stage{max-width:680px}.intro{grid-template-columns:1fr}.cull-grid,.metric-grid{grid-template-columns:1fr 1fr}.safe-note{max-width:none}.workflow{grid-template-columns:1fr 1fr}.feature-strip{grid-template-columns:1fr 1fr 1fr}.settings-grid{grid-template-columns:1fr}.grid4{grid-template-columns:1fr 1fr}.auto-core{grid-template-columns:1fr}.auto-actions{justify-content:flex-start}}
+@media(max-width:720px){.compare-grid{grid-template-columns:1fr}.compare-img{height:auto;max-height:48vh}}
+@media(max-width:620px){.highlight-grid{grid-template-columns:1fr}.app{padding:14px 12px 36px}.cull-grid,.metric-grid{grid-template-columns:1fr}.topbar{align-items:flex-start}.top-pills{display:none}.intro{padding-top:20px}.workflow{grid-template-columns:1fr 1fr}.flow-item{padding:9px}.panel{padding:15px;border-radius:15px}.section-head{align-items:flex-start}.section-actions,.actions{width:100%}.upload-zone{grid-template-columns:1fr}.upload-actions{justify-content:flex-start}.filebtn,.upload-actions .btn{flex:1}.quick-grid,.grid3,.grid4,.grid2,.check-grid{grid-template-columns:1fr}.feature-strip{grid-template-columns:1fr 1fr}.export-card{grid-template-columns:1fr}.export-bottom{align-items:stretch;flex-direction:column}.export-buttons{display:grid;grid-template-columns:1fr 1fr}.export-all{grid-column:1/-1}.btn,.filebtn{min-height:44px}.brandtext span{display:none}}
+@media(max-width:390px){.workflow{grid-template-columns:1fr}.feature-strip{grid-template-columns:1fr}.export-buttons{grid-template-columns:1fr}.export-all{grid-column:auto}}
+</style>
+</head>
+<body>
+<main class="app" id="app">
+  <header class="topbar">
+    <div class="brand"><div class="brandmark">K</div><div class="brandtext"><b>KEITA PHOTO CAMERA</b><span>Batch Photo Workflow</span></div></div>
+    <div class="top-pills"><span class="pill"><span class="dot"></span> Local processing</span><span class="pill">JPEG</span><span class="pill">Original safe</span></div>
+  </header>
+
+  <section class="intro">
+    <div><h1>จัดการรูปทั้งอัลบั้ม<br>ให้จบในหน้าเดียว</h1><p>เลือกภาพ → Smart Culling → Auto Fine Tune → เลือก Highlight → Rename / Resize / EXIF → Watermark → Export โดยไฟล์ต้นฉบับไม่ถูกเขียนทับ</p></div>
+    <div class="safe-note"><b>ปลอดภัยกับต้นฉบับ</b>ระบบสร้างโฟลเดอร์ KEITA_EXPORT ใหม่ทุกครั้ง และรวม Auto Edit + Resize + Watermark เป็น JPEG encode รอบเดียว และ Highlight เป็นเพียงการคัดเลือก ไม่บีบภาพเพิ่ม</div>
+  </section>
+
+  <nav class="workflow" aria-label="ขั้นตอนการทำงาน">
+    <div class="flow-item"><span class="flow-no">1</span>เลือกรูป</div>
+    <div class="flow-item"><span class="flow-no">2</span>Smart Culling</div>
+    <div class="flow-item"><span class="flow-no">3</span>Auto Fine Tune</div>
+    <div class="flow-item"><span class="flow-no">4</span>Highlight</div>
+    <div class="flow-item"><span class="flow-no">5</span>ตั้งค่า Output</div>
+    <div class="flow-item"><span class="flow-no">6</span>Watermark บางรูป</div>
+    <div class="flow-item"><span class="flow-no">7</span>Preview & Export</div>
+  </nav>
+
+  <section class="panel primary-panel">
+    <div class="section-head">
+      <div class="section-title"><span class="section-icon">＋</span><div><h2>เลือกรูป</h2><p>รองรับ JPEG หลายไฟล์หรือทั้งโฟลเดอร์</p></div></div>
+      <button class="btn" id="clear" type="button">ล้างรายการ</button>
+    </div>
+    <div class="upload-zone">
+      <div class="upload-copy"><b>เพิ่มรูปจาก SD Card หรือโฟลเดอร์ในเครื่อง</b><span>รูปทั้งหมดจะประมวลผลอยู่ในเครื่องของคุณ</span></div>
+      <div class="upload-actions">
+        <label class="filebtn primary" for="files">เลือกรูป</label><input id="files" hidden type="file" accept="image/jpeg,.jpg,.jpeg" multiple>
+        <label class="filebtn" for="folder">เลือกโฟลเดอร์</label><input id="folder" hidden type="file" accept="image/jpeg,.jpg,.jpeg" webkitdirectory multiple>
+        <button class="btn" id="sourceFolder" type="button">เลือกโฟลเดอร์ + Resume</button>
+      </div>
+    </div>
+    <div class="summary" id="fileSummary"><span class="chip">ยังไม่มีไฟล์</span></div>
+    <div class="resume-box hidden" id="resumeBox"><div class="resume-copy"><b id="resumeTitle">พบงานค้าง</b><span id="resumeText">สามารถเปิดโฟลเดอร์เดิมแล้วทำต่อได้</span></div><div class="resume-actions"><button class="btn primary" id="resumeSource" type="button">ทำงานต่อ</button><button class="btn" id="forgetSession" type="button">ลืมงานค้าง</button></div></div>
+    <div class="session-note" id="sessionNote">ระบบจะบันทึก Culling / Auto / Export progress ลงในเครื่องอัตโนมัติเมื่อใช้โหมด Resume</div>
+  </section>
+
+  <section class="panel" id="cullingPanel">
+    <div class="section-head">
+      <div class="section-title"><span class="section-icon">✓</span><div><h2>Smart Culling</h2><p>คัดภาพเสียจากโฟกัส โดยไม่ทิ้ง Burst ที่ยังคม</p></div></div>
+      <label class="switch"><input id="cullEnabled" type="checkbox" checked> คัดภาพ</label>
+    </div>
+    <div class="auto-core">
+      <div class="cull-grid">
+        <div class="field"><label>ความเข้มงวด</label><select id="cullSensitivity"><option value="safe" selected>Safe — แนะนำ / คัดเฉพาะเสียชัด</option><option value="balanced">Balanced</option><option value="strict">Strict</option></select></div>
+        <div class="field"><label>Burst gap</label><select id="burstGap"><option value="1">1 วินาที</option><option value="2" selected>2 วินาที</option><option value="3">3 วินาที</option></select></div>
+        <div class="field"><label>Person confidence</label><select id="personConfidence"><option value="0.20">ไวมาก</option><option value="0.25" selected>มาตรฐาน</option><option value="0.35">เข้มงวด</option></select></div>
+        <div class="field"><label>โฟกัส</label><select id="focusPriority"><option value="center-thirds" selected>Center + จุดตัด 9 ช่อง</option><option value="subject">ตัวบุคคลเป็นหลัก</option></select></div>
+      </div>
+      <div class="auto-actions"><button class="btn good" id="runCull" type="button" disabled>คัดภาพทั้งอัลบั้ม</button><button class="btn" id="stopCull" type="button" disabled>หยุด</button></div>
+    </div>
+    <span class="status" id="cullStatus">เลือกรูปก่อน</span>
+    <div class="progress hidden" id="cullProgress"><div id="cullBar"></div></div>
+    <div class="cull-counts" id="cullCounts"><span class="count">ยังไม่ได้คัด</span></div>
+    <div class="metric-grid">
+      <div class="metric"><b>ต้องพบคน</b><span>ไม่พบคนเลย → REJECT ทันทีเมื่อ Person AI ทำงานปกติ</span></div>
+      <div class="metric"><b>Center + จุดตัด</b><span>ใช้เป็นตำแหน่งโฟกัสประกอบ แต่ Subject/Face มีสิทธิ์ PASS ได้โดยตรง</span></div>
+      <div class="metric"><b>Subject Focus</b><span>ตรวจหลายจุดบนศีรษะ/ช่วงตัว ลดผลจากฉากหลังละลายและเสื้อผ้าพื้นเรียบ</span></div>
+      <div class="metric"><b>Burst เก็บภาพคม</b><span>ไม่คัดเพราะภาพซ้ำ คัดเฉพาะเฟรมหลุดโฟกัส/เบลอจริง</span></div>
+    </div>
+    <details class="details">
+      <summary>หลักการคัดภาพ</summary>
+      <div class="details-body">
+        <p class="tiny">พบใบหน้า → ใช้ความคมของหน้าเป็นข้อมูลเพิ่ม · ไม่พบหน้าแต่พบคน → ตรวจความคมของตัวบุคคลได้ตามปกติ · ไม่พบคนเลย → Reject · ภาพก้ำกึ่ง → Review เพื่อไม่คัดภาพดีทิ้งโดยไม่จำเป็น</p>
+      </div>
+    </details>
+  </section>
+
+  <section class="panel">
+    <div class="section-head">
+      <div class="section-title"><span class="section-icon">A</span><div><h2>Auto Fine Tune</h2><p>ปรับภาพแบบเบา ๆ โดยให้น้ำหนักใบหน้าและตัวบุคคล</p></div></div>
+      <label class="switch"><input id="autoEnabled" type="checkbox" checked> Auto Edit</label>
+    </div>
+    <div class="auto-core">
+      <div class="quick-grid">
+        <div class="field"><label>ความแรง</label><select id="autoStrength"><option value="natural" selected>Natural — แนะนำ</option><option value="standard">Standard</option><option value="punchy">Punchy</option></select></div>
+        <div class="field"><label>น้ำหนักคน/ใบหน้า</label><select id="subjectWeight"><option value="high" selected>สูง — งานวิ่ง</option><option value="medium">กลาง</option><option value="off">ปิด</option></select></div>
+        <div class="field"><label>รูปที่พอดีอยู่แล้ว</label><select id="deadband"><option value="wide" selected>แตะให้น้อยที่สุด</option><option value="normal">ปกติ</option><option value="narrow">ปรับละเอียดทุกภาพ</option></select></div>
+        <div class="field"><label>Scene</label><select id="sceneMode"><option value="auto" selected>Auto — Day / Forest / Night / Mixed</option><option value="forest">Trail / Forest</option><option value="day">Daylight</option><option value="night">Night</option><option value="mixed">Mixed Light</option></select></div>
+      </div>
+      <div class="auto-actions"><button class="btn good" id="analyze" type="button" disabled>AUTO ทั้งอัลบั้ม</button><button class="btn" id="stopAnalyze" type="button" disabled>หยุด</button></div>
+    </div>
+    <span class="status" id="autoStatus">เลือกรูปก่อน</span>
+    <div class="progress hidden" id="analyzeProgress"><div id="analyzeBar"></div></div>
+    <div class="feature-strip">
+      <div class="feature"><b>Exposure</b><span>Face / Person weighted</span></div>
+      <div class="feature"><b>Highlight / Shadow</b><span>เก็บขาว เปิดส่วนมืด</span></div>
+      <div class="feature"><b>Auto WB</b><span>แก้สีเพี้ยนเล็กน้อย</span></div>
+      <div class="feature"><b>Skin / Vibrance</b><span>คุมผิวและสีเขียว</span></div>
+      <div class="feature"><b>Detail</b><span>NR + Sharpen ตาม ISO</span></div>
+      <div class="feature"><b>Trail / Forest</b><span>Soft Highlight + Shadow Detail</span></div>
+      <div class="feature"><b>Night / Mixed</b><span>คุมไฟเวที ไฟถนน และแสงผสม</span></div>
+    </div>
+    <details class="details">
+      <summary>ตั้งค่า Auto ขั้นสูง</summary>
+      <div class="details-body">
+        <div class="check-grid">
+          <label class="check"><input id="toneAuto" type="checkbox" checked> Highlights / Shadows Auto</label>
+          <label class="check"><input id="wbAuto" type="checkbox" checked> Auto White Balance</label>
+          <label class="check"><input id="skinProtect" type="checkbox" checked> Skin Tone Protect</label>
+          <label class="check"><input id="vibranceAuto" type="checkbox" checked> Vibrance + Green Control</label>
+          <label class="check"><input id="clarityAuto" type="checkbox" checked> Clarity เบา ๆ</label>
+          <label class="check"><input id="detailAuto" type="checkbox" checked> Noise Reduction + Sharpen</label>
+        </div>
+        <p class="tiny">Face/Person AI ใช้อินเทอร์เน็ตเฉพาะการโหลดโมเดลครั้งแรก หากโหลดไม่ได้จะใช้ Center/Histogram weighting แทน โดยรูปยังคงอยู่ในเครื่อง และ Scene Auto จะพยายามแยก Day / Trail-Forest / Night / Mixed Light ให้เอง</p>
+      </div>
+    </details>
+  </section>
+
+  <section class="panel" id="highlightSection">
+    <div class="section-head">
+      <div class="section-title"><span class="section-icon">★</span><div><h2>Highlight Selector</h2><p>คัดภาพโชว์ผลงานหลัง Auto Fine Tune จากภาพ PASS ที่คมและสวยที่สุด</p></div></div>
+      <div class="section-actions"><button class="btn" id="openHighlightQueue" type="button" disabled>ดู Highlight</button><button class="btn" id="clearHighlights" type="button">ล้าง Highlight</button></div>
+    </div>
+    <div class="auto-core">
+      <div class="highlight-grid">
+        <div class="field"><label>จำนวนสูงสุด</label><input id="highlightCount" type="number" value="30" min="1" max="500"></div>
+        <div class="field"><label>แนวการคัด</label><select id="highlightStyle"><option value="portfolio" selected>Portfolio — ตามสไตล์ KEITA</option><option value="story">Story / Moment</option><option value="balanced">Balanced</option><option value="technical">Technical / คมที่สุด</option></select></div>
+        <div class="field"><label>มาตรฐาน HL</label><select id="highlightGrade"><option value="strict" selected>Best of the best — แนะนำ</option><option value="normal">Portfolio ปกติ</option><option value="flexible">ยืดหยุ่น</option></select></div>
+        <div class="field"><label>ความหลากหลาย</label><select id="highlightDiversity"><option value="high" selected>สูง — กระจายเรื่องราว/มุม</option><option value="normal">ปกติ</option><option value="off">ปิด</option></select></div>
+      </div>
+      <div class="highlight-actions"><button class="btn good" id="runHighlight" type="button" disabled>★ เลือก Highlight</button><button class="btn" id="stopHighlight" type="button" disabled>หยุด</button></div>
+    </div>
+    <span class="status" id="highlightStatus">คัดภาพและ Auto Fine Tune ก่อน แล้วกดเลือก Highlight</span>
+    <div class="progress hidden" id="highlightProgress"><div id="highlightBar"></div></div>
+    <div class="highlight-counts" id="highlightCounts"><span class="highlight-count selected">HIGHLIGHT 0</span><span class="highlight-count pinned">PINNED 0</span><span class="highlight-count">ให้คะแนน 0</span></div>
+    <div class="highlight-note">Portfolio mode แยกภาพเป็น RUNNING POSE / ACTION / STORY / SCENIC / CHARACTER แล้วเลือกตัวเด่นของแต่ละประเภท · Running Pose ให้ความสำคัญกับขาหนึ่งงอ อีกขายืด หน้า/ตาดี · Story/Scenic ไม่บังคับท่าวิ่ง · ไม่ได้เลือกเป็น Highlight ≠ ถูกคัดออกจากการขาย</div><div class="category-strip" id="highlightCategories"><span class="category-chip">RUNNING POSE 0</span><span class="category-chip">ACTION 0</span><span class="category-chip">STORY 0</span><span class="category-chip">SCENIC 0</span><span class="category-chip">CHARACTER 0</span></div>
+  </section>
+
+  <section class="panel">
+    <div class="section-head"><div class="section-title"><span class="section-icon">↗</span><div><h2>ตั้งค่า Output</h2><p>ค่าที่ใช้ประจำอยู่ด้านบน ส่วนรายละเอียดเพิ่มเติมเปิดเมื่อจำเป็น</p></div></div></div>
+    <div class="settings-grid">
+      <div class="setting-card">
+        <div class="setting-card-head"><div><b>Rename</b><span>ตั้งชื่อไฟล์อัตโนมัติ</span></div><label class="switch"><input id="renameEnabled" type="checkbox" checked> เปิด</label></div>
+        <div class="grid2">
+          <div class="field"><label>รหัสช่างภาพ</label><input id="photographer" value="17" maxlength="12"></div>
+          <div class="field"><label>เลขเริ่มต้น</label><input id="startNo" type="number" value="1" min="0"></div>
+        </div>
+        <details class="details">
+          <summary>รูปแบบชื่อเพิ่มเติม</summary>
+          <div class="details-body grid2">
+            <div class="field"><label>รูปแบบ</label><select id="renameMode"><option value="original-pse" selected>ชื่อเดิม + PSE + รหัส + เลขรัน</option><option value="pse">PSE + รหัส + เลขรัน</option><option value="original">ชื่อเดิม + เลขรัน</option></select></div>
+            <div class="field"><label>จำนวนหลัก</label><select id="digits"><option>3</option><option selected>4</option><option>5</option><option>6</option></select></div>
+          </div>
+        </details>
+        <div class="rename-preview" id="renamePreview">ตัวอย่าง: —</div>
+      </div>
+
+      <div class="setting-card">
+        <div class="setting-card-head"><div><b>Resize / File Limit</b><span>เน้นคุณภาพสูงสุดภายในขนาดไฟล์</span></div><label class="switch"><input id="resizeEnabled" type="checkbox" checked> เปิด</label></div>
+        <div class="grid2">
+          <div class="field"><label>Long Edge</label><input id="longEdge" type="number" value="4500" min="500" max="12000"></div>
+          <div class="field"><label>File Limit (MB)</label><input id="fileLimit" type="number" value="4.8" min="0.2" max="50" step="0.1"></div>
+        </div>
+        <details class="details">
+          <summary>คุณภาพ JPEG ขั้นสูง</summary>
+          <div class="details-body grid2">
+            <div class="field"><label>Minimum JPEG Quality</label><input id="minQuality" type="number" value="78" min="50" max="98"></div>
+            <div class="field"><label>Output Sharpen</label><select id="sharpen"><option value="auto" selected>Auto ตาม ISO / Resize</option><option value="off">ปิด</option><option value="low">Low</option><option value="medium">Medium</option></select></div>
+          </div>
+          <label class="check"><input id="noUpscale" type="checkbox" checked> ไม่ขยายภาพที่เล็กกว่า Long Edge</label>
+        </details>
+      </div>
+    </div>
+
+    <details class="details" style="margin-top:14px">
+      <summary>แก้วันที่ / เวลา EXIF (ใช้เมื่อวันที่ในกล้องผิด)</summary>
+      <div class="details-body">
+        <div class="setting-card" style="background:var(--surface-2)">
+          <div class="setting-card-head"><div><b>EXIF Date / Time</b><span>ปิดไว้เป็นค่าเริ่มต้น</span></div><label class="switch"><input id="dateEnabled" type="checkbox"> แก้วันที่</label></div>
+          <div class="grid3">
+            <div class="field"><label>โหมด</label><select id="dateMode"><option value="dateonly" selected>เปลี่ยนวันที่ เก็บเวลาเดิม</option><option value="offset">เลื่อนวัน / เวลา</option><option value="absolute">กำหนดวัน / เวลาเริ่มต้นใหม่</option></select></div>
+            <div class="field"><label>วันที่</label><input id="newDate" type="date"></div>
+            <div class="field"><label>เวลาเริ่มต้น</label><input id="newTime" type="time" step="1" value="06:00:00"></div>
+          </div>
+          <div class="grid4" style="margin-top:10px">
+            <div class="field"><label>เลื่อนวัน</label><input id="offDays" type="number" value="0"></div>
+            <div class="field"><label>เลื่อนชั่วโมง</label><input id="offHours" type="number" value="0"></div>
+            <div class="field"><label>เลื่อนนาที</label><input id="offMinutes" type="number" value="0"></div>
+            <div class="field"><label>เลื่อนวินาที</label><input id="offSeconds" type="number" value="0"></div>
+          </div>
+          <div class="grid2" style="margin-top:10px">
+            <label class="check"><input id="tzEnabled" type="checkbox"> แก้ Time Zone</label>
+            <div class="field"><label>Time Zone ใหม่</label><select id="timezone"><option value="+07:00" selected>+07:00 Thailand</option><option value="+08:00">+08:00</option><option value="+09:00">+09:00</option><option value="+00:00">+00:00</option></select></div>
+          </div>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <section class="panel">
+    <div class="preview-toolbar"><div class="section-title"><span class="section-icon">≡</span><div><h2>Preview & Review Queue</h2><p>เทียบ Before/After และตรวจเฉพาะภาพ REVIEW ได้ต่อเนื่อง</p></div></div><div class="filter-row"><button class="btn" id="openReviewQueue" type="button" disabled>เปิด REVIEW Queue</button><select id="previewFilter"><option value="all">ทั้งหมด</option><option value="pass">PASS</option><option value="review">REVIEW</option><option value="reject">REJECT</option><option value="unculled">ยังไม่คัด</option><option value="highlight">HIGHLIGHT</option></select><span class="pill" id="previewSummary">ยังไม่มีไฟล์</span></div></div>
+    <div class="tablewrap"><table><thead><tr><th>#</th><th>ภาพ</th><th>ไฟล์</th><th>Culling</th><th>Focus</th><th>ชื่อใหม่</th><th>Auto Fine Tune</th><th>Highlight</th><th>Resize</th><th>HL / ลายน้ำ</th><th>สถานะ</th></tr></thead><tbody id="rows"><tr><td colspan="11">เลือกรูปก่อน</td></tr></tbody></table></div>
+    <p class="tiny">แสดง Preview สูงสุด 100 รูปตาม Filter เพื่อให้รองรับอัลบั้มขนาดใหญ่ โดยการคัดและ Export จะทำงานกับทุกไฟล์</p>
+  </section>
+
+  <dialog class="photo-dialog" id="photoDialog">
+    <div class="dialog-body">
+      <div class="compare-grid">
+        <div class="compare-pane"><span class="compare-label">BEFORE</span><img class="compare-img" id="dialogImg" alt="ภาพต้นฉบับ"></div>
+        <div class="compare-pane"><span class="compare-label">AFTER · Auto Fine Tune</span><img class="compare-img" id="dialogAfter" alt="ภาพหลังปรับ"><div class="compare-loading hidden" id="dialogAfterLoading">กำลังสร้าง After…</div></div>
+      </div>
+    </div>
+    <div class="dialog-foot"><div class="dialog-info" id="dialogInfo">—</div><div class="dialog-actions"><button class="btn" id="dialogPrev" type="button">← ก่อนหน้า</button><button class="btn" id="dialogNext" type="button">ถัดไป →</button><button class="btn good" id="dialogPass" type="button">PASS</button><button class="btn" id="dialogReview" type="button">REVIEW</button><button class="btn danger" id="dialogReject" type="button">REJECT</button><button class="btn dialog-highlight" id="dialogHighlight" type="button">★ Highlight: OFF</button><button class="btn dialog-watermark hidden" id="dialogWatermark" type="button" disabled>ลายน้ำ HL อัตโนมัติ</button><button class="btn" id="closeDialog" type="button">ปิด</button></div></div>
+  </dialog>
+
+  <section class="panel" id="watermarkPanel">
+    <div class="section-head">
+      <div class="section-title"><span class="section-icon">W</span><div><h2>Watermark — สำหรับ HIGHLIGHT</h2><p>รูป HL ทุกใบจะใส่ลายน้ำอัตโนมัติ โดยแยกชุดแนวตั้ง / แนวนอน</p></div></div>
+    </div>
+    <div class="watermark-layout">
+      <div class="wm-stage-wrap">
+        <div class="wm-stage-shell"><div class="wm-stage empty" id="wmStage"><div class="wm-stage-empty" id="wmStageEmpty">ระบบใช้รูป HIGHLIGHT เป็นตัวอย่างก่อน<br>ถ้ายังไม่มี HL จะใช้รูปแรกของแนวนั้น</div></div></div>
+        <div class="wm-help">สลับแท็บ แนวตั้ง / แนวนอน เพื่อจัดชุดแยกกัน · เพิ่ม Event Frame และลายน้ำของช่างภาพได้หลาย Layer · ลากเพื่อย้ายตำแหน่งและลากจุดมุมขวาล่างเพื่อย่อ/ขยาย · รูป HIGHLIGHT ทุกใบจะใช้ชุดตามแนวภาพอัตโนมัติ</div>
+      </div>
+      <div class="wm-side">
+        <div class="wm-tabs" role="tablist" aria-label="ชุดลายน้ำตามแนวภาพ">
+          <button class="wm-tab active" id="wmTabPortrait" type="button" data-wm-orientation="portrait">แนวตั้ง</button>
+          <button class="wm-tab" id="wmTabLandscape" type="button" data-wm-orientation="landscape">แนวนอน</button>
+        </div>
+        <div class="wm-side-head">
+          <div><b id="wmOrientationTitle">ลายน้ำแนวตั้ง</b><div class="tiny">แต่ละแนวมี Layer แยกกัน เพิ่มได้เรื่อย ๆ และจัดตำแหน่งคนละแบบได้</div></div>
+          <label class="filebtn primary" for="watermarkPortraitFiles" id="wmUploadPortrait">+ เพิ่มแนวตั้ง</label><input id="watermarkPortraitFiles" hidden type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" multiple>
+          <label class="filebtn primary hidden" for="watermarkLandscapeFiles" id="wmUploadLandscape">+ เพิ่มแนวนอน</label><input id="watermarkLandscapeFiles" hidden type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" multiple>
+        </div>
+        <div class="wm-orientation-note" id="wmOrientationNote">กำลังแก้ชุดแนวตั้ง · รูป HL แนวตั้งจะใช้เฉพาะ Layer ชุดนี้</div>
+        <div class="wm-layer-list" id="wmLayerList"><div class="tiny">ยังไม่มีลายน้ำแนวตั้ง</div></div>
+        <div class="wm-selection">
+          <div class="wm-count" id="wmSelectedCount">HIGHLIGHT ที่จะใส่ลายน้ำ 0 รูป</div>
+          <div class="tiny" style="margin-top:4px">ไม่ต้องเลือกทีละรูป: รูปที่เป็น HIGHLIGHT จะถูกใส่ลายน้ำอัตโนมัติทั้งหมด ส่วนรูปขายหลักจะไม่มีลายน้ำ</div>
+          <div class="actions" style="margin-top:9px"><button class="btn hidden" id="wmClearSelected" type="button">ล้างรูปที่เลือกทั้งหมด</button><button class="btn danger" id="wmClearLayers" type="button">ลบลายน้ำทั้งหมด</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel primary-panel">
+    <div class="section-head"><div class="section-title"><span class="section-icon">↓</span><div><h2>Export</h2><p>ทดสอบ 1 รูปก่อน แล้วจึง Export ทั้งอัลบั้ม</p></div></div></div>
+    <div class="export-card">
+      <div class="export-path"><b>Folder Export</b><span id="folderStatus">ยังไม่ได้เลือก — ระบบจะสร้าง KEITA_EXPORT_วันที่_เวลา</span></div>
+      <button class="btn" id="chooseOutput" type="button">เลือก Folder</button>
+    </div>
+    <div class="export-bottom">
+      <div><div class="muted">Export จะสร้าง 3 แฟ้มอัตโนมัติ: ภาพขายทั้งหมด + HL มีลายน้ำ + HL ไม่มีลายน้ำ</div><div class="export-options"><label class="check"><input id="exportReview" type="checkbox" checked> รวม REVIEW ในภาพขาย</label><label class="check"><input id="exportReject" type="checkbox"> รวม REJECT ในภาพขาย</label><label class="check hidden"><input id="cullFolders" type="checkbox"> แยก PASS / REVIEW / REJECT</label><label class="check hidden"><input id="highlightFolder" type="checkbox" checked> Highlight Folder</label></div><div class="queue-note"><b>01_ALL_PHOTOS</b> = ภาพทั้งหมดที่ Export แบบไม่มีลายน้ำ · <b>02_HIGHLIGHT_WATERMARK</b> = รูป HL แบบมีลายน้ำ · <b>03_HIGHLIGHT_CLEAN</b> = รูป HL ชุดเดียวกันแบบไม่มีลายน้ำ</div></div>
+      <div class="export-buttons"><button class="btn" id="testOne" type="button" disabled>ทดสอบ 1 รูป</button><button class="btn primary export-all" id="exportAll" type="button" disabled>EXPORT ALL</button><button class="btn danger hidden" id="cancelExport" type="button">หยุด</button></div>
+    </div>
+    <div class="progress hidden" id="exportProgress"><div id="exportBar"></div></div>
+    <div class="status hidden" id="result"></div>
+  </section>
+
+  <div class="footer">KEITA PHOTO CAMERA · Batch Photo Utility v13.3</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.1.0/dist/blazeface.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection@1.0.6/dist/face-landmarks-detection.js"></script>
+<script>
+(()=>{
+'use strict';
+const $=id=>document.getElementById(id);
+const state={files:[],filePaths:new Map(),meta:new Map(),analysis:new Map(),culling:new Map(),output:null,sourceHandle:null,resumeRecord:null,savedFileStates:new Map(),analyzing:false,cancelAnalyze:false,cullingRunning:false,cancelCull:false,exporting:false,cancelExport:false,faceModel:null,personModel:null,modelsTried:false,previewUrls:[],dialogUrl:null,dialogAfterUrl:null,dialogIndex:null,dialogReviewMode:false,dialogHighlightMode:false,dialogToken:0,highlights:new Map(),highlightRunning:false,cancelHighlight:false,poseDetector:null,faceMeshDetector:null,highlightModelsTried:false,watermarks:[],watermarkSelected:new Set(),wmActiveId:null,wmEditOrientation:'portrait',wmBaseUrl:null,exported:new Set(),exportRoot:null,exportSessionName:null,sessionSaveTimer:null};
+const els=['files','folder','sourceFolder','resumeBox','resumeTitle','resumeText','resumeSource','forgetSession','sessionNote','clear','fileSummary','cullEnabled','cullSensitivity','burstGap','personConfidence','focusPriority','runCull','stopCull','cullStatus','cullProgress','cullBar','cullCounts','autoEnabled','autoStrength','subjectWeight','deadband','sceneMode','toneAuto','wbAuto','skinProtect','vibranceAuto','clarityAuto','detailAuto','analyze','stopAnalyze','autoStatus','analyzeProgress','analyzeBar','highlightCount','highlightStyle','highlightGrade','highlightDiversity','runHighlight','stopHighlight','highlightStatus','highlightProgress','highlightBar','highlightCounts','highlightCategories','openHighlightQueue','clearHighlights','renameEnabled','renameMode','photographer','startNo','digits','renamePreview','resizeEnabled','longEdge','fileLimit','minQuality','sharpen','noUpscale','dateEnabled','dateMode','newDate','newTime','offDays','offHours','offMinutes','offSeconds','tzEnabled','timezone','openReviewQueue','previewFilter','previewSummary','rows','photoDialog','dialogImg','dialogAfter','dialogAfterLoading','dialogInfo','dialogPrev','dialogNext','dialogPass','dialogReview','dialogReject','dialogHighlight','dialogWatermark','closeDialog','watermarkPortraitFiles','watermarkLandscapeFiles','wmTabPortrait','wmTabLandscape','wmOrientationTitle','wmOrientationNote','wmUploadPortrait','wmUploadLandscape','wmStage','wmStageEmpty','wmLayerList','wmSelectedCount','wmClearSelected','wmClearLayers','folderStatus','chooseOutput','testOne','exportReview','exportReject','cullFolders','highlightFolder','exportAll','cancelExport','exportProgress','exportBar','result'].reduce((o,id)=>(o[id]=$(id),o),{});
+
+function clamp(v,a,b){return Math.min(b,Math.max(a,v))}
+function smoothstep(a,b,x){const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)}
+function baseName(n){return n.replace(/\.[^.]+$/,'')}
+function extName(n){const m=n.match(/(\.[^.]+)$/);return m?m[1]:'.JPG'}
+function fmtBytes(n){if(!Number.isFinite(n))return '—';return n<1048576?(n/1024).toFixed(0)+' KB':(n/1048576).toFixed(2)+' MB'}
+function pad(n,d){return String(n).padStart(d,'0')}
+function nowStamp(){const d=new Date(),p=x=>String(x).padStart(2,'0');return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`}
+function setStatus(el,msg,kind=''){el.textContent=msg;el.className='status'+(kind?' '+kind:'')}
+function fileKey(file){const rel=state.filePaths.get(file)||file.webkitRelativePath||file.name;return `${rel}|${file.size}|${file.lastModified}`}
+function resetExportSession(){state.exported.clear();state.exportRoot=null;state.exportSessionName=null;els.exportBar.style.width='0%';scheduleSaveSession()}
+
+// ---- Resume session (IndexedDB + File System Access handle when available) ----
+const DB_NAME='keita-photo-tools',DB_VER=1,STORE='sessions',SESSION_ID='current';
+function openDb(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,DB_VER);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE,{keyPath:'id'})};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
+async function dbGet(){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readonly'),req=tx.objectStore(STORE).get(SESSION_ID);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error);tx.oncomplete=()=>db.close()})}
+async function dbPut(rec){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(rec);tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>{db.close();reject(tx.error)}})}
+async function dbDelete(){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).delete(SESSION_ID);tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>{db.close();reject(tx.error)}})}
+const SETTING_IDS=['cullEnabled','cullSensitivity','burstGap','personConfidence','focusPriority','autoEnabled','autoStrength','subjectWeight','deadband','sceneMode','toneAuto','wbAuto','skinProtect','vibranceAuto','clarityAuto','detailAuto','highlightCount','highlightStyle','highlightGrade','highlightDiversity','renameEnabled','renameMode','photographer','startNo','digits','resizeEnabled','longEdge','fileLimit','minQuality','sharpen','noUpscale','dateEnabled','dateMode','newDate','newTime','offDays','offHours','offMinutes','offSeconds','tzEnabled','timezone','exportReview','exportReject','cullFolders','highlightFolder'];
+function captureSettings(){const out={};for(const id of SETTING_IDS){const el=els[id];if(!el)continue;out[id]=el.type==='checkbox'?el.checked:el.value}return out}
+function applySettings(obj){if(!obj)return;for(const [id,val] of Object.entries(obj)){const el=els[id];if(!el)continue;if(el.type==='checkbox')el.checked=!!val;else el.value=String(val)}}
+function serializableFileStates(){const out=[];for(const f of state.files){const c=state.culling.get(f)||null,a=state.analysis.get(f)||null,h=state.highlights.get(f)||null;const wm=false;if(c||a||h)out.push({key:fileKey(f),culling:c,analysis:a,highlight:h,watermark:wm})}return out}
+async function saveSessionNow(){try{const active=state.files.length>0;const rec={id:SESSION_ID,version:14,savedAt:Date.now(),sourceHandle:state.sourceHandle||state.resumeRecord?.sourceHandle||null,sourceName:state.sourceHandle?.name||state.resumeRecord?.sourceName||null,outputHandle:state.output||state.resumeRecord?.outputHandle||null,outputName:state.output?.name||state.resumeRecord?.outputName||null,exportSessionName:active?(state.exportSessionName||null):(state.resumeRecord?.exportSessionName||null),exportedKeys:active?[...state.exported]:(state.resumeRecord?.exportedKeys||[]),settings:captureSettings(),watermarkLayers:serializeWatermarks(),fileStates:active?serializableFileStates():(state.resumeRecord?.fileStates||[])};await dbPut(rec);state.resumeRecord=rec;state.savedFileStates=new Map((rec.fileStates||[]).map(x=>[x.key,x]));updateResumeBox();els.sessionNote.textContent=`บันทึกงานค้างล่าสุด ${new Date(rec.savedAt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`;}catch(e){console.warn('session save failed',e);els.sessionNote.textContent='ไม่สามารถบันทึก Resume ได้ใน Browser นี้'}}
+function scheduleSaveSession(){clearTimeout(state.sessionSaveTimer);state.sessionSaveTimer=setTimeout(saveSessionNow,700)}
+function updateResumeBox(){const r=state.resumeRecord;if(r?.sourceHandle){els.resumeBox.classList.remove('hidden');els.resumeTitle.textContent=`พบงานค้าง: ${r.sourceName||r.sourceHandle.name||'โฟลเดอร์เดิม'}`;const n=(r.fileStates||[]).length,done=(r.exportedKeys||[]).length;els.resumeText.textContent=`บันทึก ${n.toLocaleString()} ไฟล์ · Highlight ${(r.fileStates||[]).filter(x=>x.highlight?.selected).length.toLocaleString()} · Export แล้ว ${done.toLocaleString()} · กดทำงานต่อเพื่อเปิดโฟลเดอร์เดิม`;}else els.resumeBox.classList.add('hidden')}
+async function initResume(){try{const r=await dbGet();if(!r)return;const oldCull=Number(r.version||0)<13.1,oldHighlight=Number(r.version||0)<14;if(oldCull){r.fileStates=(r.fileStates||[]).map(x=>({...x,culling:null,highlight:null}));}else if(oldHighlight){r.fileStates=(r.fileStates||[]).map(x=>({...x,highlight:null}));}state.resumeRecord=r;state.savedFileStates=new Map((r.fileStates||[]).map(x=>[x.key,x]));applySettings(r.settings);await restoreWatermarks(r.watermarkLayers||[]);state.output=r.outputHandle||null;state.exportSessionName=r.exportSessionName||null;state.exported=new Set(r.exportedKeys||[]);updateResumeBox();if(oldCull)els.sessionNote.textContent='อัปเกรด Culling engine แล้ว — ระบบจะคัด Focus ใหม่';else if(oldHighlight)els.sessionNote.textContent='อัปเกรด Highlight Portfolio engine แล้ว — คะแนน HL เดิมถูกล้างเพื่อวิเคราะห์ใหม่';if(state.output)els.folderStatus.textContent=`จำ Folder เดิมไว้: ${r.outputName||state.output.name} · จะขอสิทธิ์เมื่อ Export`;renderPreview()}catch(e){console.warn('resume load failed',e)}}
+async function forgetSession(){try{await dbDelete()}catch{}state.resumeRecord=null;state.savedFileStates.clear();clearWatermarkObjectUrls();state.watermarks=[];state.watermarkSelected.clear();state.highlights.clear();state.wmActiveId=null;state.sourceHandle=null;state.output=null;state.exported.clear();state.exportSessionName=null;state.exportRoot=null;updateResumeBox();els.sessionNote.textContent='ล้างงานค้างแล้ว'}
+async function queryHandlePermission(handle,mode='read'){if(!handle)return false;try{if((await handle.queryPermission({mode}))==='granted')return true;return (await handle.requestPermission({mode}))==='granted'}catch{return false}}
+async function collectJpegsFromDirectory(root){
+  const found=[],files=[],paths=new Map();let entryCount=0,dirCount=0,scanErrors=0;
+  const yieldUi=()=>new Promise(r=>setTimeout(r,0));
+  const show=(msg)=>{els.fileSummary.innerHTML=`<span class="chip">${msg}</span>`;els.sessionNote.textContent=msg;setStatus(els.cullStatus,msg,'warn')};
+  show(`กำลังค้นหารูปใน ${root.name}…`);
+  async function walk(dir,prefix=''){
+    dirCount++;
+    try{
+      for await(const [name,h] of dir.entries()){
+        entryCount++;const path=prefix?`${prefix}/${name}`:name;
+        if(h.kind==='directory') await walk(h,path);
+        else if(/\.jpe?g$/i.test(name)) found.push({handle:h,path});
+        if(entryCount%40===0||found.length%25===0&&found.length){show(`พบ JPEG แล้ว ${found.length.toLocaleString()} รูป · ตรวจ ${entryCount.toLocaleString()} รายการ · ${dirCount.toLocaleString()} โฟลเดอร์`);await yieldUi()}
+      }
+    }catch(e){scanErrors++;console.warn('scan directory failed',prefix||dir.name,e)}
+  }
+  await walk(root);
+  if(!found.length){show(`ไม่พบไฟล์ JPG/JPEG ใน ${root.name}${scanErrors?` · มีโฟลเดอร์อ่านไม่ได้ ${scanErrors}`:''}`);return {files,paths,scanErrors}}
+  found.sort((a,b)=>a.path.localeCompare(b.path,undefined,{numeric:true,sensitivity:'base'}));
+  show(`พบทั้งหมด ${found.length.toLocaleString()} รูป · กำลังเตรียมไฟล์…`);
+  const chunk=32;
+  for(let start=0;start<found.length;start+=chunk){
+    const part=found.slice(start,start+chunk);const got=await Promise.allSettled(part.map(async x=>({file:await x.handle.getFile(),path:x.path})));
+    for(const r of got){if(r.status==='fulfilled'){files.push(r.value.file);paths.set(r.value.file,r.value.path)}else{scanErrors++;console.warn('getFile failed',r.reason)}}
+    const done=Math.min(start+chunk,found.length);show(`พบ ${found.length.toLocaleString()} รูป · เตรียมไฟล์ ${done.toLocaleString()}/${found.length.toLocaleString()}${scanErrors?` · ข้าม ${scanErrors}`:''}`);await yieldUi();
+  }
+  show(`พร้อมแล้ว ${files.length.toLocaleString()} รูป${scanErrors?` · ข้ามไฟล์/โฟลเดอร์ที่อ่านไม่ได้ ${scanErrors}`:''}`);
+  return {files,paths,scanErrors}
+}
+async function pickSourceFolder(){
+  if(!window.showDirectoryPicker){setStatus(els.cullStatus,'โหมด Resume ต้องใช้ Chrome/Edge ผ่าน HTTPS','bad');return}
+  try{
+    const h=await showDirectoryPicker({mode:'read'});state.sourceHandle=h;state.resumeRecord={...(state.resumeRecord||{}),sourceHandle:h,sourceName:h.name};
+    els.sessionNote.textContent=`เริ่ม Scan: ${h.name}`;setStatus(els.cullStatus,'กำลังค้นหา JPG/JPEG…','warn');
+    const {files,paths,scanErrors}=await collectJpegsFromDirectory(h);
+    if(!files.length){setStatus(els.cullStatus,'ไม่พบไฟล์ JPG/JPEG — ลองเลือกโฟลเดอร์ DCIM หรือโฟลเดอร์ที่มีรูปโดยตรง','bad');els.sessionNote.textContent='Scan จบแล้ว แต่ไม่พบ JPG/JPEG';return}
+    await addFiles(files,{pathMap:paths,restoreSaved:false,preserveSource:true,resumeExport:false});
+    els.sessionNote.textContent=`พบ ${files.length.toLocaleString()} รูป${scanErrors?` · ข้าม ${scanErrors}`:''} · พร้อมใช้งาน`;scheduleSaveSession();
+  }catch(e){if(e.name!=='AbortError'){console.error(e);setStatus(els.cullStatus,`อ่านโฟลเดอร์ไม่สำเร็จ: ${e.message||e}`,'bad');els.sessionNote.textContent=`อ่านโฟลเดอร์ไม่สำเร็จ: ${e.message||e}`}}
+}
+async function resumeSourceFolder(){
+  const h=state.resumeRecord?.sourceHandle;if(!h)return;
+  if(!(await queryHandlePermission(h,'read'))){els.resumeText.textContent='ไม่ได้รับสิทธิ์อ่านโฟลเดอร์เดิม';return}
+  try{
+    state.sourceHandle=h;els.sessionNote.textContent='กำลังเปิดงานค้าง…';setStatus(els.cullStatus,'กำลัง Scan โฟลเดอร์เดิม…','warn');
+    const {files,paths,scanErrors}=await collectJpegsFromDirectory(h);
+    if(!files.length){setStatus(els.cullStatus,'Resume ไม่สำเร็จ: ไม่พบ JPG/JPEG ในโฟลเดอร์เดิม','bad');return}
+    await addFiles(files,{pathMap:paths,restoreSaved:true,preserveSource:true,resumeExport:true});state.output=state.resumeRecord?.outputHandle||state.output;state.exportSessionName=state.resumeRecord?.exportSessionName||state.exportSessionName;state.exported=new Set(state.resumeRecord?.exportedKeys||[]);
+    els.sessionNote.textContent=`Resume สำเร็จ ${files.length.toLocaleString()} รูป${scanErrors?` · ข้าม ${scanErrors}`:''} — Culling / Auto / Export progress ถูกเรียกคืน`;renderPreview();
+  }catch(e){console.error(e);setStatus(els.cullStatus,`Resume ไม่สำเร็จ: ${e.message||e}`,'bad');els.sessionNote.textContent=`Resume ไม่สำเร็จ: ${e.message||e}`}
+}
+
+
+// ---- EXIF parser/patcher: preserves original APP1 bytes ----
+function getExifSegment(buffer){const u=new Uint8Array(buffer);if(u[0]!==0xff||u[1]!==0xd8)return null;let p=2;while(p+4<u.length){if(u[p]!==0xff)break;const marker=u[p+1];if(marker===0xda||marker===0xd9)break;const len=(u[p+2]<<8)|u[p+3];if(marker===0xe1&&len>=8&&String.fromCharCode(...u.slice(p+4,p+10))==='Exif\0\0')return {start:p,end:p+2+len,bytes:u.slice(p,p+2+len)};p+=2+len}return null}
+function exifViewFromSegment(seg){if(!seg)return null;const u=seg.bytes;const tiff=10;if(u.length<tiff+8)return null;const little=u[tiff]===0x49&&u[tiff+1]===0x49;if(!little&&!(u[tiff]===0x4d&&u[tiff+1]===0x4d))return null;const dv=new DataView(u.buffer,u.byteOffset,u.byteLength);const g16=o=>dv.getUint16(tiff+o,little),g32=o=>dv.getUint32(tiff+o,little);if(g16(2)!==42)return null;return {u,dv,tiff,little,g16,g32}}
+const TYPE_SIZE={1:1,2:1,3:2,4:4,5:8,7:1,9:4,10:8};
+function readIfd(ex,rel){const out=new Map();if(!ex||rel<=0||ex.tiff+rel+2>ex.u.length)return out;const n=ex.g16(rel);for(let i=0;i<n;i++){const e=rel+2+i*12;if(ex.tiff+e+12>ex.u.length)break;const tag=ex.g16(e),type=ex.g16(e+2),count=ex.g32(e+4),size=(TYPE_SIZE[type]||1)*count;let dataRel=size<=4?e+8:ex.g32(e+8);out.set(tag,{tag,type,count,size,entryRel:e,dataRel})}return out}
+function readAscii(ex,entry){if(!entry||entry.type!==2)return null;const start=ex.tiff+entry.dataRel,end=Math.min(start+entry.count,ex.u.length);return new TextDecoder().decode(ex.u.slice(start,end)).replace(/\0+$/,'')}
+function readNum(ex,entry){if(!entry)return null;const o=ex.tiff+entry.dataRel;if(o>=ex.u.length)return null;if(entry.type===3)return ex.dv.getUint16(o,ex.little);if(entry.type===4)return ex.dv.getUint32(o,ex.little);return null}
+function parseExif(buffer){const seg=getExifSegment(buffer),ex=exifViewFromSegment(seg);if(!ex)return {seg:null};const ifd0=readIfd(ex,ex.g32(4));const exifPtr=readNum(ex,ifd0.get(0x8769));const exifIfd=exifPtr?readIfd(ex,exifPtr):new Map();return {seg,ex,ifd0,exifIfd,make:readAscii(ex,ifd0.get(0x010f)),model:readAscii(ex,ifd0.get(0x0110)),date:readAscii(ex,exifIfd.get(0x9003))||readAscii(ex,ifd0.get(0x0132)),tz:readAscii(ex,exifIfd.get(0x9011))||readAscii(ex,exifIfd.get(0x9010)),iso:readNum(ex,exifIfd.get(0x8827)),orientation:readNum(ex,ifd0.get(0x0112))||1,width:readNum(ex,exifIfd.get(0xa002))||readNum(ex,ifd0.get(0x0100)),height:readNum(ex,exifIfd.get(0xa003))||readNum(ex,ifd0.get(0x0101))}}
+function writeAscii(ex,entry,str){if(!entry||entry.type!==2)return false;const bytes=new TextEncoder().encode(str+'\0');if(bytes.length>entry.count)return false;const start=ex.tiff+entry.dataRel;ex.u.fill(0,start,start+entry.count);ex.u.set(bytes.slice(0,entry.count),start);return true}
+function writeNum(ex,entry,val){if(!entry)return false;const o=ex.tiff+entry.dataRel;if(entry.type===3){ex.dv.setUint16(o,val,ex.little);return true}if(entry.type===4){ex.dv.setUint32(o,val,ex.little);return true}return false}
+function patchExifBytes(seg,opts){if(!seg)return null;const bytes=new Uint8Array(seg.bytes),copy={start:0,end:bytes.length,bytes};const ex=exifViewFromSegment(copy);if(!ex)return bytes;const ifd0=readIfd(ex,ex.g32(4)),ptr=readNum(ex,ifd0.get(0x8769)),exifIfd=ptr?readIfd(ex,ptr):new Map();if(opts.date){writeAscii(ex,ifd0.get(0x0132),opts.date);writeAscii(ex,exifIfd.get(0x9003),opts.date);writeAscii(ex,exifIfd.get(0x9004),opts.date)}if(opts.tz){writeAscii(ex,exifIfd.get(0x9010),opts.tz);writeAscii(ex,exifIfd.get(0x9011),opts.tz);writeAscii(ex,exifIfd.get(0x9012),opts.tz)}if(opts.orientation)writeNum(ex,ifd0.get(0x0112),opts.orientation);if(opts.width){writeNum(ex,exifIfd.get(0xa002),opts.width);writeNum(ex,exifIfd.get(0xa003),opts.height)}return bytes}
+function injectExif(jpegBuf,exifBytes){if(!exifBytes)return jpegBuf;const j=new Uint8Array(jpegBuf),out=new Uint8Array(j.length+exifBytes.length);out.set(j.slice(0,2),0);out.set(exifBytes,2);out.set(j.slice(2),2+exifBytes.length);return out.buffer}
+function parseExifDate(s){if(!s)return null;const m=s.match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/);if(!m)return null;return new Date(Number(m[1]),+m[2]-1,+m[3],+m[4],+m[5],+m[6])}
+function formatExifDate(d){const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}:${p(d.getMonth()+1)}:${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`}
+function adjustedDate(meta,index){if(!els.dateEnabled.checked||!meta.date)return meta.date||null;const old=parseExifDate(meta.date);if(!old)return meta.date;const mode=els.dateMode.value;if(mode==='dateonly'&&els.newDate.value){const [y,m,d]=els.newDate.value.split('-').map(Number);old.setFullYear(y,m-1,d);return formatExifDate(old)}if(mode==='offset'){old.setSeconds(old.getSeconds()+Number(els.offSeconds.value||0)+60*Number(els.offMinutes.value||0)+3600*Number(els.offHours.value||0)+86400*Number(els.offDays.value||0));return formatExifDate(old)}if(mode==='absolute'&&els.newDate.value){const [y,m,d]=els.newDate.value.split('-').map(Number),t=els.newTime.value.split(':').map(Number);const base=state.files[0]&&state.meta.get(state.files[0])?.date?parseExifDate(state.meta.get(state.files[0]).date):null;const delta=base&&old?old-base:0;return formatExifDate(new Date(y,m-1,d,t[0]||0,t[1]||0,t[2]||0).getTime()+delta)}return meta.date}
+
+async function decodeFile(file,max=0){const bmp=await createImageBitmap(file);if(!max||Math.max(bmp.width,bmp.height)<=max)return {bmp,w:bmp.width,h:bmp.height};const scale=max/Math.max(bmp.width,bmp.height),c=document.createElement('canvas');c.width=Math.round(bmp.width*scale);c.height=Math.round(bmp.height*scale);const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(bmp,0,0,c.width,c.height);bmp.close();return {bmp:await createImageBitmap(c),w:c.width,h:c.height}}
+function roiStats(ctx,x,y,w,h){x=Math.max(0,Math.floor(x));y=Math.max(0,Math.floor(y));w=Math.max(1,Math.min(ctx.canvas.width-x,Math.floor(w)));h=Math.max(1,Math.min(ctx.canvas.height-y,Math.floor(h)));const d=ctx.getImageData(x,y,w,h).data;let sum=0,r=0,g=0,b=0,n=0,hi=0,lo=0,sat=0,green=0;const hist=new Uint32Array(256);for(let i=0;i<d.length;i+=16){const R=d[i],G=d[i+1],B=d[i+2],L=.2126*R+.7152*G+.0722*B;sum+=L;r+=R;g+=G;b+=B;n++;hist[L|0]++;if(L>245)hi++;if(L<12)lo++;const mx=Math.max(R,G,B),mn=Math.min(R,G,B);sat+=(mx-mn)/(mx||1);if(G>R*1.08&&G>B*1.08)green++}function pct(p){let target=n*p,c=0;for(let i=0;i<256;i++){c+=hist[i];if(c>=target)return i}return 255}return {mean:sum/n/255,r:r/n/255,g:g/n/255,b:b/n/255,high:hi/n,low:lo/n,sat:sat/n,green:green/n,p10:pct(.1)/255,p50:pct(.5)/255,p90:pct(.9)/255}}
+async function ensureModels(statusEl=els.autoStatus){
+  if(state.modelsTried)return !!state.personModel;
+  state.modelsTried=true;
+  if(!window.tf||!window.cocoSsd){setStatus(statusEl,'Person AI ไม่พร้อม — ตรวจการเชื่อมต่ออินเทอร์เน็ต/ไฟล์ AI','bad');return false}
+  try{
+    setStatus(statusEl,'กำลังโหลด Person AI…','warn');
+    state.personModel=await cocoSsd.load({base:'lite_mobilenet_v2'});
+  }catch(e){
+    console.warn('Person AI load failed',e);
+    state.personModel=null;
+    setStatus(statusEl,'Person AI โหลดไม่สำเร็จ — จะไม่ Reject รูปอัตโนมัติเพื่อความปลอดภัย','bad');
+    return false;
+  }
+  // Face AI is an optional enhancement. A Face AI failure must never disable Person AI.
+  if(window.blazeface){
+    try{
+      setStatus(statusEl,'Person AI พร้อม · กำลังโหลด Face AI…','warn');
+      state.faceModel=await blazeface.load();
+      setStatus(statusEl,'Person AI + Face AI พร้อม','good');
+    }catch(e){
+      console.warn('Face AI load failed; continue with Person AI',e);
+      state.faceModel=null;
+      setStatus(statusEl,'Person AI พร้อม · Face AI ไม่พร้อม — ยังตรวจตัวคนและโฟกัสได้','warn');
+    }
+  }else{
+    state.faceModel=null;
+    setStatus(statusEl,'Person AI พร้อม · Face AI ไม่พร้อม — ยังตรวจตัวคนและโฟกัสได้','warn');
+  }
+  return true;
+}
+
+function focusMetric(ctx,x,y,w,h){
+  x=clamp(Math.floor(x),0,Math.max(0,ctx.canvas.width-1));y=clamp(Math.floor(y),0,Math.max(0,ctx.canvas.height-1));const maxW=ctx.canvas.width-x,maxH=ctx.canvas.height-y;if(maxW<8||maxH<8)return 0;w=Math.min(maxW,Math.max(8,Math.floor(w)));h=Math.min(maxH,Math.max(8,Math.floor(h)));
+  if(w<8||h<8)return 0;
+  const im=ctx.getImageData(x,y,w,h),d=im.data,lum=(i)=>.2126*d[i]+.7152*d[i+1]+.0722*d[i+2];
+  const step=(w*h>90000)?2:1;let n=0,sum=0,sum2=0,edge=0;
+  for(let yy=1;yy<h-1;yy+=step){for(let xx=1;xx<w-1;xx+=step){const i=(yy*w+xx)*4,il=i-4,ir=i+4,iu=i-w*4,id=i+w*4;const c=lum(i),l=lum(il),r=lum(ir),u=lum(iu),b=lum(id);const lap=4*c-l-r-u-b;sum+=lap;sum2+=lap*lap;edge+=Math.abs(r-l)+Math.abs(b-u);n++}}
+  if(!n)return 0;const variance=Math.max(0,sum2/n-Math.pow(sum/n,2)),edgeMean=edge/n;
+  const lapScore=clamp((Math.log2(variance+1)-2.2)*17,0,100),edgeScore=clamp((edgeMean-5)*3.6,0,100);
+  return clamp(lapScore*.68+edgeScore*.32,0,100);
+}
+function boxFocus(ctx,b){if(!b)return 0;return focusMetric(ctx,b.x,b.y,b.w,b.h)}
+function subjectLocalFocus(ctx,b){
+  if(!b)return 0;
+  // A full person box often contains smooth clothes/skin and can score artificially low.
+  // Sample smaller regions on head/upper body/center/lower body and keep the strongest useful detail.
+  const patches=[
+    {x:b.x+b.w*.20,y:b.y+b.h*.00,w:b.w*.60,h:b.h*.25},
+    {x:b.x+b.w*.10,y:b.y+b.h*.12,w:b.w*.80,h:b.h*.28},
+    {x:b.x+b.w*.12,y:b.y+b.h*.30,w:b.w*.76,h:b.h*.28},
+    {x:b.x+b.w*.14,y:b.y+b.h*.50,w:b.w*.72,h:b.h*.24},
+    {x:b.x+b.w*.15,y:b.y+b.h*.70,w:b.w*.70,h:b.h*.24}
+  ];
+  const vals=patches.map(p=>focusMetric(ctx,p.x,p.y,p.w,p.h)).sort((a,b)=>b-a);
+  const local=vals.length>1?vals[0]*.72+vals[1]*.28:(vals[0]||0);
+  return clamp(Math.max(boxFocus(ctx,b),local),0,100);
+}
+function normalizeBox(b,w,h){return {x:clamp(b.x/w,0,1),y:clamp(b.y/h,0,1),w:clamp(b.w/w,0,1),h:clamp(b.h/h,0,1)}}
+function denormalizeBox(b,w,h){return b?{x:b.x*w,y:b.y*h,w:b.w*w,h:b.h*h}:null}
+function cullThresholds(){return {safe:{pass:34,reject:15,subjectPass:36,subjectReject:20,faceReject:16},balanced:{pass:42,reject:22,subjectPass:44,subjectReject:27,faceReject:22},strict:{pass:50,reject:30,subjectPass:53,subjectReject:35,faceReject:30}}[els.cullSensitivity.value]||{pass:34,reject:15,subjectPass:36,subjectReject:20,faceReject:16}}
+function cullLabel(r){if(!r)return '<span class="muted">ยังไม่คัด</span>';const cls=r.status==='pass'?'goodtxt':r.status==='review'?'warntxt':'badtxt';const tag=r.burstTag==='BEST'?'<span class="tag-best">BEST</span>':r.burstTag==='KEEP'?'<span class="tag-keep">BURST KEEP</span>':'';return `<span class="${cls}">${r.status.toUpperCase()}</span>${tag}<br><span class="tiny">${r.reason||''}</span>`}
+function cullCounts(){let pass=0,review=0,reject=0,unculled=0;for(const f of state.files){const r=state.culling.get(f);if(!r)unculled++;else if(r.status==='pass')pass++;else if(r.status==='review')review++;else reject++}return {pass,review,reject,unculled}}
+function renderCullCounts(){const c=cullCounts();els.cullCounts.innerHTML=`<span class="count pass">PASS ${c.pass.toLocaleString()}</span><span class="count review">REVIEW ${c.review.toLocaleString()}</span><span class="count reject">REJECT ${c.reject.toLocaleString()}</span>${c.unculled?`<span class="count">รอ ${c.unculled.toLocaleString()}</span>`:''}`;els.openReviewQueue.disabled=c.review===0}
+async function cullOne(file){
+  const modelsOk=await ensureModels(els.cullStatus);if(!modelsOk||!state.personModel)return {status:'review',reason:'Person AI โหลดไม่สำเร็จ — ไม่คัดทิ้ง',focusScore:0,personCount:0,modelError:true};
+  const {bmp,w,h}=await decodeFile(file,640);const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(bmp,0,0,w,h);
+  const conf=Number(els.personConfidence.value||.25);let persons=[];try{persons=(await state.personModel.detect(c,20,conf)).filter(p=>p.class==='person')}catch(e){bmp.close();throw e}
+  if(!persons.length){bmp.close();return {status:'reject',reason:'ไม่พบคน',focusScore:0,personCount:0,wholeFocus:focusMetric(ctx,0,0,w,h)}}
+  let faces=[];if(state.faceModel){try{faces=await state.faceModel.estimateFaces(c,false)}catch{}}
+  const zoneW=w*.22,zoneH=h*.22,center=focusMetric(ctx,w*.5-zoneW/2,h*.5-zoneH/2,zoneW,zoneH);const thirdW=w*.18,thirdH=h*.18;let thirds=0;for(const px of [1/3,2/3])for(const py of [1/3,2/3])thirds=Math.max(thirds,focusMetric(ctx,w*px-thirdW/2,h*py-thirdH/2,thirdW,thirdH));const whole=focusMetric(ctx,0,0,w,h);
+  let personFocus=0,bestPerson=null;for(const p of persons){const q=p.bbox,b={x:q[0]+q[2]*.08,y:q[1]+q[3]*.04,w:q[2]*.84,h:q[3]*.90},f=subjectLocalFocus(ctx,b);if(f>personFocus){personFocus=f;bestPerson=b}}
+  let faceFocus=0,bestFace=null,faceReliable=false;for(const f of faces){const x1=f.topLeft[0],y1=f.topLeft[1],x2=f.bottomRight[0],y2=f.bottomRight[1],fw=x2-x1,fh=y2-y1;if(fw<20||fh<20)continue;const b={x:x1-fw*.06,y:y1-fh*.06,w:fw*1.12,h:fh*1.12},fm=subjectLocalFocus(ctx,b);if(fm>faceFocus){faceFocus=fm;bestFace=b;faceReliable=fw>=28&&fh>=28}}
+  bmp.close();const subject=Math.max(personFocus,faceReliable?faceFocus:0),t=cullThresholds();let score;if(els.focusPriority.value==='subject')score=center*.16+thirds*.16+subject*.63+whole*.05;else score=center*.32+thirds*.28+subject*.35+whole*.05;score=clamp(score,0,100);
+  let status='review',reason='โฟกัสก้ำกึ่ง — ควรตรวจ';
+  // PASS if the person/face itself is sharp, even when the background is intentionally blurred.
+  if(subject>=t.subjectPass||score>=t.pass){status='pass';reason=faceReliable&&faceFocus>=t.subjectPass?'พบคน / ใบหน้าคม':'พบคน / จุดโฟกัสบนตัวคนคม'}
+  // A low face score alone is not enough to reject: side views, small faces and hats can fool Face AI.
+  else if(faceReliable&&faceFocus<t.faceReject&&personFocus>=t.subjectReject){status='review';reason='ใบหน้าคะแนนต่ำ แต่ตัวคนยังมีโฟกัส — ควรตรวจ'}
+  else if(score<t.reject&&subject<t.subjectReject){status='reject';reason='พบคนแต่จุดสำคัญหลุดโฟกัส/เบลอ'}
+  return {status,reason,focusScore:score,centerFocus:center,thirdFocus:thirds,personFocus,faceFocus,wholeFocus:whole,personCount:persons.length,faceCount:faces.length,personBox:bestPerson?normalizeBox(bestPerson,w,h):null,faceBox:bestFace?normalizeBox(bestFace,w,h):null,faceReliable,burstTag:'',burstId:null};
+}
+function assignBurstTags(){const gap=Number(els.burstGap.value||2)*1000;let group=[],gid=0;for(const f of state.files){const r=state.culling.get(f);if(r){r.burstId=null;r.burstTag=''}}const flush=()=>{if(group.length<2){group=[];return}gid++;let best=null;for(const f of group){const r=state.culling.get(f);if(r&&r.status!=='reject'&&(!best||r.focusScore>state.culling.get(best).focusScore))best=f}for(const f of group){const r=state.culling.get(f);if(!r)continue;r.burstId=gid;r.burstTag=r.status==='reject'?'':(f===best?'BEST':'KEEP')}group=[]};let prevTime=null,prevFile=null;for(let i=0;i<state.files.length;i++){const f=state.files[i],m=state.meta.get(f)||{},d=parseExifDate(m.date),tm=d?d.getTime():null;if(tm!==null&&prevTime!==null&&tm-prevTime>=0&&tm-prevTime<=gap){if(!group.length&&prevFile)group.push(prevFile);group.push(f)}else flush();prevTime=tm;prevFile=f}flush()}
+async function cullAlbum(){if(!state.files.length||state.cullingRunning||!els.cullEnabled.checked)return;state.cullingRunning=true;state.cancelCull=false;els.runCull.disabled=true;els.stopCull.disabled=false;els.cullProgress.classList.remove('hidden');const total=state.files.length,renderEvery=total>5000?100:total>1000?50:20;let cc=cullCounts(),done=total-cc.unculled;els.cullBar.style.width=(done/total*100)+'%';for(let i=0;i<total;i++){if(state.cancelCull)break;const f=state.files[i];if(state.culling.has(f))continue;let r;try{r=await cullOne(f)}catch(e){console.warn(f.name,e);r={status:'review',reason:'วิเคราะห์ไม่สำเร็จ — ควรตรวจ',focusScore:0,error:true}}state.culling.set(f,r);done++;if(done%50===0)await saveSessionNow();cc.unculled=Math.max(0,cc.unculled-1);if(r.status==='pass')cc.pass++;else if(r.status==='review')cc.review++;else cc.reject++;els.cullBar.style.width=(done/total*100)+'%';setStatus(els.cullStatus,`คัด ${done}/${total} · PASS ${cc.pass} · REVIEW ${cc.review} · REJECT ${cc.reject}`,'warn');if(done%renderEvery===0){renderCullCounts();renderPreview()}await new Promise(r=>setTimeout(r,0))}assignBurstTags();if(!state.cancelCull)els.cullBar.style.width='100%';state.cullingRunning=false;els.stopCull.disabled=true;els.runCull.disabled=false;renderCullCounts();cc=cullCounts();setStatus(els.cullStatus,state.cancelCull?`หยุดแล้ว — กดคัดภาพอีกครั้งเพื่อทำต่อ · เหลือ ${cc.unculled}`:`คัดเสร็จแล้ว · PASS ${cc.pass} · REVIEW ${cc.review} · REJECT ${cc.reject}`,'good');await saveSessionNow();renderPreview()}
+function detectScene(full,meta){
+  if(els.sceneMode.value!=='auto') return {mode:els.sceneMode.value,auto:false};
+  const iso=Number(meta?.iso||0),mean=full.mean||0,p50=full.p50||0,p90=full.p90||0,p10=full.p10||0;
+  const dynamic=Math.max(0,p90-p10);
+  const nightScore=(mean<.34?1:0)+(p50<.34?1:0)+(p90<.78?1:0)+(iso>=1600?1:iso>=800?.5:0);
+  const forestScore=(full.green>.14?1:0)+(dynamic>.58?1:0)+(full.low>.025?1:0)+(full.high>.004?1:0)+(p50<.55?0.5:0);
+  const mixed=((full.high>.008&&full.low>.05)||(Math.abs(full.r-full.b)>.09&&iso>=800)||(p90>.93&&p50<.42))?1:0;
+  let mode='day';
+  if(nightScore>=2.5) mode='night';
+  else if(forestScore>=3) mode='forest';
+  else if(mixed) mode='mixed';
+  return {mode,auto:true};
+}
+
+async function analyzeOne(file){const meta=state.meta.get(file)||{};const {bmp,w,h}=await decodeFile(file,640);const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(bmp,0,0,w,h);let source='Histogram',roi={x:0,y:0,w,h},confidence=0;if(els.subjectWeight.value!=='off'){const cr=state.culling.get(file);if(cr?.faceBox&&cr.faceReliable){roi=denormalizeBox(cr.faceBox,w,h);source='Face';confidence=.95}else if(cr?.personBox){roi=denormalizeBox(cr.personBox,w,h);source='Person';confidence=.9}else{await ensureModels(els.autoStatus);if(state.faceModel){try{const faces=await state.faceModel.estimateFaces(c,false);if(faces.length){const f=faces.sort((a,b)=>((b.bottomRight[0]-b.topLeft[0])*(b.bottomRight[1]-b.topLeft[1]))-((a.bottomRight[0]-a.topLeft[0])*(a.bottomRight[1]-a.topLeft[1])))[0];const fw=f.bottomRight[0]-f.topLeft[0],fh=f.bottomRight[1]-f.topLeft[1];roi={x:f.topLeft[0]-fw*.4,y:f.topLeft[1]-fh*.35,w:fw*1.8,h:fh*1.8};source='Face';confidence=f.probability?.[0]||.9}}catch{}}if(source==='Histogram'&&state.personModel){try{const ps=(await state.personModel.detect(c,10,.30)).filter(p=>p.class==='person');if(ps.length){const p=ps.sort((a,b)=>b.score-a.score)[0],q=p.bbox;roi={x:q[0]+q[2]*.15,y:q[1],w:q[2]*.7,h:q[3]*.55};source='Person';confidence=p.score}}catch{}}}}
+  const full=roiStats(x,0,0,w,h),sub=source==='Histogram'?roiStats(x,w*.2,h*.15,w*.6,h*.7):roiStats(x,roi.x,roi.y,roi.w,roi.h),scene=detectScene(full,meta);bmp.close();
+  const sw=els.subjectWeight.value==='high'?.68:els.subjectWeight.value==='medium'?.48:0;const lum=full.mean*(1-sw)+sub.mean*sw;
+  const sceneTarget={
+    day:(source==='Face'?.56:source==='Person'?.53:.50),
+    forest:(source==='Face'?.54:source==='Person'?.51:.48),
+    night:(source==='Face'?.47:source==='Person'?.45:.43),
+    mixed:(source==='Face'?.52:source==='Person'?.49:.47)
+  }[scene.mode]||.50;
+  let strength={natural:.45,standard:.65,punchy:.82}[els.autoStrength.value]||.45;
+  if(scene.mode==='night')strength*=.75;else if(scene.mode==='mixed')strength*=.86;else if(scene.mode==='forest')strength*=.95;
+  let ev=Math.log2(sceneTarget/Math.max(.03,lum));ev*=strength;
+  const dbBase={wide:.10,normal:.065,narrow:.035}[els.deadband.value];
+  const db=scene.mode==='night'?dbBase*.95:scene.mode==='mixed'?dbBase*.9:scene.mode==='forest'?dbBase*.92:dbBase;
+  if(Math.abs(ev)<db)ev=0;
+  const evMin=scene.mode==='night'?-.24:scene.mode==='mixed'?-.30:scene.mode==='forest'?-.24:-.38;
+  const evMax=scene.mode==='night'?.24:scene.mode==='mixed'?.30:scene.mode==='forest'?.24:.38;
+  ev=clamp(ev,evMin,evMax);
+  let highlights=0,shadows=0,forestRange=0;
+  if(els.toneAuto.checked){
+    if(scene.mode==='forest'){
+      const dynamic=Math.max(0,full.p90-full.p10);forestRange=dynamic;
+      const hot=Math.max(0,(full.p90-.82)*90)+Math.max(0,full.high-.003)*1200;
+      const dark=Math.max(0,(.14-full.p10)*120)+Math.max(0,full.low-.015)*650;
+      highlights=-clamp(12+hot,12,48)*strength;
+      shadows=clamp(10+dark,10,40)*strength;
+      if(full.p90<.84&&full.high<.003)highlights*=.55;
+      if(full.p10>.13&&full.low<.02)shadows*=.55;
+    }else if(scene.mode==='night'){
+      highlights=full.high>.006?-clamp((full.high-.006)*900,0,28):full.p90>.84?-8:0;
+      shadows=full.low>.04?clamp((full.low-.04)*180,0,8):full.p10<.08?3:0;
+      highlights*=strength;shadows*=strength;
+    }else if(scene.mode==='mixed'){
+      highlights=full.high>.010?-clamp((full.high-.010)*820,0,26):full.p90>.90?-7:0;
+      shadows=full.low>.03?clamp((full.low-.03)*320,0,14):full.p10<.095?5:0;
+      highlights*=strength;shadows*=strength;
+    }else{
+      highlights=full.high>.012?-clamp((full.high-.012)*700,0,22):full.p90>.91?-6:0;
+      shadows=full.low>.025?clamp((full.low-.025)*450,0,22):full.p10<.10?6:0;
+      highlights*=strength;shadows*=strength;
+    }
+  }
+  let gains={r:1,g:1,b:1};
+  if(els.wbAuto.checked){
+    const avg=(full.r+full.g+full.b)/3;
+    const wr=scene.mode==='night'?.18:scene.mode==='mixed'?.20:scene.mode==='forest'?.20:.28;
+    const wg=scene.mode==='night'?.12:scene.mode==='mixed'?.14:scene.mode==='forest'?.13:.18;
+    gains.r=clamp(1+(avg/full.r-1)*wr*strength,.96,1.04);
+    gains.g=clamp(1+(avg/full.g-1)*wg*strength,.97,1.03);
+    gains.b=clamp(1+(avg/full.b-1)*wr*strength,.96,1.04);
+  }
+  let vibrance=0,green=0,clarity=0;
+  if(els.vibranceAuto.checked){
+    vibrance=clamp((.28-full.sat)*24*strength,-2,scene.mode==='night'?4:scene.mode==='forest'?5:8);
+    green=scene.mode==='night'?clamp((full.green-.25)*12*strength,0,3):scene.mode==='forest'?clamp((full.green-.20)*15*strength,0,5):clamp((full.green-.23)*22*strength,0,6);
+  }
+  if(els.clarityAuto.checked)clarity=(scene.mode==='night'?{natural:1,standard:2,punchy:3}:scene.mode==='forest'?{natural:1.5,standard:3,punchy:4}:{natural:2,standard:4,punchy:6})[els.autoStrength.value]||2;
+  const iso=meta.iso||100;let nr=0,sharp=0;
+  if(els.detailAuto.checked){
+    if(scene.mode==='night'){nr=iso>=6400?12:iso>=3200?9:iso>=1600?6:iso>=800?4:2;sharp=iso>=6400?1:iso>=3200?2:iso>=1600?2:3}
+    else if(scene.mode==='forest'){nr=iso>=3200?8:iso>=1600?5:iso>=800?3:iso>=400?1:0;sharp=iso>=3200?2:iso>=1600?3:4}
+    else{nr=iso>=3200?8:iso>=1600?5:iso>=800?3:iso>=400?1:0;sharp=iso>=3200?2:iso>=1600?3:5}
+  }
+  return {source,confidence,scene:scene.mode,ev,highlights,shadows,forestRange,gains,vibrance,green,clarity,nr,sharp,full,sub};
+}
+
+function skinLike(r,g,b){return r>g*1.05&&g>b*1.05&&r-b>18&&r>70&&g>45&&b>25}
+function applyTone(imageData,a){
+  const d=imageData.data,exp=Math.pow(2,a.ev||0),contrast=1+(a.clarity||0)/100,hl=(a.highlights||0)/100,sh=(a.shadows||0)/100,vr=(a.vibrance||0)/100,gr=(a.green||0)/100;
+  const forest=a.scene==='forest';
+  for(let i=0;i<d.length;i+=4){
+    let r=d[i]*a.gains.r,g=d[i+1]*a.gains.g,b=d[i+2]*a.gains.b;
+    r*=exp;g*=exp;b*=exp;
+    let L=(.2126*r+.7152*g+.0722*b)/255;
+    if(forest){
+      let target=L;
+      if(sh>0){
+        const toe=smoothstep(.025,.11,L),fall=1-smoothstep(.34,.60,L),mask=toe*fall;
+        target+=Math.max(0,.40-L)*sh*.72*mask;
+      }
+      if(hl<0){
+        const shoulder=smoothstep(.52,.90,L),amount=(-hl)*.72;
+        target-=Math.max(0,L-.50)*amount*shoulder;
+      }
+      target=clamp(target,0,1);
+      const ratio=clamp(target/Math.max(.012,L),.72,1.42);
+      r*=ratio;g*=ratio;b*=ratio;
+      // Mild S-curve in midtones to keep forest depth after DR compression.
+      const m=(.2126*r+.7152*g+.0722*b)/255;
+      const mid=(m-.5)*(1+Math.min(.035,Math.abs(hl-sh)*.025));
+      const mt=clamp(.5+mid,0,1),mr=clamp(mt/Math.max(.012,m),.93,1.07);
+      r*=mr;g*=mr;b*=mr;
+    }else{
+      if(sh>0){const m=(1-smoothstep(.18,.60,L))*sh*.42,delta=(255*(.52-L))*m;r+=delta;g+=delta;b+=delta}
+      if(hl<0){const m=smoothstep(.55,.96,L)*(-hl)*.48,delta=(255*(L-.55))*m;r-=delta;g-=delta;b-=delta}
+    }
+    r=(r-127.5)*contrast+127.5;g=(g-127.5)*contrast+127.5;b=(b-127.5)*contrast+127.5;
+    if(gr>0&&g>r*1.06&&g>b*1.06)g-=255*gr*.12;
+    const avg=(r+g+b)/3,sat=Math.max(r,g,b)-Math.min(r,g,b),skin=els.skinProtect.checked&&skinLike(r,g,b);
+    const vv=vr*(1-clamp(sat/170,0,.8))*(skin?.2:1);
+    r=avg+(r-avg)*(1+vv);g=avg+(g-avg)*(1+vv);b=avg+(b-avg)*(1+vv);
+    d[i]=clamp(r,0,255);d[i+1]=clamp(g,0,255);d[i+2]=clamp(b,0,255);
+  }
+  return imageData
+}
+function sharpenImageData(img,amount){if(amount<=0)return img;const w=img.width,h=img.height,d=img.data,src=new Uint8ClampedArray(d),a=amount;for(let y=1;y<h-1;y++){let i=(y*w+1)*4;for(let x=1;x<w-1;x++,i+=4){for(let c=0;c<3;c++){const center=src[i+c],blur=(src[i-4+c]+src[i+4+c]+src[i-w*4+c]+src[i+w*4+c]+center*4)/8;d[i+c]=clamp(center+(center-blur)*a,0,255)}}}return img}
+
+function watermarkLayerPublic(w){return {id:w.id,name:w.name,blob:w.blob,x:w.x,y:w.y,w:w.w,visible:w.visible!==false,ratio:w.ratio||1,orientation:w.orientation||'portrait'}}
+function serializeWatermarks(){return state.watermarks.map(watermarkLayerPublic)}
+function wmOrientationForDimensions(width,height,orientation=1){let w=Number(width||0),h=Number(height||0);if([5,6,7,8].includes(Number(orientation||1)))[w,h]=[h,w];if(w&&h)return h>w?'portrait':'landscape';return 'portrait'}
+function wmOrientationForFile(file){const m=state.meta.get(file)||{};return wmOrientationForDimensions(m.width,m.height,m.orientation)}
+function wmLayersForOrientation(o){return state.watermarks.filter(w=>(w.orientation||'portrait')===o)}
+function wmVisibleLayersForOrientation(o){return wmLayersForOrientation(o).filter(w=>w.visible!==false)}
+function setWatermarkOrientation(o){state.wmEditOrientation=o==='landscape'?'landscape':'portrait';const list=wmLayersForOrientation(state.wmEditOrientation);if(!list.some(w=>w.id===state.wmActiveId))state.wmActiveId=list[0]?.id||null;els.wmTabPortrait?.classList.toggle('active',state.wmEditOrientation==='portrait');els.wmTabLandscape?.classList.toggle('active',state.wmEditOrientation==='landscape');els.wmUploadPortrait?.classList.toggle('hidden',state.wmEditOrientation!=='portrait');els.wmUploadLandscape?.classList.toggle('hidden',state.wmEditOrientation!=='landscape');if(els.wmOrientationTitle)els.wmOrientationTitle.textContent=state.wmEditOrientation==='portrait'?'ลายน้ำแนวตั้ง':'ลายน้ำแนวนอน';if(els.wmOrientationNote)els.wmOrientationNote.textContent=state.wmEditOrientation==='portrait'?'กำลังแก้ชุดแนวตั้ง · รูป HIGHLIGHT แนวตั้งจะใช้เฉพาะ Layer ชุดนี้':'กำลังแก้ชุดแนวนอน · รูป HIGHLIGHT แนวนอนจะใช้เฉพาะ Layer ชุดนี้';renderWatermarkLayers();refreshWatermarkStage()}
+async function restoreWatermarks(items){clearWatermarkObjectUrls();state.watermarks=[];for(const it of items||[]){if(!it?.blob)continue;const url=URL.createObjectURL(it.blob);state.watermarks.push({id:it.id||crypto.randomUUID(),name:it.name||'watermark',blob:it.blob,url,x:Number.isFinite(it.x)?it.x:.05,y:Number.isFinite(it.y)?it.y:.05,w:Number.isFinite(it.w)?it.w:.28,visible:it.visible!==false,ratio:it.ratio||1,orientation:it.orientation==='landscape'?'landscape':'portrait',img:null})}const list=wmLayersForOrientation(state.wmEditOrientation);state.wmActiveId=list[0]?.id||null;renderWatermarkLayers();refreshWatermarkStage()}
+function clearWatermarkObjectUrls(){for(const w of state.watermarks||[])if(w.url)try{URL.revokeObjectURL(w.url)}catch{}}
+function hasWatermark(file){if(!file||!isHighlight(file))return false;const o=wmOrientationForFile(file);return wmVisibleLayersForOrientation(o).length>0}
+function updateWatermarkCount(){const n=state.files.filter(isHighlight).length,portrait=wmLayersForOrientation('portrait').length,landscape=wmLayersForOrientation('landscape').length;if(els.wmSelectedCount)els.wmSelectedCount.textContent=`HIGHLIGHT ที่จะใส่ลายน้ำ ${n.toLocaleString()} รูป · แนวตั้ง ${portrait} Layer · แนวนอน ${landscape} Layer`;if(els.dialogWatermark&&Number.isInteger(state.dialogIndex)){const f=state.files[state.dialogIndex],on=f&&isHighlight(f);els.dialogWatermark.textContent=on?'ลายน้ำ HL: AUTO':'ลายน้ำ: ไม่ใช้';els.dialogWatermark.classList.toggle('on',!!on)}}
+function setPhotoWatermarkByIndex(index,on){const f=state.files[index];if(!f)return;const k=fileKey(f);on?state.watermarkSelected.add(k):state.watermarkSelected.delete(k);updateWatermarkCount();refreshWatermarkStage();resetExportSession();scheduleSaveSession()}
+function activeWm(){return state.watermarks.find(w=>w.id===state.wmActiveId&&(w.orientation||'portrait')===state.wmEditOrientation)||null}
+function wmHeightNorm(w,stageRect=null){const st=stageRect||els.wmStage?.getBoundingClientRect();if(!st?.width||!st?.height)return w.w/(w.ratio||1);return w.w*(st.width/st.height)/(w.ratio||1)}
+function clampWatermark(w){w.w=clamp(w.w,.03,1);const h=wmHeightNorm(w);w.x=clamp(w.x,0,Math.max(0,1-w.w));w.y=clamp(w.y,0,Math.max(0,1-h))}
+function renderWatermarkLayers(){if(!els.wmLayerList)return;const list=wmLayersForOrientation(state.wmEditOrientation);if(!list.length){els.wmLayerList.innerHTML=`<div class="tiny">ยังไม่มีลายน้ำ${state.wmEditOrientation==='portrait'?'แนวตั้ง':'แนวนอน'}</div>`;return}els.wmLayerList.innerHTML=list.map(w=>`<div class="wm-layer-row ${w.id===state.wmActiveId?'active':''}" data-wm-row="${w.id}"><button type="button" class="btn wm-mini" data-wm-select="${w.id}" title="เลือกแก้ตำแหน่ง">${w.visible===false?'ซ่อน':'เลือก'}</button><div class="wm-layer-name" title="${w.name.replace(/"/g,'')}">${w.name}</div><button type="button" class="btn danger wm-mini" data-wm-delete="${w.id}">ลบ</button></div>`).join('');els.wmLayerList.querySelectorAll('[data-wm-select]').forEach(b=>b.addEventListener('click',()=>{state.wmActiveId=b.dataset.wmSelect;renderWatermarkLayers();renderWatermarkStageLayers()}));els.wmLayerList.querySelectorAll('[data-wm-delete]').forEach(b=>b.addEventListener('click',()=>removeWatermark(b.dataset.wmDelete)))}
+function removeWatermark(id){const i=state.watermarks.findIndex(w=>w.id===id);if(i<0)return;const [w]=state.watermarks.splice(i,1);if(w.url)URL.revokeObjectURL(w.url);if(state.wmActiveId===id)state.wmActiveId=wmLayersForOrientation(state.wmEditOrientation)[0]?.id||null;renderWatermarkLayers();renderWatermarkStageLayers();updateWatermarkCount();resetExportSession();scheduleSaveSession()}
+async function addWatermarkFiles(files,orientation=state.wmEditOrientation){orientation=orientation==='landscape'?'landscape':'portrait';for(const file of files){if(!/^image\//.test(file.type)&&!/\.(png|jpe?g|webp)$/i.test(file.name))continue;const url=URL.createObjectURL(file),img=new Image();img.decoding='async';img.src=url;try{await img.decode()}catch{await new Promise((res,rej)=>{img.onload=res;img.onerror=rej})}const ratio=(img.naturalWidth||1)/(img.naturalHeight||1),count=wmLayersForOrientation(orientation).length,offset=(count%8)*.025;const w={id:crypto.randomUUID?crypto.randomUUID():'wm_'+Date.now()+'_'+Math.random(),name:file.name,blob:file,url,x:clamp(.05+offset,0,.65),y:clamp(.05+offset,0,.65),w:.28,visible:true,ratio,img,orientation};state.watermarks.push(w);if(state.wmEditOrientation===orientation)state.wmActiveId=w.id}renderWatermarkLayers();renderWatermarkStageLayers();updateWatermarkCount();resetExportSession();scheduleSaveSession()}
+async function ensureWmImage(w){if(w.img?.complete&&w.img.naturalWidth)return w.img;const img=new Image();img.decoding='async';img.src=w.url||(w.url=URL.createObjectURL(w.blob));try{await img.decode()}catch{await new Promise((res,rej)=>{img.onload=res;img.onerror=rej})}w.img=img;if(!w.ratio)w.ratio=(img.naturalWidth||1)/(img.naturalHeight||1);return img}
+function wmReferenceFile(){for(const f of state.files)if(isHighlight(f)&&wmOrientationForFile(f)===state.wmEditOrientation)return f;for(const f of state.files)if(wmOrientationForFile(f)===state.wmEditOrientation)return f;return state.files[0]||null}
+function refreshWatermarkStage(){if(!els.wmStage)return;const f=wmReferenceFile();if(state.wmBaseUrl){URL.revokeObjectURL(state.wmBaseUrl);state.wmBaseUrl=null}if(!f){els.wmStage.style.backgroundImage='none';els.wmStage.classList.add('empty');els.wmStageEmpty?.classList.remove('hidden');return}state.wmBaseUrl=URL.createObjectURL(f);const img=new Image();img.onload=()=>{const ratio=img.naturalWidth/img.naturalHeight;els.wmStage.style.aspectRatio=`${img.naturalWidth}/${img.naturalHeight}`;els.wmStage.style.maxWidth=ratio<1?'430px':'760px';els.wmStage.style.backgroundImage=`url("${state.wmBaseUrl}")`;els.wmStage.classList.remove('empty');els.wmStageEmpty?.classList.add('hidden');renderWatermarkStageLayers()};img.src=state.wmBaseUrl}
+function renderWatermarkStageLayers(){if(!els.wmStage)return;els.wmStage.querySelectorAll('.wm-layer').forEach(n=>n.remove());for(const w of wmLayersForOrientation(state.wmEditOrientation)){if(w.visible===false)continue;clampWatermark(w);const el=document.createElement('div');el.className='wm-layer'+(w.id===state.wmActiveId?' active':'');el.dataset.wmId=w.id;el.style.left=(w.x*100)+'%';el.style.top=(w.y*100)+'%';el.style.width=(w.w*100)+'%';const im=document.createElement('img');im.src=w.url;im.alt=w.name;im.draggable=false;const handle=document.createElement('span');handle.className='wm-resize';handle.title='ลากเพื่อย่อ/ขยาย';el.append(im,handle);els.wmStage.append(el);bindWatermarkPointer(el,w,handle)}renderWatermarkLayers()}
+function bindWatermarkPointer(el,w,handle){el.addEventListener('pointerdown',e=>{if(e.target===handle)return;state.wmActiveId=w.id;renderWatermarkLayers();el.classList.add('active');const rect=els.wmStage.getBoundingClientRect(),sx=e.clientX,sy=e.clientY,ox=w.x,oy=w.y;el.setPointerCapture(e.pointerId);const move=ev=>{w.x=ox+(ev.clientX-sx)/rect.width;w.y=oy+(ev.clientY-sy)/rect.height;clampWatermark(w);el.style.left=(w.x*100)+'%';el.style.top=(w.y*100)+'%'};const up=ev=>{el.removeEventListener('pointermove',move);el.removeEventListener('pointerup',up);el.removeEventListener('pointercancel',up);resetExportSession();scheduleSaveSession()};el.addEventListener('pointermove',move);el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up)});handle.addEventListener('pointerdown',e=>{e.stopPropagation();state.wmActiveId=w.id;renderWatermarkLayers();el.classList.add('active');const rect=els.wmStage.getBoundingClientRect(),sx=e.clientX,sy=e.clientY,ow=w.w,stageAspect=rect.width/rect.height,ratio=w.ratio||1;handle.setPointerCapture(e.pointerId);const move=ev=>{const dx=(ev.clientX-sx)/rect.width,dy=(ev.clientY-sy)/rect.height*(ratio/stageAspect);w.w=ow+Math.max(dx,dy);clampWatermark(w);el.style.width=(w.w*100)+'%'};const up=()=>{handle.removeEventListener('pointermove',move);handle.removeEventListener('pointerup',up);handle.removeEventListener('pointercancel',up);renderWatermarkStageLayers();resetExportSession();scheduleSaveSession()};handle.addEventListener('pointermove',move);handle.addEventListener('pointerup',up);handle.addEventListener('pointercancel',up)})}
+async function drawWatermarks(canvas,file,enabled=false){if(!enabled)return;const orientation=canvas.height>canvas.width?'portrait':'landscape',layers=wmVisibleLayersForOrientation(orientation);if(!layers.length)throw new Error(`ยังไม่มีลายน้ำสำหรับภาพ${orientation==='portrait'?'แนวตั้ง':'แนวนอน'}`);const ctx=canvas.getContext('2d'),cw=canvas.width,ch=canvas.height;for(const w of layers){const img=await ensureWmImage(w);const dw=w.w*cw,dh=dw/(w.ratio||((img.naturalWidth||1)/(img.naturalHeight||1))),dx=w.x*cw,dy=w.y*ch;ctx.drawImage(img,dx,dy,dw,dh)}}
+
+async function processVisual(file,a,{watermark=false}={}){const bmp=await createImageBitmap(file);let tw=bmp.width,th=bmp.height;if(els.resizeEnabled.checked){const le=clamp(Number(els.longEdge.value||4500),500,12000),mx=Math.max(tw,th);if(!(els.noUpscale.checked&&mx<=le)){const s=le/mx;tw=Math.max(1,Math.round(tw*s));th=Math.max(1,Math.round(th*s))}}
+  let work=bmp;let cw=bmp.width,ch=bmp.height;while(Math.max(cw/tw,ch/th)>2){const nw=Math.max(tw,Math.round(cw/2)),nh=Math.max(th,Math.round(ch/2)),c=document.createElement('canvas');c.width=nw;c.height=nh;const x=c.getContext('2d');x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.drawImage(work,0,0,nw,nh);if(work!==bmp)work.close();work=await createImageBitmap(c);cw=nw;ch=nh}
+  const c=document.createElement('canvas');c.width=tw;c.height=th;const x=c.getContext('2d',{willReadFrequently:true});x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';if(a?.nr>=5)x.filter='blur(0.25px)';x.drawImage(work,0,0,tw,th);x.filter='none';if(work!==bmp)work.close();bmp.close();if(a&&els.autoEnabled.checked){let img=x.getImageData(0,0,tw,th);applyTone(img,a);let sh=0;if(els.sharpen.value!=='off'){if(els.sharpen.value==='low')sh=.18;else if(els.sharpen.value==='medium')sh=.28;else sh=(a.sharp||4)*.045}if(sh>0)sharpenImageData(img,clamp(sh,.08,.32));x.putImageData(img,0,0)}await drawWatermarks(c,file,watermark);return {canvas:c,w:tw,h:th}}
+function canvasBlob(c,q){return new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error('JPEG encode failed')),'image/jpeg',q))}
+async function encodeToLimit(canvas,exifBytes){const limit=Number(els.fileLimit.value||4.8)*1048576,exifExtra=exifBytes?.length||0,target=Math.max(100000,limit-exifExtra-2048),minQ=clamp(Number(els.minQuality.value||78)/100,.5,.98);let lo=minQ,hi=.99,best=null,bq=minQ;for(let i=0;i<7;i++){const q=(lo+hi)/2,b=await canvasBlob(canvas,q);if(b.size<=target){best=b;bq=q;lo=q}else hi=q}if(!best){best=await canvasBlob(canvas,minQ);bq=minQ}return {blob:best,quality:bq}}
+function outputName(file,index){if(!els.renameEnabled.checked)return file.name;const n=Number(els.startNo.value||1)+index,d=Number(els.digits.value||4),run=pad(n,d),code=String(els.photographer.value||'').replace(/[^A-Za-z0-9_-]/g,'');const b=baseName(file.name);if(els.renameMode.value==='pse')return `PSE${code}-${run}.JPG`;if(els.renameMode.value==='original')return `${b}-${run}.JPG`;return `${b}PSE${code}-${run}.JPG`}
+function jpegHeadDimensions(buffer){try{const u=new Uint8Array(buffer);let p=2;while(p+9<u.length){if(u[p]!==0xff){p++;continue}let marker=u[p+1];while(marker===0xff&&p+2<u.length){p++;marker=u[p+1]}if(marker===0xd8||marker===0xd9){p+=2;continue}if(marker===0xda)break;if(p+4>u.length)break;const len=(u[p+2]<<8)|u[p+3];if(len<2||p+2+len>u.length)break;if([0xc0,0xc1,0xc2,0xc3,0xc5,0xc6,0xc7,0xc9,0xca,0xcb,0xcd,0xce,0xcf].includes(marker)&&len>=7){return {height:(u[p+5]<<8)|u[p+6],width:(u[p+7]<<8)|u[p+8]}}p+=2+len}}catch{}return {width:null,height:null}}
+async function readMeta(file){try{const head=await file.slice(0,262144).arrayBuffer(),p=parseExif(head),d=jpegHeadDimensions(head);return {date:p.date,tz:p.tz,iso:p.iso,model:p.model,orientation:p.orientation,width:p.width||d.width,height:p.height||d.height,size:file.size}}catch{return {size:file.size}}}
+async function addFiles(list,{pathMap=null,restoreSaved=true,preserveSource=false,resumeExport=false}={}){const files=[...list].filter(f=>/jpe?g$/i.test(f.name)).sort((a,b)=>((pathMap?.get(a))||a.webkitRelativePath||a.name).localeCompare((pathMap?.get(b))||b.webkitRelativePath||b.name,undefined,{numeric:true,sensitivity:'base'}));state.files=files;state.filePaths.clear();if(pathMap)for(const f of files)state.filePaths.set(f,pathMap.get(f)||f.name);else for(const f of files)state.filePaths.set(f,f.webkitRelativePath||f.name);state.meta.clear();state.analysis.clear();state.culling.clear();state.highlights.clear();state.watermarkSelected.clear();state.exportRoot=null;if(!resumeExport){state.exported.clear();state.exportSessionName=null}if(!preserveSource){state.sourceHandle=null;if(state.resumeRecord){state.resumeRecord.sourceHandle=null;state.resumeRecord.sourceName=null}};els.analyze.disabled=!files.length;els.runCull.disabled=!files.length;els.testOne.disabled=!files.length;els.exportAll.disabled=!files.length;els.openReviewQueue.disabled=true;els.runHighlight.disabled=!files.length;els.openHighlightQueue.disabled=true;setStatus(els.autoStatus,files.length?'กำลังอ่าน EXIF…':'เลือกรูปก่อน');setStatus(els.cullStatus,files.length?'กำลัง Scan metadata…':'เลือกรูปก่อน');const chunk=24;for(let start=0;start<files.length;start+=chunk){const part=files.slice(start,start+chunk),metas=await Promise.all(part.map(readMeta));for(let j=0;j<part.length;j++){const f=part[j];state.meta.set(f,metas[j]);if(restoreSaved){const saved=state.savedFileStates.get(fileKey(f));if(saved?.culling)state.culling.set(f,saved.culling);if(saved?.analysis)state.analysis.set(f,saved.analysis);if(saved?.highlight)state.highlights.set(f,saved.highlight);if(saved?.watermark)state.watermarkSelected.add(fileKey(f))}}updateFileSummary();setStatus(els.cullStatus,`Scan metadata ${Math.min(start+chunk,files.length)}/${files.length}`,'warn');await new Promise(r=>setTimeout(r,0))}assignBurstTags();setStatus(els.autoStatus,files.length?(state.analysis.size?`เรียกคืน Auto ${state.analysis.size.toLocaleString()} รูป · พร้อมทำต่อ`:'พร้อมวิเคราะห์ Auto Fine Tune'):'เลือกรูปก่อน','good');const cc=cullCounts();setStatus(els.cullStatus,files.length?(cc.unculled<files.length?`เรียกคืน Culling ${files.length-cc.unculled}/${files.length} · พร้อมทำต่อ`:'พร้อมคัดภาพ — ประมวลผลทีละรูป ไม่โหลดทั้งอัลบั้มเข้า RAM'):'เลือกรูปก่อน','good');updateFileSummary();renderCullCounts();renderPreview();scheduleSaveSession()}
+function updateFileSummary(){const total=state.files.reduce((s,f)=>s+f.size,0),iso=[...state.meta.values()].map(m=>m.iso).filter(Boolean);els.fileSummary.innerHTML=state.files.length?`<span class="chip">${state.files.length.toLocaleString()} รูป</span><span class="chip">${fmtBytes(total)}</span>${iso.length?`<span class="chip">ISO ${Math.min(...iso)}–${Math.max(...iso)}</span>`:''}`:'<span class="chip">ยังไม่มีไฟล์</span>'}
+function analysisText(a){if(!a)return 'ยังไม่วิเคราะห์';const dir=a.ev>.045?`สว่าง +${a.ev.toFixed(2)} EV`:a.ev<-.045?`มืด ${a.ev.toFixed(2)} EV`:'Exposure คงเดิม';const wb=Math.max(Math.abs(a.gains.r-1),Math.abs(a.gains.b-1))>.012?'WB Auto':'WB เดิม';const scene=(a.scene||'day').toUpperCase();const dr=a.scene==='forest'?` · DR ${(a.forestRange||0).toFixed(2)}`:'';return `${scene}${dr} · ${dir} · H ${Math.round(a.highlights)} · S +${Math.round(a.shadows)} · ${wb} · Vib ${a.vibrance.toFixed(1)} · ${a.source}`}
+
+function isHighlight(file){return !!state.highlights.get(file)?.selected}
+function highlightInfo(file){return state.highlights.get(file)||null}
+function updateHighlightCounts(){
+  let selected=0,pinned=0,scored=0;const cats={running:0,action:0,story:0,scenic:0,character:0};
+  for(const f of state.files){const h=state.highlights.get(f);if(!h)continue;if(Number.isFinite(h.score))scored++;if(h.selected){selected++;if(h.category&&cats[h.category]!=null)cats[h.category]++}if(h.pinned)pinned++;}
+  if(els.highlightCounts)els.highlightCounts.innerHTML=`<span class="highlight-count selected">HIGHLIGHT ${selected.toLocaleString()}</span><span class="highlight-count pinned">PINNED ${pinned.toLocaleString()}</span><span class="highlight-count">ให้คะแนน ${scored.toLocaleString()}</span>`;
+  if(els.highlightCategories)els.highlightCategories.innerHTML=HL_CATEGORIES.map(k=>`<span class="category-chip">${hlLabel(k)} ${cats[k]}</span>`).join('');
+  if(els.openHighlightQueue)els.openHighlightQueue.disabled=selected===0;updateWatermarkCount();
+  if(els.dialogHighlight&&Number.isInteger(state.dialogIndex)){const f=state.files[state.dialogIndex],h=state.highlights.get(f),on=!!h?.selected;els.dialogHighlight.textContent=on?(h?.pinned?'★ PINNED':'★ Highlight: ON'):'★ Highlight: OFF';els.dialogHighlight.classList.toggle('on',on)}
+}
+function setHighlightByIndex(index,on,{pinned=true}={}){const f=state.files[index];if(!f)return;const c=state.culling.get(f);if(on&&c?.status!=='pass'){setStatus(els.highlightStatus,'Highlight เลือกได้จากภาพ PASS เท่านั้น','warn');return}let h=state.highlights.get(f)||{score:null,selected:false,pinned:false,breakdown:null,reason:''};h.selected=!!on;h.pinned=!!on&&!!pinned;if(!on)h.pinned=false;state.highlights.set(f,h);updateHighlightCounts();resetExportSession();renderPreview();scheduleSaveSession()}
+
+const HL_CATEGORIES=['running','action','story','scenic','character'];
+const HL_LABELS={running:'RUNNING POSE',action:'ACTION',story:'STORY',scenic:'SCENIC',character:'CHARACTER'};
+function hlLabel(k){return HL_LABELS[k]||String(k||'').toUpperCase()}
+function dist2(a,b){if(!a||!b)return 0;return Math.hypot((a.x??0)-(b.x??0),(a.y??0)-(b.y??0))}
+function angle3(a,b,c){if(!a||!b||!c)return null;const v1=[a.x-b.x,a.y-b.y],v2=[c.x-b.x,c.y-b.y],d1=Math.hypot(...v1),d2=Math.hypot(...v2);if(!d1||!d2)return null;const cos=clamp((v1[0]*v2[0]+v1[1]*v2[1])/(d1*d2),-1,1);return Math.acos(cos)*180/Math.PI}
+function kpByName(pose,name){return pose?.keypoints?.find(k=>k.name===name)||null}
+function kpOk(k,min=.28){return !!k&&Number(k.score??1)>=min}
+async function ensureHighlightModels(){
+  if(state.highlightModelsTried)return {pose:!!state.poseDetector,face:!!state.faceMeshDetector};
+  state.highlightModelsTried=true;
+  if(window.poseDetection){try{setStatus(els.highlightStatus,'กำลังโหลด Running Pose AI…','warn');const model=poseDetection.SupportedModels.MoveNet;state.poseDetector=await poseDetection.createDetector(model,{modelType:poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,enableSmoothing:true})}catch(e){console.warn('Pose model unavailable',e);state.poseDetector=null}}
+  if(window.faceLandmarksDetection){try{setStatus(els.highlightStatus,state.poseDetector?'Running Pose AI พร้อม · กำลังโหลด Face/Eyes AI…':'กำลังโหลด Face/Eyes AI…','warn');const model=faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh;state.faceMeshDetector=await faceLandmarksDetection.createDetector(model,{runtime:'tfjs',refineLandmarks:true,maxFaces:1})}catch(e){console.warn('Face landmarks unavailable',e);state.faceMeshDetector=null}}
+  return {pose:!!state.poseDetector,face:!!state.faceMeshDetector}
+}
+function poseQuality(pose){
+  if(!pose)return {available:false,running:0,action:0,gesture:0,confidence:0,kneeFlex:null,kneeExtend:null};
+  const lh=kpByName(pose,'left_hip'),rh=kpByName(pose,'right_hip'),lk=kpByName(pose,'left_knee'),rk=kpByName(pose,'right_knee'),la=kpByName(pose,'left_ankle'),ra=kpByName(pose,'right_ankle');
+  const ls=kpByName(pose,'left_shoulder'),rs=kpByName(pose,'right_shoulder'),le=kpByName(pose,'left_elbow'),re=kpByName(pose,'right_elbow'),lw=kpByName(pose,'left_wrist'),rw=kpByName(pose,'right_wrist');
+  const needed=[lh,rh,lk,rk,la,ra].filter(Boolean),confidence=needed.length?needed.reduce((a,k)=>a+Number(k.score??0),0)/needed.length:0;
+  let leftAng=kpOk(lh)&&kpOk(lk)&&kpOk(la)?angle3(lh,lk,la):null,rightAng=kpOk(rh)&&kpOk(rk)&&kpOk(ra)?angle3(rh,rk,ra):null;
+  const angles=[leftAng,rightAng].filter(Number.isFinite);let flex=null,ext=null;if(angles.length===2){flex=Math.min(...angles);ext=Math.max(...angles)}
+  const flexScore=flex==null?0:clamp(100-Math.abs(flex-105)*1.55,0,100),extScore=ext==null?0:clamp((ext-135)/35*100,0,100);
+  let stride=0;if(kpOk(la)&&kpOk(ra)&&kpOk(lh)&&kpOk(rh)){const hipSpan=Math.max(12,dist2(lh,rh));stride=clamp(dist2(la,ra)/(hipSpan*2.2)*100,0,100)}
+  let arm=45;const ea=[];if(kpOk(ls)&&kpOk(le)&&kpOk(lw))ea.push(angle3(ls,le,lw));if(kpOk(rs)&&kpOk(re)&&kpOk(rw))ea.push(angle3(rs,re,rw));if(ea.length)arm=ea.reduce((a,v)=>a+clamp(100-Math.abs(v-95)*1.1,0,100),0)/ea.length;
+  let gesture=0;for(const [w,s] of [[lw,ls],[rw,rs]])if(kpOk(w,.22)&&kpOk(s,.22)){if(w.y<s.y)gesture=Math.max(gesture,90);else if(Math.abs(w.y-s.y)<80)gesture=Math.max(gesture,60)}
+  const running=angles.length===2?clamp(flexScore*.37+extScore*.37+stride*.16+arm*.10,0,100):0;
+  const action=clamp(running*.52+gesture*.24+stride*.14+confidence*100*.10,0,100);
+  return {available:angles.length===2,running,action,gesture,confidence,kneeFlex:flex,kneeExtend:ext,arm,stride}
+}
+function eyeAspectRatio(kp,idx){try{const p=idx.map(i=>kp[i]);if(p.some(x=>!x))return null;return (dist2(p[1],p[5])+dist2(p[2],p[4]))/(2*Math.max(1,dist2(p[0],p[3])))}catch{return null}}
+function faceMeshQuality(face,cr){
+  if(!face?.keypoints?.length)return {available:false,eyesOpen:null,eyeScore:null,mouthOpen:null,faceQuality:cr?.faceReliable?clamp(cr.faceFocus||45,0,100):45};
+  const kp=face.keypoints;const l=eyeAspectRatio(kp,[33,160,158,133,153,144]),r=eyeAspectRatio(kp,[362,385,387,263,373,380]);const vals=[l,r].filter(Number.isFinite);const ear=vals.length?vals.reduce((a,v)=>a+v,0)/vals.length:null;const eyeScore=ear==null?null:clamp((ear-.105)/.115*100,0,100);const eyesOpen=ear==null?null:ear>=.155;
+  const mouthWidth=dist2(kp[61],kp[291]),mouthGap=dist2(kp[13],kp[14]),mouthOpen=mouthWidth?clamp(mouthGap/mouthWidth*260,0,100):0;
+  const focus=clamp(cr?.faceFocus||cr?.personFocus||45,0,100),faceQuality=clamp(focus*.62+(eyeScore??65)*.28+Math.min(100,mouthOpen+45)*.10,0,100);
+  return {available:true,eyesOpen,eyeScore,mouthOpen,faceQuality,ear}
+}
+async function highlightAdvancedAnalysis(file,cr){
+  const {bmp,w,h}=await decodeFile(file,720),c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(bmp,0,0,w,h);bmp.close();
+  let pose=null,face=null;
+  if(state.poseDetector){try{const poses=await state.poseDetector.estimatePoses(c,{maxPoses:1,flipHorizontal:false});pose=poses?.[0]||null}catch(e){console.warn('pose estimate',e)}}
+  if(state.faceMeshDetector){try{const faces=await state.faceMeshDetector.estimateFaces(c,{flipHorizontal:false});face=faces?.[0]||null}catch(e){console.warn('face mesh estimate',e)}}
+  return {pose:poseQuality(pose),face:faceMeshQuality(face,cr)}
+}
+function highlightScenicScore(file,cr,a,aesthetic,composition){
+  const m=state.meta.get(file)||{},portrait=wmOrientationForDimensions(m.width,m.height,m.orientation)==='portrait',area=cr?.personBox?cr.personBox.w*cr.personBox.h:.2;
+  let context=clamp((.34-area)/.30*100,20,100);if(portrait)context*=.86;if(['forest','mixed'].includes(a?.scene))context+=10;if(a?.scene==='night')context+=5;
+  return clamp(aesthetic*.36+composition*.24+context*.28+clamp(cr?.focusScore||0,0,100)*.12,0,100)
+}
+function highlightCategoryScores(file,cr,a,base,adv){
+  const technical=base.technical,aesthetic=base.aesthetic,composition=base.composition,story=base.story,pose=adv?.pose||{running:0,action:0,gesture:0},face=adv?.face||{faceQuality:cr?.faceReliable?cr.faceFocus:45,eyesOpen:null,eyeScore:null,mouthOpen:0};
+  let running=clamp(pose.running*.58+face.faceQuality*.20+technical*.14+composition*.08,0,100);if(face.eyesOpen===false)running=Math.min(running,48);
+  const action=clamp(pose.action*.42+technical*.22+aesthetic*.16+story*.12+composition*.08,0,100);
+  let storyCat=clamp(story*.46+aesthetic*.19+composition*.14+technical*.13+(['forest','night','mixed'].includes(a?.scene)?8:0),0,100);if((cr?.personCount||0)>=2)storyCat=clamp(storyCat+8,0,100);
+  const scenic=highlightScenicScore(file,cr,a,aesthetic,composition);
+  let character=clamp(face.faceQuality*.38+pose.gesture*.24+aesthetic*.16+technical*.14+Math.min(100,(face.mouthOpen||0)+35)*.08,0,100);if(face.eyesOpen===false)character=Math.min(character,50);
+  return {running,action,story:storyCat,scenic,character,eyeScore:face.eyeScore,eyesOpen:face.eyesOpen,faceQuality:face.faceQuality,pose};
+}
+function bestHighlightCategory(scores){let best='story',v=-1;for(const k of HL_CATEGORIES){if((scores?.[k]??-1)>v){v=scores[k];best=k}}return {category:best,score:v}}
+function portfolioThreshold(){return {strict:78,normal:72,flexible:66}[els.highlightGrade.value]||78}
+
+function highlightCompositionScore(cr){
+  const b=cr?.faceBox||cr?.personBox;if(!b)return 45;
+  const cx=b.x+b.w/2,cy=b.y+b.h/2,pts=[[.5,.5],[1/3,1/3],[2/3,1/3],[1/3,2/3],[2/3,2/3]];
+  let d=1;for(const [x,y] of pts)d=Math.min(d,Math.hypot(cx-x,cy-y));
+  const pos=clamp(100-d/0.42*100,0,100),area=clamp((b.w*b.h),0,1);let size=100;
+  if(area<.035)size=clamp(area/.035*80,30,80);else if(area>.52)size=clamp(100-(area-.52)*150,45,100);
+  const edge=(b.x<.015||b.y<.015||b.x+b.w>.985||b.y+b.h>.985)?-10:0;
+  return clamp(pos*.68+size*.32+edge,0,100)
+}
+async function highlightAfterStats(file,a){
+  const {bmp,w,h}=await decodeFile(file,640),c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(bmp,0,0,w,h);bmp.close();
+  if(a&&els.autoEnabled.checked){let img=x.getImageData(0,0,w,h);applyTone(img,a);x.putImageData(img,0,0)}
+  return roiStats(x,0,0,w,h)
+}
+function highlightAestheticScore(st,a){
+  const scene=a?.scene||'day',target=scene==='night'?.40:scene==='forest'?.48:.50;
+  const exp=clamp(100-Math.abs(st.mean-target)*220,0,100),clip=clamp(100-(st.high*650+st.low*300),0,100),dr=st.p90-st.p10;
+  const range=clamp(100-Math.abs(dr-(scene==='forest'?.66:.58))*120,35,100),sat=clamp(100-Math.abs(st.sat-.27)*190,35,100);
+  return clamp(exp*.32+clip*.30+range*.23+sat*.15,0,100)
+}
+function highlightStoryScore(cr,a){
+  let s=48;if((cr?.personCount||0)>=2)s+=14;if((cr?.faceCount||0)>=1)s+=8;if(cr?.burstTag==='BEST')s+=8;
+  if(['forest','mixed','night'].includes(a?.scene))s+=8;if(cr?.personBox){const area=cr.personBox.w*cr.personBox.h;if(area>.06&&area<.38)s+=8}
+  return clamp(s,0,100)
+}
+async function scoreHighlightOne(file,{advanced=false}={}){
+  const cr=state.culling.get(file);if(cr?.status!=='pass')return null;
+  let a=state.analysis.get(file);if(els.autoEnabled.checked&&!a){a=await analyzeOne(file);state.analysis.set(file,a)}
+  const st=await highlightAfterStats(file,a),technical=clamp(cr?.focusScore||0,0,100),aesthetic=highlightAestheticScore(st,a),composition=highlightCompositionScore(cr),story=highlightStoryScore(cr,a);
+  const style=els.highlightStyle.value;let weights=style==='technical'?[.52,.25,.15,.08]:style==='balanced'?[.34,.31,.22,.13]:style==='story'?[.27,.29,.20,.24]:[.28,.29,.18,.25];
+  const baseScore=technical*weights[0]+aesthetic*weights[1]+composition*weights[2]+story*weights[3];
+  let adv=null,categories=null,category=null,catScore=null,portfolioEligible=true,grade='reserve';
+  if(advanced){adv=await highlightAdvancedAnalysis(file,cr);categories=highlightCategoryScores(file,cr,a,{technical,aesthetic,composition,story},adv);const best=bestHighlightCategory(categories);category=best.category;catScore=best.score;const threshold=portfolioThreshold();const minTechnical={strict:48,normal:43,flexible:38}[els.highlightGrade.value]||48;const minAesthetic={strict:62,normal:56,flexible:50}[els.highlightGrade.value]||62;portfolioEligible=catScore>=threshold&&technical>=minTechnical&&aesthetic>=minAesthetic;
+    // Running/Character are face-forward portfolio categories: closed eyes should not pass those categories.
+    if((category==='running'||category==='character')&&categories.eyesOpen===false)portfolioEligible=false;
+    grade=portfolioEligible?'portfolio':'reserve';
+  }
+  const score=advanced&&Number.isFinite(catScore)?catScore*.72+baseScore*.28:baseScore;
+  const reasons=[];if(technical>=70)reasons.push('คม');if(aesthetic>=78)reasons.push('แสง/สีดี');if(composition>=78)reasons.push('Composition ดี');if(story>=75)reasons.push('มีเรื่องราว');if(cr?.burstTag==='BEST')reasons.push('Burst BEST');if(a?.scene==='forest')reasons.push('Trail/Forest');if(category)reasons.push(hlLabel(category));if(categories?.eyesOpen===true)reasons.push('ตาเปิด');if(category==='running'&&categories?.pose?.running>=75)reasons.push('ท่าวิ่งสวย');
+  return {score:Math.round(score*10)/10,baseScore:Math.round(baseScore*10)/10,selected:false,pinned:false,breakdown:{technical:Math.round(technical),aesthetic:Math.round(aesthetic),composition:Math.round(composition),story:Math.round(story)},category,categoryScores:categories?Object.fromEntries(HL_CATEGORIES.map(k=>[k,Math.round(categories[k]||0)])):null,portfolioEligible,grade,eyeScore:categories?.eyeScore??null,eyesOpen:categories?.eyesOpen??null,pose:categories?.pose||null,reason:reasons.join(' · ')||'ภาพสมดุล',time:parseExifDate((state.meta.get(file)||{}).date)?.getTime()||null,burstId:cr?.burstId||null}
+}
+function highlightTooSimilar(file,chosen,mode){if(mode==='off')return false;const h=state.highlights.get(file),cr=state.culling.get(file),tm=h?.time;if(mode!=='off'&&cr?.burstId&&chosen.some(f=>state.culling.get(f)?.burstId===cr.burstId))return true;if(mode==='high'&&tm){for(const f of chosen){const t=state.highlights.get(f)?.time;if(t&&Math.abs(tm-t)<=3500)return true}}return false}
+async function runHighlightSelection(){
+  if(!state.files.length||state.highlightRunning)return;const pass=state.files.filter(f=>state.culling.get(f)?.status==='pass');if(!pass.length){setStatus(els.highlightStatus,'ยังไม่มีภาพ PASS — ให้ Smart Culling ก่อน','bad');return}
+  state.highlightRunning=true;state.cancelHighlight=false;els.runHighlight.disabled=true;els.stopHighlight.disabled=false;els.highlightProgress.classList.remove('hidden');
+  const target=clamp(Number(els.highlightCount.value||30),1,500);let done=0;
+  // Stage 1: score every PASS using the already-fine-tuned image. This is intentionally light enough for large albums.
+  for(const f of pass){if(state.cancelHighlight)break;const old=state.highlights.get(f);try{const scored=await scoreHighlightOne(f,{advanced:false});if(scored){if(old?.pinned){scored.pinned=true;scored.selected=true}state.highlights.set(f,scored)}}catch(e){console.warn('highlight base score',f.name,e)}done++;els.highlightBar.style.width=(done/pass.length*55)+'%';setStatus(els.highlightStatus,`รอบ 1/2 · ดูภาพหลังแต่ง ${done}/${pass.length} · คัด Candidate สำหรับ Portfolio`,'warn');if(done%30===0){updateHighlightCounts();renderPreview()}if(done%80===0)await saveSessionNow();await new Promise(r=>setTimeout(r,0))}
+  if(state.cancelHighlight){state.highlightRunning=false;els.runHighlight.disabled=false;els.stopHighlight.disabled=true;setStatus(els.highlightStatus,'หยุดการคัด Highlight แล้ว','warn');return}
+  const pinned=pass.filter(f=>state.highlights.get(f)?.pinned);
+  const rankedBase=pass.filter(f=>!state.highlights.get(f)?.pinned&&Number.isFinite(state.highlights.get(f)?.score)).sort((a,b)=>state.highlights.get(b).score-state.highlights.get(a).score);
+  // Include more than the requested count so Story/Scenic frames are not lost to purely technical ranking.
+  const cap=Math.min(pass.length,Math.max(120,target*8,Math.min(500,Math.round(Math.sqrt(pass.length)*18))));const candidateSet=new Set(pinned);
+  for(const f of pass){const cr=state.culling.get(f),a=state.analysis.get(f);if((cr?.personCount||0)>=2||cr?.burstTag==='BEST'||['forest','night','mixed'].includes(a?.scene))candidateSet.add(f);if(candidateSet.size>=cap*1.35)break}
+  for(const f of rankedBase){candidateSet.add(f);if(candidateSet.size>=cap)break}
+  const candidates=[...candidateSet];
+  const modelState=await ensureHighlightModels();setStatus(els.highlightStatus,`รอบ 2/2 · วิเคราะห์ Portfolio ${candidates.length} Candidate · Pose ${modelState.pose?'พร้อม':'fallback'} · Eyes ${modelState.face?'พร้อม':'fallback'}`,'warn');
+  for(let i=0;i<candidates.length;i++){if(state.cancelHighlight)break;const f=candidates[i],old=state.highlights.get(f);try{const scored=await scoreHighlightOne(f,{advanced:true});if(scored){if(old?.pinned){scored.pinned=true;scored.selected=true}state.highlights.set(f,scored)}}catch(e){console.warn('highlight portfolio score',f.name,e)}els.highlightBar.style.width=(55+(i+1)/Math.max(1,candidates.length)*45)+'%';setStatus(els.highlightStatus,`รอบ 2/2 · Pose / Face / Story ${i+1}/${candidates.length}`,'warn');if((i+1)%12===0){updateHighlightCounts();renderPreview();await new Promise(r=>setTimeout(r,0))}if((i+1)%40===0)await saveSessionNow()}
+  if(!state.cancelHighlight){for(const f of pass){const h=state.highlights.get(f);if(h&&!h.pinned)h.selected=false}
+    const chosen=[...pinned];const eligible=candidates.filter(f=>!state.highlights.get(f)?.pinned&&state.highlights.get(f)?.portfolioEligible).sort((a,b)=>state.highlights.get(b).score-state.highlights.get(a).score);
+    if(els.highlightStyle.value==='portfolio'){
+      // Round-robin across portfolio categories: a showcase should tell the whole event, not contain 30 similar runners.
+      const pools={};for(const k of HL_CATEGORIES)pools[k]=eligible.filter(f=>state.highlights.get(f)?.category===k).sort((a,b)=>(state.highlights.get(b)?.categoryScores?.[k]||0)-(state.highlights.get(a)?.categoryScores?.[k]||0));
+      let progress=true;while(chosen.length<target&&progress){progress=false;for(const k of HL_CATEGORIES){while(pools[k].length){const f=pools[k].shift();if(chosen.includes(f)||highlightTooSimilar(f,chosen,els.highlightDiversity.value))continue;state.highlights.get(f).selected=true;chosen.push(f);progress=true;break}if(chosen.length>=target)break}}
+      for(const f of eligible){if(chosen.length>=target)break;if(chosen.includes(f)||highlightTooSimilar(f,chosen,els.highlightDiversity.value))continue;state.highlights.get(f).selected=true;chosen.push(f)}
+    }else{
+      for(const f of eligible){if(chosen.length>=target)break;if(chosen.includes(f)||highlightTooSimilar(f,chosen,els.highlightDiversity.value))continue;state.highlights.get(f).selected=true;chosen.push(f)}
+    }
+    // Do not force weak frames into a strict portfolio just to reach the requested number.
+    const selectedAuto=Math.max(0,chosen.length-pinned.length),short=chosen.length<target?` · ผ่าน Portfolio Grade ${chosen.length}/${target} (ไม่ฝืนเติมภาพอ่อน)`:' ';
+    els.highlightBar.style.width='100%';setStatus(els.highlightStatus,`เลือก Highlight ${chosen.length.toLocaleString()} รูป · Auto ${selectedAuto} · PINNED ${pinned.length}${short}`,'good')
+  }else setStatus(els.highlightStatus,'หยุดการคัด Highlight แล้ว — ผลที่วิเคราะห์ไว้ยังเก็บอยู่','warn');
+  state.highlightRunning=false;els.runHighlight.disabled=false;els.stopHighlight.disabled=true;updateHighlightCounts();resetExportSession();await saveSessionNow();renderPreview()
+}
+function clearHighlights(){state.highlights.clear();updateHighlightCounts();setStatus(els.highlightStatus,'ล้าง Highlight แล้ว','good');resetExportSession();renderPreview();scheduleSaveSession()}
+function highlightIndices(){const a=[];for(let i=0;i<state.files.length;i++)if(isHighlight(state.files[i]))a.push(i);return a}
+function openHighlightQueue(){const q=highlightIndices();if(!q.length){setStatus(els.highlightStatus,'ยังไม่มี Highlight','warn');return}state.dialogReviewMode=false;state.dialogHighlightMode=true;openPhotoPreview(q[0],false)}
+function highlightCell(f,i){const h=state.highlights.get(f);if(!h)return `<label class="check" style="min-height:28px"><input class="highlight-photo-check" data-index="${i}" type="checkbox"> เลือกเอง</label>`;const badge=h.selected?(h.pinned?'<span class="tag-pinned">★ PINNED</span>':'<span class="tag-highlight">★ HIGHLIGHT</span>'):'';const cat=h.category?`<span class="hl-category">${hlLabel(h.category)}</span>`:'';const grade=h.grade?`<span class="hl-grade ${h.grade}">${h.grade==='portfolio'?'PORTFOLIO':'RESERVE'}</span>`:'';const score=Number.isFinite(h.score)?`<span class="highlight-score">${h.score.toFixed(1)}</span>`:'—';const b=h.breakdown?`<div class="highlight-breakdown">คม ${h.breakdown.technical} · ภาพ ${h.breakdown.aesthetic} · จัดวาง ${h.breakdown.composition} · เรื่อง ${h.breakdown.story}${h.eyesOpen===false?' · ตาปิด/ก้ำกึ่ง':''}</div>`:'';const cs=h.categoryScores?`<div class="highlight-breakdown">Run ${h.categoryScores.running} · Act ${h.categoryScores.action} · Story ${h.categoryScores.story} · Scenic ${h.categoryScores.scenic} · Char ${h.categoryScores.character}</div>`:'';return `${badge} ${score} ${cat} ${grade}${b}${cs}<label class="check" style="min-height:25px"><input class="highlight-photo-check" data-index="${i}" type="checkbox" ${h.selected?'checked':''}> ${h.pinned?'Pin':'เลือกเอง'}</label>`}
+function reviewIndices(){const a=[];for(let i=0;i<state.files.length;i++)if(state.culling.get(state.files[i])?.status==='review')a.push(i);return a}
+function reviewQueueText(i){if(state.dialogHighlightMode){const q=highlightIndices(),p=q.indexOf(i);return p>=0?` · HIGHLIGHT ${p+1}/${q.length}`:` · HIGHLIGHT ${q.length}`}if(!state.dialogReviewMode)return '';const q=reviewIndices(),p=q.indexOf(i);return p>=0?` · REVIEW ${p+1}/${q.length}`:` · REVIEW เหลือ ${q.length}`}
+function updateDialogNav(){const i=state.dialogIndex;if(i==null)return;if(state.dialogHighlightMode){const q=highlightIndices();els.dialogPrev.disabled=!q.some(x=>x<i);els.dialogNext.disabled=!q.some(x=>x>i);const pos=q.indexOf(i);els.dialogInfo.dataset.queue=pos>=0?`HIGHLIGHT ${pos+1}/${q.length}`:`HIGHLIGHT ${q.length}`}else if(state.dialogReviewMode){const q=reviewIndices();els.dialogPrev.disabled=!q.some(x=>x<i);els.dialogNext.disabled=!q.some(x=>x>i);const pos=q.indexOf(i);if(pos>=0)els.dialogInfo.dataset.queue=`REVIEW ${pos+1}/${q.length}`;else els.dialogInfo.dataset.queue=`REVIEW เหลือ ${q.length}`}else{els.dialogPrev.disabled=i<=0;els.dialogNext.disabled=i>=state.files.length-1;els.dialogInfo.dataset.queue=''}}
+async function openPhotoPreview(index,reviewMode=false){const f=state.files[index];if(!f)return;state.dialogToken++;const token=state.dialogToken;if(state.dialogUrl)URL.revokeObjectURL(state.dialogUrl);if(state.dialogAfterUrl)URL.revokeObjectURL(state.dialogAfterUrl);state.dialogUrl=URL.createObjectURL(f);state.dialogAfterUrl=null;state.dialogIndex=index;state.dialogReviewMode=reviewMode||state.dialogReviewMode;updateWatermarkCount();updateHighlightCounts();els.dialogImg.src=state.dialogUrl;els.dialogAfter.removeAttribute('src');els.dialogAfterLoading.classList.remove('hidden');els.dialogAfterLoading.textContent=els.autoEnabled.checked?'กำลังสร้าง After…':'Auto Edit ปิด — แสดงต้นฉบับ';const r=state.culling.get(f),m=state.meta.get(f)||{},a=state.analysis.get(f),hh=state.highlights.get(f);els.dialogInfo.innerHTML=`<b>${f.name}</b>${reviewQueueText(index)}${hh?.selected?` · ★ ${hh.pinned?'PINNED':'HIGHLIGHT'} ${Number.isFinite(hh.score)?hh.score.toFixed(1):''}${hh.category?` · ${hlLabel(hh.category)}`:''}`:''}<br>${r?`${r.status.toUpperCase()} · Focus ${Math.round(r.focusScore||0)} · ${r.reason}`:'ยังไม่คัด'} · ISO ${m.iso||'—'}${a?`<br>${analysisText(a)}`:''}`;updateDialogNav();if(!els.photoDialog.open){if(typeof els.photoDialog.showModal==='function'){updateWatermarkCount();els.photoDialog.showModal()}else els.photoDialog.setAttribute('open','')}try{const u=await makeAfterPreviewUrl(f);if(token!==state.dialogToken){URL.revokeObjectURL(u);return}state.dialogAfterUrl=u;els.dialogAfter.src=u;els.dialogAfterLoading.classList.add('hidden');const aa=state.analysis.get(f);if(aa){const hx=state.highlights.get(f);els.dialogInfo.innerHTML=`<b>${f.name}</b>${reviewQueueText(index)}${hx?.selected?` · ★ ${hx.pinned?'PINNED':'HIGHLIGHT'} ${Number.isFinite(hx.score)?hx.score.toFixed(1):''}${hx.category?` · ${hlLabel(hx.category)}`:''}`:''}<br>${r?`${r.status.toUpperCase()} · Focus ${Math.round(r.focusScore||0)} · ${r.reason}`:'ยังไม่คัด'} · ISO ${m.iso||'—'}<br>${analysisText(aa)}`;}}catch(e){console.warn(e);if(token===state.dialogToken){els.dialogAfterLoading.textContent='สร้าง After ไม่สำเร็จ';}}
+}
+function openReviewQueue(){const q=reviewIndices();if(!q.length){setStatus(els.cullStatus,'ไม่มีภาพ REVIEW แล้ว','good');return}state.dialogReviewMode=true;openPhotoPreview(q[0],true)}
+function moveDialog(delta){const i=state.dialogIndex;if(i==null)return;if(state.dialogHighlightMode){const q=highlightIndices();let target=null;if(delta>0)target=q.find(x=>x>i);else{for(let n=q.length-1;n>=0;n--)if(q[n]<i){target=q[n];break}}if(target!=null){state.dialogHighlightMode=true;openPhotoPreview(target,false)}}else if(state.dialogReviewMode){const q=reviewIndices();let target=null;if(delta>0)target=q.find(x=>x>i);else{for(let n=q.length-1;n>=0;n--)if(q[n]<i){target=q[n];break}}if(target!=null)openPhotoPreview(target,true)}else{const target=i+delta;if(target>=0&&target<state.files.length)openPhotoPreview(target,false)}}
+function dialogSetStatus(status){const idx=state.dialogIndex;if(idx==null)return;const reviewMode=state.dialogReviewMode;setManualCull(idx,status);if(reviewMode&&status!=='review'){const q=reviewIndices(),next=q.find(x=>x>idx)??q[0];if(next!=null)openPhotoPreview(next,true);else els.photoDialog.close()}else openPhotoPreview(idx,reviewMode)}
+function renderPreview(){
+  releasePreviewUrls();
+  if(!state.files.length){els.rows.innerHTML='<tr><td colspan="11">เลือกรูปก่อน</td></tr>';els.previewSummary.textContent='ยังไม่มีไฟล์';els.renamePreview.textContent='ตัวอย่าง: —';updateHighlightCounts();return}
+  const seqMap=new Map();let seq=0;for(const f of state.files)if(shouldExport(f))seqMap.set(f,seq++);
+  els.renamePreview.textContent=`ตัวอย่าง: ${state.files[0].name} → ${outputName(state.files[0],seqMap.get(state.files[0])??0)}`;
+  const filter=els.previewFilter.value||'all',items=[];for(let i=0;i<state.files.length;i++){const f=state.files[i],r=state.culling.get(f);if(filter==='highlight'){if(isHighlight(f))items.push({f,i,r});continue}if(filter==='all'||(filter==='unculled'&&!r)||(r&&r.status===filter))items.push({f,i,r})}
+  els.previewSummary.textContent=`${items.length.toLocaleString()} / ${state.files.length.toLocaleString()} ไฟล์`;
+  els.rows.innerHTML=items.slice(0,100).map(({f,i,r})=>{const m=state.meta.get(f)||{},a=state.analysis.get(f),resize=els.resizeEnabled.checked?`Long Edge ${els.longEdge.value}px · ≤ ${els.fileLimit.value}MB`:'ไม่ Resize',url=URL.createObjectURL(f);state.previewUrls.push(url);const options=`<option value="" ${!r?'selected':''}>ยังไม่คัด</option><option value="pass" ${r?.status==='pass'?'selected':''}>PASS</option><option value="review" ${r?.status==='review'?'selected':''}>REVIEW</option><option value="reject" ${r?.status==='reject'?'selected':''}>REJECT</option>`;return `<tr><td>${i+1}</td><td><button class="thumb-btn" data-preview-index="${i}" type="button" title="เปิดดูภาพ"><img class="thumb" loading="lazy" src="${url}" alt="${f.name.replace(/"/g,'')}"></button></td><td>${f.name}<br><span class="tiny">${fmtBytes(f.size)} · ISO ${m.iso||'—'} · ${m.date||'ไม่มี EXIF'}</span></td><td>${cullLabel(r)}<br><select class="status-select" data-index="${i}">${options}</select></td><td>${focusText(r)}</td><td>${outputName(f,seqMap.get(f)??i)}</td><td>${analysisText(a)}</td><td>${highlightCell(f,i)}</td><td>${resize}</td><td>${isHighlight(f)?'<span class="wm-badge">HL · AUTO</span>':'<span class="tiny">—</span>'}</td><td>${r?.status==='reject'?'<span class="badtxt">ไม่ Export ตามค่าเริ่มต้น</span>':a?'<span class="goodtxt">พร้อม</span>':'<span class="muted">รอ Auto / Export</span>'}</td></tr>`}).join('');
+  els.rows.querySelectorAll('.status-select').forEach(sel=>sel.addEventListener('change',()=>setManualCull(Number(sel.dataset.index),sel.value)));
+  els.rows.querySelectorAll('.thumb-btn').forEach(btn=>btn.addEventListener('click',()=>openPhotoPreview(Number(btn.dataset.previewIndex))));
+  els.rows.querySelectorAll('.wm-photo-check').forEach(ch=>ch.addEventListener('change',()=>setPhotoWatermarkByIndex(Number(ch.dataset.index),ch.checked)));
+  els.rows.querySelectorAll('.highlight-photo-check').forEach(ch=>ch.addEventListener('change',()=>setHighlightByIndex(Number(ch.dataset.index),ch.checked,{pinned:true})));
+  updateWatermarkCount();updateHighlightCounts();refreshWatermarkStage();
+}
+async function analyzeAlbum(){if(!state.files.length||state.analyzing)return;state.analyzing=true;state.cancelAnalyze=false;els.analyze.disabled=true;els.stopAnalyze.disabled=false;els.analyzeProgress.classList.remove('hidden');let up=0,same=0,down=0,skipped=0;for(let i=0;i<state.files.length;i++){if(state.cancelAnalyze)break;const f=state.files[i],cr=state.culling.get(f);if(els.cullEnabled.checked&&cr?.status==='reject'&&!els.exportReject.checked){skipped++;els.analyzeBar.style.width=((i+1)/state.files.length*100)+'%';continue}if(state.analysis.has(f)){const a=state.analysis.get(f);if(a.ev>.045)up++;else if(a.ev<-.045)down++;else same++;els.analyzeBar.style.width=((i+1)/state.files.length*100)+'%';continue}try{const a=await analyzeOne(f);state.analysis.set(f,a);if(a.ev>.045)up++;else if(a.ev<-.045)down++;else same++;}catch(e){console.warn(f.name,e)}if((i+1)%50===0)await saveSessionNow();els.analyzeBar.style.width=((i+1)/state.files.length*100)+'%';setStatus(els.autoStatus,`วิเคราะห์ ${i+1}/${state.files.length} · สว่างขึ้น ${up} · คงเดิม ${same} · มืดลง ${down} · ข้าม Reject ${skipped}`,'warn');if(i%(state.files.length>5000?100:state.files.length>1000?50:20)===0)renderPreview();await new Promise(r=>setTimeout(r,0))}state.analyzing=false;els.stopAnalyze.disabled=true;els.analyze.disabled=false;setStatus(els.autoStatus,state.cancelAnalyze?'หยุดการวิเคราะห์แล้ว':`เสร็จแล้ว · สว่างขึ้น ${up} · คงเดิม ${same} · มืดลง ${down} · ข้าม Reject ${skipped}`,'good');if(!state.cancelAnalyze)setStatus(els.highlightStatus,'Auto Fine Tune พร้อมแล้ว — กด ★ เลือก Highlight เพื่อคัดภาพโชว์ผลงาน','good');await saveSessionNow();renderPreview()}
+async function chooseOutput(){if(!window.showDirectoryPicker){setStatus(els.result,'Browser นี้ไม่รองรับ Folder Export แนะนำ Chrome/Edge ผ่าน HTTPS','bad');els.result.classList.remove('hidden');return}try{state.output=await showDirectoryPicker({mode:'readwrite'});state.exportRoot=null;state.exportSessionName=null;state.exported.clear();els.folderStatus.textContent=`เลือกแล้ว: ${state.output.name} · จะสร้าง 01_ALL_PHOTOS / 02_HIGHLIGHT_WATERMARK / 03_HIGHLIGHT_CLEAN`;scheduleSaveSession()}catch(e){if(e.name!=='AbortError')throw e}}
+function shouldExport(file){if(!els.cullEnabled.checked)return true;const r=state.culling.get(file);if(!r)return true;if(r.status==='reject')return !!els.exportReject.checked;if(r.status==='review')return !!els.exportReview.checked;return true}
+async function exportTargetDir(root,file){if(!els.cullFolders.checked)return root;const r=state.culling.get(file),name=r?.status==='reject'?'REJECT':r?.status==='review'?'REVIEW':'PASS';return await root.getDirectoryHandle(name,{create:true})}
+async function buildOutput(file,index,{watermark=false}={}){const origBuf=await file.arrayBuffer(),p=parseExif(origBuf),m=state.meta.get(file)||{},date=adjustedDate(m,index),tz=els.tzEnabled.checked?els.timezone.value:m.tz;let a=state.analysis.get(file);if(els.autoEnabled.checked&&!a){a=await analyzeOne(file);state.analysis.set(file,a)}const needsVisual=els.autoEnabled.checked||els.resizeEnabled.checked||watermark;let outBuf,w=null,h=null,q=null,reencoded=false;if(needsVisual){const v=await processVisual(file,a,{watermark});w=v.w;h=v.h;const patched=patchExifBytes(p.seg,{date:els.dateEnabled.checked?date:null,tz:els.tzEnabled.checked?tz:null,orientation:1,width:w,height:h});const enc=await encodeToLimit(v.canvas,patched);const jb=await enc.blob.arrayBuffer();outBuf=injectExif(jb,patched);q=enc.quality;reencoded=true}else{const u=new Uint8Array(origBuf);const patched=patchExifBytes(p.seg,{date:els.dateEnabled.checked?date:null,tz:els.tzEnabled.checked?tz:null});if(p.seg&&patched){const out=new Uint8Array(u.length);out.set(u);out.set(patched,p.seg.start);outBuf=out.buffer}else outBuf=origBuf}return {buf:outBuf,name:outputName(file,index),w,h,q,reencoded,a,watermark}}
+async function saveOne(dir,res){const fh=await dir.getFileHandle(res.name,{create:true}),wr=await fh.createWritable();await wr.write(res.buf);await wr.close()}
+async function testOne(){
+  const f=state.files.find(f=>shouldExport(f)&&isHighlight(f))||state.files.find(shouldExport);if(!f)return;
+  els.result.classList.remove('hidden');setStatus(els.result,'กำลังทดสอบไฟล์แรกที่พร้อม Export…','warn');
+  try{
+    const queue=state.files.filter(shouldExport),idx=Math.max(0,queue.indexOf(f));
+    const clean=await buildOutput(f,idx,{watermark:false});
+    let extra='';
+    if(isHighlight(f)){
+      const orientation=clean.h&&clean.w?(clean.h>clean.w?'portrait':'landscape'):wmOrientationForFile(f);
+      if(!wmVisibleLayersForOrientation(orientation).length)throw new Error(`ยังไม่มีลายน้ำ${orientation==='portrait'?'แนวตั้ง':'แนวนอน'}สำหรับรูป HIGHLIGHT`);
+      const wm=await buildOutput(f,idx,{watermark:true});
+      extra=` · HL Clean ${fmtBytes(clean.buf.byteLength)} · HL Watermark ${fmtBytes(wm.buf.byteLength)}`;
+    }
+    const cr=state.culling.get(f);
+    setStatus(els.result,`ทดสอบผ่าน: ${clean.name} · ${clean.w?`${clean.w}×${clean.h} · `:''}${fmtBytes(clean.buf.byteLength)}${clean.q?` · Q${Math.round(clean.q*100)}`:''} · ${cr?cr.status.toUpperCase()+' · ':''}${analysisText(clean.a)}${isHighlight(f)?' · ★ HIGHLIGHT':''}${extra}`,'good');
+  }catch(e){console.error(e);setStatus(els.result,`ทดสอบไม่ผ่าน: ${e.message||e}`,'bad')}
+}
+async function exportAll(){
+  if(!state.files.length||state.exporting)return;
+  if(!state.output){await chooseOutput();if(!state.output)return}
+  if(!(await queryHandlePermission(state.output,'readwrite'))){els.result.classList.remove('hidden');setStatus(els.result,'ไม่ได้รับสิทธิ์เขียน Folder Export','bad');return}
+  const queue=state.files.filter(shouldExport);if(!queue.length){els.result.classList.remove('hidden');setStatus(els.result,'ไม่มีไฟล์ที่ตรงเงื่อนไข Export','bad');return}
+  if(!state.exportRoot){if(!state.exportSessionName)state.exportSessionName=`KEITA_EXPORT_${nowStamp()}`;state.exportRoot=await state.output.getDirectoryHandle(state.exportSessionName,{create:true});scheduleSaveSession()}
+
+  const allDir=await state.exportRoot.getDirectoryHandle('01_ALL_PHOTOS',{create:true});
+  const hlWmDir=await state.exportRoot.getDirectoryHandle('02_HIGHLIGHT_WATERMARK',{create:true});
+  const hlCleanDir=await state.exportRoot.getDirectoryHandle('03_HIGHLIGHT_CLEAN',{create:true});
+
+  const indexMap=new Map(queue.map((f,i)=>[f,i])),pending=queue.filter(f=>!state.exported.has(fileKey(f)));
+  if(!pending.length){els.result.classList.remove('hidden');setStatus(els.result,`Export ชุดนี้ครบแล้ว ${queue.length} ไฟล์ · Resume progress ถูกบันทึกแล้ว`,'good');return}
+
+  state.exporting=true;state.cancelExport=false;els.cancelExport.classList.remove('hidden');els.exportProgress.classList.remove('hidden');els.exportAll.disabled=true;els.result.classList.remove('hidden');
+  let ok=0,fail=0,re=0,kept=0,hlClean=0,hlWm=0;const skipped=state.files.length-queue.length,already=queue.length-pending.length;
+
+  for(let pidx=0;pidx<pending.length;pidx++){
+    if(state.cancelExport)break;
+    const f=pending[pidx],seq=indexMap.get(f);
+    try{
+      // 01: ภาพขายทั้งหมด — ไม่มีลายน้ำ
+      const clean=await buildOutput(f,seq,{watermark:false});
+      await saveOne(allDir,clean);
+
+      // รูป HIGHLIGHT ถูกทำสำเนาอีก 2 แบบจากรูปเดียวกัน
+      if(isHighlight(f)){
+        // 03: HL Clean ใช้ไฟล์เดียวกับภาพขาย เพื่อไม่ Encode ซ้ำ
+        await saveOne(hlCleanDir,clean);hlClean++;
+
+        // 02: HL Watermark เรนเดอร์จากต้นฉบับอีกครั้ง เพื่อไม่บีบ JPEG clean ซ้ำ
+        const orientation=clean.h&&clean.w?(clean.h>clean.w?'portrait':'landscape'):wmOrientationForFile(f);
+        if(!wmVisibleLayersForOrientation(orientation).length)throw new Error(`รูป HL ${f.name}: ยังไม่มีลายน้ำ${orientation==='portrait'?'แนวตั้ง':'แนวนอน'}`);
+        const wm=await buildOutput(f,seq,{watermark:true});
+        await saveOne(hlWmDir,wm);hlWm++;
+      }
+
+      state.exported.add(fileKey(f));ok++;clean.reencoded?re++:kept++;
+    }catch(e){fail++;console.error(f.name,e)}
+
+    const done=already+pidx+1;
+    els.exportBar.style.width=(done/queue.length*100)+'%';
+    setStatus(els.result,`กำลัง Export ${done}/${queue.length} · ภาพขายสำเร็จ ${ok} · ผิดพลาด ${fail} · HL Clean ${hlClean} · HL Watermark ${hlWm} · ข้าม Culling ${skipped}`,'warn');
+    if(ok%10===0)scheduleSaveSession();await new Promise(r=>setTimeout(r,0))
+  }
+
+  state.exporting=false;els.cancelExport.classList.add('hidden');els.exportAll.disabled=false;
+  const totalDone=queue.filter(f=>state.exported.has(fileKey(f))).length;scheduleSaveSession();
+  if(state.cancelExport)setStatus(els.result,`หยุดแล้วที่ ${totalDone}/${queue.length} · ปิดหน้าเว็บได้ แล้ว Resume ต่อจากจุดเดิม`,'warn');
+  else setStatus(els.result,`เสร็จแล้ว · 01_ALL_PHOTOS ${totalDone}/${queue.length} · 02_HIGHLIGHT_WATERMARK ${hlWm} · 03_HIGHLIGHT_CLEAN ${hlClean} · ผิดพลาด ${fail} · ข้ามตาม Culling ${skipped} · Re-encode ${re} · เก็บ JPEG เดิม ${kept}`,(fail?'warn':'good'))
+}
+
+els.closeDialog.addEventListener('click',()=>els.photoDialog.close());
+els.dialogPrev.addEventListener('click',()=>moveDialog(-1));els.dialogNext.addEventListener('click',()=>moveDialog(1));
+els.dialogPass.addEventListener('click',()=>dialogSetStatus('pass'));els.dialogReview.addEventListener('click',()=>dialogSetStatus('review'));els.dialogReject.addEventListener('click',()=>dialogSetStatus('reject'));
+els.photoDialog.addEventListener('close',()=>{state.dialogToken++;if(state.dialogUrl){URL.revokeObjectURL(state.dialogUrl);state.dialogUrl=null}if(state.dialogAfterUrl){URL.revokeObjectURL(state.dialogAfterUrl);state.dialogAfterUrl=null}els.dialogImg.removeAttribute('src');els.dialogAfter.removeAttribute('src');state.dialogIndex=null;state.dialogReviewMode=false;state.dialogHighlightMode=false});
+els.photoDialog.addEventListener('keydown',e=>{if(e.target.matches('input,select,textarea'))return;if(e.key==='ArrowLeft'){e.preventDefault();moveDialog(-1)}else if(e.key==='ArrowRight'){e.preventDefault();moveDialog(1)}else if(e.key==='1'){e.preventDefault();dialogSetStatus('pass')}else if(e.key==='2'){e.preventDefault();dialogSetStatus('review')}else if(e.key==='3'){e.preventDefault();dialogSetStatus('reject')}else if(e.key.toLowerCase()==='h'){e.preventDefault();const idx=state.dialogIndex,f=state.files[idx];if(f)setHighlightByIndex(idx,!isHighlight(f),{pinned:true})}});
+els.openReviewQueue.addEventListener('click',openReviewQueue);els.runHighlight.addEventListener('click',runHighlightSelection);els.stopHighlight.addEventListener('click',()=>state.cancelHighlight=true);els.clearHighlights.addEventListener('click',clearHighlights);els.openHighlightQueue.addEventListener('click',openHighlightQueue);
+els.sourceFolder.addEventListener('click',pickSourceFolder);els.resumeSource.addEventListener('click',resumeSourceFolder);els.forgetSession.addEventListener('click',forgetSession);
+
+els.dialogHighlight.addEventListener('click',()=>{if(!Number.isInteger(state.dialogIndex))return;const idx=state.dialogIndex,f=state.files[idx];if(!f)return;const was=isHighlight(f),inQueue=state.dialogHighlightMode;setHighlightByIndex(idx,!was,{pinned:true});if(inQueue&&was){const q=highlightIndices();const next=q.find(x=>x>idx)??q[0];if(next!=null){state.dialogHighlightMode=true;openPhotoPreview(next,false)}else els.photoDialog.close()}else{updateHighlightCounts();openPhotoPreview(idx,false)}});
+els.watermarkPortraitFiles.addEventListener('change',async e=>{setWatermarkOrientation('portrait');await addWatermarkFiles(e.target.files,'portrait');e.target.value=''});els.watermarkLandscapeFiles.addEventListener('change',async e=>{setWatermarkOrientation('landscape');await addWatermarkFiles(e.target.files,'landscape');e.target.value=''});els.wmTabPortrait.addEventListener('click',()=>setWatermarkOrientation('portrait'));els.wmTabLandscape.addEventListener('click',()=>setWatermarkOrientation('landscape'));els.wmClearSelected.addEventListener('click',()=>{state.watermarkSelected.clear();updateWatermarkCount();renderPreview();refreshWatermarkStage();resetExportSession();scheduleSaveSession()});els.wmClearLayers.addEventListener('click',()=>{clearWatermarkObjectUrls();state.watermarks=[];state.wmActiveId=null;renderWatermarkLayers();renderWatermarkStageLayers();updateWatermarkCount();resetExportSession();scheduleSaveSession()});els.dialogWatermark.addEventListener('click',()=>{});
+els.files.addEventListener('change',e=>addFiles(e.target.files,{restoreSaved:true,resumeExport:false}));els.folder.addEventListener('change',e=>addFiles(e.target.files,{restoreSaved:true,resumeExport:false}));
+els.clear.addEventListener('click',()=>{state.files=[];state.filePaths.clear();state.meta.clear();state.analysis.clear();state.culling.clear();state.highlights.clear();state.watermarkSelected.clear();resetExportSession();updateFileSummary();renderCullCounts();renderPreview();els.analyze.disabled=true;els.runCull.disabled=true;els.runHighlight.disabled=true;els.testOne.disabled=true;els.exportAll.disabled=true;els.openReviewQueue.disabled=true;els.openHighlightQueue.disabled=true;setStatus(els.cullStatus,'เลือกรูปก่อน');setStatus(els.autoStatus,'เลือกรูปก่อน');setStatus(els.highlightStatus,'คัดภาพและ Auto Fine Tune ก่อน แล้วกดเลือก Highlight')});
+els.runCull.addEventListener('click',cullAlbum);els.stopCull.addEventListener('click',()=>state.cancelCull=true);els.analyze.addEventListener('click',analyzeAlbum);els.stopAnalyze.addEventListener('click',()=>state.cancelAnalyze=true);els.chooseOutput.addEventListener('click',chooseOutput);els.testOne.addEventListener('click',testOne);els.exportAll.addEventListener('click',exportAll);els.cancelExport.addEventListener('click',()=>state.cancelExport=true);els.previewFilter.addEventListener('change',renderPreview);els.cullEnabled.addEventListener('change',()=>{els.runCull.disabled=!els.cullEnabled.checked||!state.files.length;renderPreview();scheduleSaveSession()});
+['renameEnabled','renameMode','photographer','startNo','digits','resizeEnabled','longEdge','fileLimit','minQuality','dateEnabled','dateMode','newDate','newTime','offDays','offHours','offMinutes','offSeconds','tzEnabled','timezone','autoEnabled','sceneMode','cullEnabled','exportReview','exportReject','cullFolders','highlightFolder'].forEach(id=>els[id].addEventListener('input',()=>{resetExportSession();renderPreview()}));
+els.autoEnabled.addEventListener('change',()=>{for(const [f,h] of state.highlights){if(h.pinned){h.score=null;h.breakdown=null}else state.highlights.delete(f)}updateHighlightCounts();setStatus(els.highlightStatus,state.files.length?'โหมด Auto เปลี่ยนแล้ว — ให้เลือก Highlight ใหม่':'เลือกรูปก่อน','warn');scheduleSaveSession()});
+['highlightCount','highlightStyle','highlightGrade','highlightDiversity'].forEach(id=>els[id].addEventListener('input',()=>{setStatus(els.highlightStatus,state.files.length?'ตั้งค่า Highlight เปลี่ยนแล้ว — กดเลือก Highlight ใหม่':'เลือกรูปก่อน','warn');resetExportSession();scheduleSaveSession()}));
+['autoStrength','subjectWeight','deadband','sceneMode','toneAuto','wbAuto','skinProtect','vibranceAuto','clarityAuto','detailAuto'].forEach(id=>els[id].addEventListener('input',()=>{state.analysis.clear();for(const [f,h] of state.highlights){if(h.pinned){h.score=null;h.breakdown=null}else state.highlights.delete(f)}setStatus(els.autoStatus,state.files.length?'ตั้งค่า Auto เปลี่ยนแล้ว — กดวิเคราะห์ใหม่':'เลือกรูปก่อน','warn');setStatus(els.highlightStatus,state.files.length?'Auto เปลี่ยนแล้ว — ให้เลือก Highlight ใหม่หลังวิเคราะห์':'เลือกรูปก่อน','warn');updateHighlightCounts();renderPreview();scheduleSaveSession()}));
+['cullSensitivity','personConfidence','focusPriority'].forEach(id=>els[id].addEventListener('input',()=>{state.culling.clear();state.analysis.clear();state.highlights.clear();resetExportSession();renderCullCounts();updateHighlightCounts();setStatus(els.cullStatus,state.files.length?'ตั้งค่า Culling เปลี่ยนแล้ว — กดคัดภาพใหม่':'เลือกรูปก่อน','warn');setStatus(els.highlightStatus,state.files.length?'Culling เปลี่ยนแล้ว — Highlight ถูกล้างเพื่อความถูกต้อง':'เลือกรูปก่อน','warn');renderPreview()}));els.burstGap.addEventListener('input',()=>{assignBurstTags();renderPreview();scheduleSaveSession()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&state.files.length)saveSessionNow()});
+const today=new Date();els.newDate.value=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+renderCullCounts();
+renderPreview();setWatermarkOrientation(state.wmEditOrientation||'portrait');renderWatermarkLayers();updateWatermarkCount();updateHighlightCounts();refreshWatermarkStage();
+initResume();
+})();
+</script>
+</body>
+</html>
