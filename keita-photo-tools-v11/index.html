@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f172a">
+<title>KEITA PHOTO TOOLS v11</title>
+<style>
+:root{
+  --bg:#f7f8fa;--surface:#fff;--surface-2:#f8fafc;--text:#0f172a;--muted:#64748b;
+  --line:#e2e8f0;--line-strong:#cbd5e1;--accent:#0f172a;--accent-soft:#eef2f7;
+  --green:#0f766e;--green-soft:#ecfdf5;--amber:#b45309;--amber-soft:#fffbeb;--red:#b91c1c;--red-soft:#fef2f2;
+  --radius:18px;--shadow:0 1px 2px rgba(15,23,42,.04),0 8px 28px rgba(15,23,42,.04)
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit}
+button,input,select,label{touch-action:manipulation}
+.app{max-width:1160px;margin:0 auto;padding:24px 20px 56px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:8px 0 20px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}.brandmark{width:42px;height:42px;border-radius:13px;background:#0f172a;color:#fff;display:grid;place-items:center;font-weight:900;letter-spacing:-.04em;flex:0 0 auto}.brandtext b{display:block;font-size:16px;letter-spacing:.02em}.brandtext span{display:block;margin-top:2px;color:var(--muted);font-size:12px}
+.top-pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.pill{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#fff;color:#475569;font-size:12px;font-weight:700}.dot{width:7px;height:7px;border-radius:50%;background:var(--green)}
+.intro{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:end;padding:26px 0 18px}.intro h1{margin:0;font-size:clamp(28px,4.4vw,46px);line-height:1.03;letter-spacing:-.045em}.intro p{margin:10px 0 0;color:var(--muted);line-height:1.65;max-width:780px}.safe-note{max-width:290px;border:1px solid #bbf7d0;background:var(--green-soft);padding:12px 14px;border-radius:14px;color:#065f46;font-size:12px;line-height:1.5}.safe-note b{display:block;margin-bottom:2px}
+.workflow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:0 0 18px}.flow-item{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.68);color:#475569;font-size:12px;font-weight:700}.flow-no{width:24px;height:24px;border-radius:8px;background:var(--accent-soft);display:grid;place-items:center;color:#334155;font-size:11px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin:12px 0;box-shadow:var(--shadow)}
+.panel.primary-panel{border-color:#dbe3ee}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px}.section-title{display:flex;align-items:center;gap:11px;min-width:0}.section-icon{width:34px;height:34px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);display:grid;place-items:center;font-size:15px;flex:0 0 auto}.section-title h2{margin:0;font-size:17px;letter-spacing:-.01em}.section-title p{margin:3px 0 0;color:var(--muted);font-size:12px}.section-actions,.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn,.filebtn{appearance:none;border:1px solid var(--line-strong);background:#fff;color:#0f172a;min-height:42px;padding:9px 13px;border-radius:11px;font-weight:750;cursor:pointer;text-align:center;transition:.15s ease}.btn:hover,.filebtn:hover{border-color:#94a3b8;background:#f8fafc}.btn.primary,.filebtn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}.btn.primary:hover,.filebtn.primary:hover{background:#1e293b}.btn.good{background:var(--green);border-color:var(--green);color:#fff}.btn.good:hover{background:#0d6b64}.btn.danger{color:var(--red);background:var(--red-soft);border-color:#fecaca}.btn:disabled,.filebtn:has(+input:disabled){opacity:.42;cursor:not-allowed}.btn:focus-visible,.filebtn:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid rgba(15,118,110,.16);outline-offset:2px}
+.upload-zone{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;padding:18px;border:1px dashed var(--line-strong);border-radius:15px;background:var(--surface-2)}.upload-copy b{display:block;font-size:15px}.upload-copy span{display:block;margin-top:5px;color:var(--muted);font-size:12px}.upload-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.summary{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.chip{padding:7px 10px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;color:#475569;font-size:12px;font-weight:700}
+.switch{display:inline-flex;align-items:center;gap:9px;color:#334155;font-size:13px;font-weight:700;min-height:40px;cursor:pointer}.switch input{appearance:none;width:40px;height:23px;border-radius:999px;background:#cbd5e1;position:relative;transition:.15s;border:0;margin:0}.switch input:after{content:"";position:absolute;width:17px;height:17px;left:3px;top:3px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(15,23,42,.25);transition:.15s}.switch input:checked{background:var(--green)}.switch input:checked:after{transform:translateX(17px)}
+.quick-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.field{min-width:0}.field label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.045em;font-weight:800;color:#64748b;margin-bottom:6px}.field input,.field select{width:100%;height:43px;border:1px solid var(--line-strong);border-radius:10px;background:#fff;color:#0f172a;padding:0 11px;font-size:15px}.field input:disabled,.field select:disabled{background:#f8fafc;color:#94a3b8}
+.auto-core{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:end}.auto-actions{display:flex;gap:8px;flex-wrap:wrap}.status{display:block;margin-top:12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:#475569;font-size:12px}.status.good{background:var(--green-soft);color:#065f46;border-color:#bbf7d0}.status.warn{background:var(--amber-soft);color:#92400e;border-color:#fde68a}.status.bad{background:var(--red-soft);color:#991b1b;border-color:#fecaca}
+.progress{height:7px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-top:10px}.progress>div{height:100%;width:0;background:var(--green);transition:width .15s}
+.feature-strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin-top:14px}.feature{padding:10px;border-radius:11px;background:var(--surface-2);border:1px solid var(--line)}.feature b{display:block;font-size:12px}.feature span{display:block;color:var(--muted);font-size:10.5px;margin-top:3px;line-height:1.35}
+.details{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}.details summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;color:#475569;font-size:12px;font-weight:800}.details summary::-webkit-details-marker{display:none}.details summary:after{content:"＋";font-size:16px;color:#94a3b8}.details[open] summary:after{content:"−"}.details-body{padding:8px 0 2px}.check-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.check{display:flex;align-items:center;gap:8px;min-height:40px;color:#334155;font-size:12px;font-weight:650}.check input{width:17px;height:17px;accent-color:var(--green)}
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.setting-card{border:1px solid var(--line);border-radius:14px;padding:15px;background:#fff}.setting-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}.setting-card-head b{display:block;font-size:14px}.setting-card-head span{display:block;margin-top:3px;color:var(--muted);font-size:11px}.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.muted{color:var(--muted);font-size:12px;line-height:1.55}.tiny{font-size:10.5px;color:var(--muted);line-height:1.45}.rename-preview{margin:10px 0 0;padding:9px 11px;background:var(--surface-2);border-radius:9px;color:#475569;font-size:12px;overflow-wrap:anywhere}
+.preview-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:12px;max-height:430px}table{border-collapse:collapse;width:100%;min-width:1030px;font-size:11.5px}th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}th{position:sticky;top:0;z-index:1;background:#f8fafc;color:#475569;font-size:10.5px;text-transform:uppercase;letter-spacing:.035em}tr:last-child td{border-bottom:0}.goodtxt{color:var(--green);font-weight:800}.warntxt{color:var(--amber);font-weight:800}.badtxt{color:var(--red);font-weight:800}
+.export-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:14px;background:var(--surface-2)}.export-path b{display:block;font-size:13px}.export-path span{display:block;margin-top:4px;color:var(--muted);font-size:11.5px}.export-bottom{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}.export-buttons{display:flex;gap:8px;flex-wrap:wrap}.export-all{min-width:160px}
+
+.cull-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}.metric{border:1px solid var(--line);border-radius:12px;background:var(--surface-2);padding:11px}.metric b{display:block;font-size:12px}.metric span{display:block;margin-top:4px;color:var(--muted);font-size:10.5px;line-height:1.4}.cull-counts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.count{border:1px solid var(--line);border-radius:999px;padding:7px 11px;font-size:12px;font-weight:800;background:#fff}.count.pass{color:var(--green);background:var(--green-soft);border-color:#bbf7d0}.count.review{color:var(--amber);background:var(--amber-soft);border-color:#fde68a}.count.reject{color:var(--red);background:var(--red-soft);border-color:#fecaca}.status-select{height:32px;border:1px solid var(--line-strong);border-radius:8px;background:#fff;padding:0 7px;font-size:11px;font-weight:700}.thumb-btn{border:0;background:transparent;padding:0;cursor:zoom-in}.thumb{width:72px;height:52px;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:block;background:#e2e8f0}dialog.photo-dialog{border:0;border-radius:16px;padding:0;max-width:min(920px,94vw);width:100%;box-shadow:0 24px 70px rgba(15,23,42,.28)}dialog.photo-dialog::backdrop{background:rgba(15,23,42,.68)}.dialog-body{padding:14px;background:#0f172a}.dialog-img{display:block;width:100%;max-height:72vh;object-fit:contain;background:#020617;border-radius:10px}.dialog-foot{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px 14px;background:#fff}.dialog-info{min-width:0;font-size:12px;color:#475569}.dialog-actions{display:flex;gap:7px;flex-wrap:wrap}.dialog-actions .btn{min-height:36px;padding:7px 10px;font-size:12px}.filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.filter-row select{height:36px;border:1px solid var(--line-strong);border-radius:9px;background:#fff;padding:0 9px}.focus-meter{display:inline-flex;align-items:center;gap:6px}.focus-bar{width:54px;height:6px;background:#e2e8f0;border-radius:999px;overflow:hidden}.focus-bar i{display:block;height:100%;background:var(--green);border-radius:999px}.tag-best{display:inline-block;margin-left:4px;padding:2px 5px;border-radius:6px;background:#fef3c7;color:#92400e;font-size:9px;font-weight:900}.tag-keep{display:inline-block;margin-left:4px;padding:2px 5px;border-radius:6px;background:#e0f2fe;color:#075985;font-size:9px;font-weight:900}.export-options{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px}.export-options .check{min-height:32px}.queue-note{margin-top:8px;color:var(--muted);font-size:10.5px;line-height:1.45}
+.resume-box{margin-top:12px;border:1px solid #bfdbfe;background:#eff6ff;border-radius:13px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.resume-copy b{display:block;font-size:12px;color:#1e3a8a}.resume-copy span{display:block;margin-top:3px;color:#475569;font-size:11px}.resume-actions{display:flex;gap:7px;flex-wrap:wrap}.session-note{font-size:10.5px;color:#64748b;margin-top:7px}
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.compare-pane{position:relative;min-width:0;background:#020617;border-radius:10px;overflow:hidden}.compare-label{position:absolute;top:8px;left:8px;z-index:2;padding:4px 7px;border-radius:999px;background:rgba(15,23,42,.78);color:white;font-size:10px;font-weight:800}.compare-img{display:block;width:100%;height:min(62vh,620px);object-fit:contain;background:#020617}.compare-loading{position:absolute;inset:0;display:grid;place-items:center;background:rgba(2,6,23,.64);color:#fff;font-size:12px;font-weight:800}.review-toolbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.review-badge{padding:6px 9px;border-radius:999px;background:var(--amber-soft);color:#92400e;border:1px solid #fde68a;font-size:11px;font-weight:800}
+
+.hidden{display:none!important}.footer{text-align:center;padding:24px 0 4px;color:#94a3b8;font-size:11px}
+@media(max-width:900px){.intro{grid-template-columns:1fr}.cull-grid,.metric-grid{grid-template-columns:1fr 1fr}.safe-note{max-width:none}.workflow{grid-template-columns:1fr 1fr}.feature-strip{grid-template-columns:1fr 1fr 1fr}.settings-grid{grid-template-columns:1fr}.grid4{grid-template-columns:1fr 1fr}.auto-core{grid-template-columns:1fr}.auto-actions{justify-content:flex-start}}
+@media(max-width:720px){.compare-grid{grid-template-columns:1fr}.compare-img{height:auto;max-height:48vh}}
+@media(max-width:620px){.app{padding:14px 12px 36px}.cull-grid,.metric-grid{grid-template-columns:1fr}.topbar{align-items:flex-start}.top-pills{display:none}.intro{padding-top:20px}.workflow{grid-template-columns:1fr 1fr}.flow-item{padding:9px}.panel{padding:15px;border-radius:15px}.section-head{align-items:flex-start}.section-actions,.actions{width:100%}.upload-zone{grid-template-columns:1fr}.upload-actions{justify-content:flex-start}.filebtn,.upload-actions .btn{flex:1}.quick-grid,.grid3,.grid4,.grid2,.check-grid{grid-template-columns:1fr}.feature-strip{grid-template-columns:1fr 1fr}.export-card{grid-template-columns:1fr}.export-bottom{align-items:stretch;flex-direction:column}.export-buttons{display:grid;grid-template-columns:1fr 1fr}.export-all{grid-column:1/-1}.btn,.filebtn{min-height:44px}.brandtext span{display:none}}
+@media(max-width:390px){.workflow{grid-template-columns:1fr}.feature-strip{grid-template-columns:1fr}.export-buttons{grid-template-columns:1fr}.export-all{grid-column:auto}}
+</style>
+</head>
+<body>
+<main class="app" id="app">
+  <header class="topbar">
+    <div class="brand"><div class="brandmark">K</div><div class="brandtext"><b>KEITA PHOTO CAMERA</b><span>Batch Photo Workflow</span></div></div>
+    <div class="top-pills"><span class="pill"><span class="dot"></span> Local processing</span><span class="pill">JPEG</span><span class="pill">Original safe</span></div>
+  </header>
+
+  <section class="intro">
+    <div><h1>จัดการรูปทั้งอัลบั้ม<br>ให้จบในหน้าเดียว</h1><p>เลือกภาพ → Smart Culling → Auto Fine Tune → Rename / Resize / EXIF → Export โดยไฟล์ต้นฉบับไม่ถูกเขียนทับ</p></div>
+    <div class="safe-note"><b>ปลอดภัยกับต้นฉบับ</b>ระบบสร้างโฟลเดอร์ KEITA_EXPORT ใหม่ทุกครั้ง และรวม Auto Edit + Resize เป็น JPEG encode รอบเดียว</div>
+  </section>
+
+  <nav class="workflow" aria-label="ขั้นตอนการทำงาน">
+    <div class="flow-item"><span class="flow-no">1</span>เลือกรูป</div>
+    <div class="flow-item"><span class="flow-no">2</span>Smart Culling</div>
+    <div class="flow-item"><span class="flow-no">3</span>Auto Fine Tune</div>
+    <div class="flow-item"><span class="flow-no">4</span>ตั้งค่า Output</div>
+    <div class="flow-item"><span class="flow-no">5</span>Preview & Export</div>
+  </nav>
+
+  <section class="panel primary-panel">
+    <div class="section-head">
+      <div class="section-title"><span class="section-icon">＋</span><div><h2>เลือกรูป</h2><p>รองรับ JPEG หลายไฟล์หรือทั้งโฟลเดอร์</p></div></div>
+      <button class="btn" id="clear" type="button">ล้างรายการ</button>
+    </div>
+    <div class="upload-zone">
+      <div class="upload-copy"><b>เพิ่มรูปจาก SD Card หรือโฟลเดอร์ในเครื่อง</b><span>รูปทั้งหมดจะประมวลผลอยู่ในเครื่องของคุณ</span></div>
+      <div class="upload-actions">
+        <label class="filebtn primary" for="files">เลือกรูป</label><input id="files" hidden type="file" accept="image/jpeg,.jpg,.jpeg" multiple>
+        <label class="filebtn" for="folder">เลือกโฟลเดอร์</label><input id="folder" hidden type="file" accept="image/jpeg,.jpg,.jpeg" webkitdirectory multiple>
+        <button class="btn" id="sourceFolder" type="button">เลือกโฟลเดอร์ + Resume</button>
+      </div>
+    </div>
+    <div class="summary" id="fileSummary"><span class="chip">ยังไม่มีไฟล์</span></div>
+    <div class="resume-box hidden" id="resumeBox"><div class="resume-copy"><b id="resumeTitle">พบงานค้าง</b><span id="resumeText">สามารถเปิดโฟลเดอร์เดิมแล้วทำต่อได้</span></div><div class="resume-actions"><button class="btn primary" id="resumeSource" type="button">ทำงานต่อ</button><button class="btn" id="forgetSession" type="button">ลืมงานค้าง</button></div></div>
+    <div class="session-note" id="sessionNote">ระบบจะบันทึก Culling / Auto / Export progress ลงในเครื่องอัตโนมัติเมื่อใช้โหมด Resume</div>
+  </section>
+
+  <section class="panel" id="cullingPanel">
+    <div class="section-head">
+      <div class="section-title"><span class="section-icon">✓</span><div><h2>Smart Culling</h2><p>คัดภาพเสียจากโฟกัส โดยไม่ทิ้ง Burst ที่ยังคม</p></div></div>
+      <label class="switch"><input id="cullEnabled" type="checkbox" checked> คัดภาพ</label>
+    </div>
+    <div class="auto-core">
+      <div class="cull-grid">
+        <div class="field"><label>ความเข้มงวด</label><select id="cullSensitivity"><option value="safe" selected>Safe — คัดเฉพาะเสียชัด</option><option value="balanced">Balanced</option><option value="strict">Strict</option></select></div>
+        <div class="field"><label>Burst gap</label><select id="burstGap"><option value="1">1 วินาที</option><option value="2" selected>2 วินาที</option><option value="3">3 วินาที</option></select></div>
+        <div class="field"><label>Person confidence</label><select id="personConfidence"><option value="0.20">ไวมาก</option><option value="0.25" selected>มาตรฐาน</option><option value="0.35">เข้มงวด</option></select></div>
+        <div class="field"><label>โฟกัส</label><select id="focusPriority"><option value="center-thirds" selected>Center + จุดตัด 9 ช่อง</option><option value="subject">ตัวบุคคลเป็นหลัก</option></select></div>
+      </div>
+      <div class="auto-actions"><button class="btn good" id="runCull" type="button" disabled>คัดภาพทั้งอัลบั้ม</button><button class="btn" id="stopCull" type="button" disabled>หยุด</button></div>
+    </div>
+    <span class="status" id="cullStatus">เลือกรูปก่อน</span>
+    <div class="progress hidden" id="cullProgress"><div id="cullBar"></div></div>
+    <div class="cull-counts" id="cullCounts"><span class="count">ยังไม่ได้คัด</span></div>
+    <div class="metric-grid">
+      <div class="metric"><b>ต้องพบคน</b><span>ไม่พบคนเลย → REJECT ทันทีเมื่อ Person AI ทำงานปกติ</span></div>
+      <div class="metric"><b>Center 40%</b><span>ให้น้ำหนักบริเวณกึ่งกลางภาพสูงสุด</span></div>
+      <div class="metric"><b>จุดตัด 9 ช่อง 35%</b><span>ตรวจความคมที่จุดตัด Rule of Thirds ทั้ง 4 จุด</span></div>
+      <div class="metric"><b>Burst เก็บภาพคม</b><span>ไม่คัดเพราะภาพซ้ำ คัดเฉพาะเฟรมหลุดโฟกัส/เบลอจริง</span></div>
+    </div>
+    <details class="details">
+      <summary>หลักการคัดภาพ</summary>
+      <div class="details-body">
+        <p class="tiny">พบใบหน้า → ใช้ความคมของหน้าเป็นข้อมูลเพิ่ม · ไม่พบหน้าแต่พบคน → ตรวจความคมของตัวบุคคลได้ตามปกติ · ไม่พบคนเลย → Reject · ภาพก้ำกึ่ง → Review เพื่อไม่คัดภาพดีทิ้งโดยไม่จำเป็น</p>
+      </div>
+    </details>
+  </section>
+
+  <section class="panel">
+    <div class="section-head">
+      <div class="section-title"><span class="section-icon">A</span><div><h2>Auto Fine Tune</h2><p>ปรับภาพแบบเบา ๆ โดยให้น้ำหนักใบหน้าและตัวบุคคล</p></div></div>
+      <label class="switch"><input id="autoEnabled" type="checkbox" checked> Auto Edit</label>
+    </div>
+    <div class="auto-core">
+      <div class="quick-grid">
+        <div class="field"><label>ความแรง</label><select id="autoStrength"><option value="natural" selected>Natural — แนะนำ</option><option value="standard">Standard</option><option value="punchy">Punchy</option></select></div>
+        <div class="field"><label>น้ำหนักคน/ใบหน้า</label><select id="subjectWeight"><option value="high" selected>สูง — งานวิ่ง</option><option value="medium">กลาง</option><option value="off">ปิด</option></select></div>
+        <div class="field"><label>รูปที่พอดีอยู่แล้ว</label><select id="deadband"><option value="wide" selected>แตะให้น้อยที่สุด</option><option value="normal">ปกติ</option><option value="narrow">ปรับละเอียดทุกภาพ</option></select></div>
+        <div class="field"><label>Scene</label><select id="sceneMode"><option value="auto" selected>Auto — Day / Forest / Night / Mixed</option><option value="forest">Trail / Forest</option><option value="day">Daylight</option><option value="night">Night</option><option value="mixed">Mixed Light</option></select></div>
+      </div>
+      <div class="auto-actions"><button class="btn good" id="analyze" type="button" disabled>AUTO ทั้งอัลบั้ม</button><button class="btn" id="stopAnalyze" type="button" disabled>หยุด</button></div>
+    </div>
+    <span class="status" id="autoStatus">เลือกรูปก่อน</span>
+    <div class="progress hidden" id="analyzeProgress"><div id="analyzeBar"></div></div>
+    <div class="feature-strip">
+      <div class="feature"><b>Exposure</b><span>Face / Person weighted</span></div>
+      <div class="feature"><b>Highlight / Shadow</b><span>เก็บขาว เปิดส่วนมืด</span></div>
+      <div class="feature"><b>Auto WB</b><span>แก้สีเพี้ยนเล็กน้อย</span></div>
+      <div class="feature"><b>Skin / Vibrance</b><span>คุมผิวและสีเขียว</span></div>
+      <div class="feature"><b>Detail</b><span>NR + Sharpen ตาม ISO</span></div>
+      <div class="feature"><b>Trail / Forest</b><span>Soft Highlight + Shadow Detail</span></div>
+      <div class="feature"><b>Night / Mixed</b><span>คุมไฟเวที ไฟถนน และแสงผสม</span></div>
+    </div>
+    <details class="details">
+      <summary>ตั้งค่า Auto ขั้นสูง</summary>
+      <div class="details-body">
+        <div class="check-grid">
+          <label class="check"><input id="toneAuto" type="checkbox" checked> Highlights / Shadows Auto</label>
+          <label class="check"><input id="wbAuto" type="checkbox" checked> Auto White Balance</label>
+          <label class="check"><input id="skinProtect" type="checkbox" checked> Skin Tone Protect</label>
+          <label class="check"><input id="vibranceAuto" type="checkbox" checked> Vibrance + Green Control</label>
+          <label class="check"><input id="clarityAuto" type="checkbox" checked> Clarity เบา ๆ</label>
+          <label class="check"><input id="detailAuto" type="checkbox" checked> Noise Reduction + Sharpen</label>
+        </div>
+        <p class="tiny">Face/Person AI ใช้อินเทอร์เน็ตเฉพาะการโหลดโมเดลครั้งแรก หากโหลดไม่ได้จะใช้ Center/Histogram weighting แทน โดยรูปยังคงอยู่ในเครื่อง และ Scene Auto จะพยายามแยก Day / Trail-Forest / Night / Mixed Light ให้เอง</p>
+      </div>
+    </details>
+  </section>
+
+  <section class="panel">
+    <div class="section-head"><div class="section-title"><span class="section-icon">↗</span><div><h2>ตั้งค่า Output</h2><p>ค่าที่ใช้ประจำอยู่ด้านบน ส่วนรายละเอียดเพิ่มเติมเปิดเมื่อจำเป็น</p></div></div></div>
+    <div class="settings-grid">
+      <div class="setting-card">
+        <div class="setting-card-head"><div><b>Rename</b><span>ตั้งชื่อไฟล์อัตโนมัติ</span></div><label class="switch"><input id="renameEnabled" type="checkbox" checked> เปิด</label></div>
+        <div class="grid2">
+          <div class="field"><label>รหัสช่างภาพ</label><input id="photographer" value="17" maxlength="12"></div>
+          <div class="field"><label>เลขเริ่มต้น</label><input id="startNo" type="number" value="1" min="0"></div>
+        </div>
+        <details class="details">
+          <summary>รูปแบบชื่อเพิ่มเติม</summary>
+          <div class="details-body grid2">
+            <div class="field"><label>รูปแบบ</label><select id="renameMode"><option value="original-pse" selected>ชื่อเดิม + PSE + รหัส + เลขรัน</option><option value="pse">PSE + รหัส + เลขรัน</option><option value="original">ชื่อเดิม + เลขรัน</option></select></div>
+            <div class="field"><label>จำนวนหลัก</label><select id="digits"><option>3</option><option selected>4</option><option>5</option><option>6</option></select></div>
+          </div>
+        </details>
+        <div class="rename-preview" id="renamePreview">ตัวอย่าง: —</div>
+      </div>
+
+      <div class="setting-card">
+        <div class="setting-card-head"><div><b>Resize / File Limit</b><span>เน้นคุณภาพสูงสุดภายในขนาดไฟล์</span></div><label class="switch"><input id="resizeEnabled" type="checkbox" checked> เปิด</label></div>
+        <div class="grid2">
+          <div class="field"><label>Long Edge</label><input id="longEdge" type="number" value="4500" min="500" max="12000"></div>
+          <div class="field"><label>File Limit (MB)</label><input id="fileLimit" type="number" value="4.8" min="0.2" max="50" step="0.1"></div>
+        </div>
+        <details class="details">
+          <summary>คุณภาพ JPEG ขั้นสูง</summary>
+          <div class="details-body grid2">
+            <div class="field"><label>Minimum JPEG Quality</label><input id="minQuality" type="number" value="78" min="50" max="98"></div>
+            <div class="field"><label>Output Sharpen</label><select id="sharpen"><option value="auto" selected>Auto ตาม ISO / Resize</option><option value="off">ปิด</option><option value="low">Low</option><option value="medium">Medium</option></select></div>
+          </div>
+          <label class="check"><input id="noUpscale" type="checkbox" checked> ไม่ขยายภาพที่เล็กกว่า Long Edge</label>
+        </details>
+      </div>
+    </div>
+
+    <details class="details" style="margin-top:14px">
+      <summary>แก้วันที่ / เวลา EXIF (ใช้เมื่อวันที่ในกล้องผิด)</summary>
+      <div class="details-body">
+        <div class="setting-card" style="background:var(--surface-2)">
+          <div class="setting-card-head"><div><b>EXIF Date / Time</b><span>ปิดไว้เป็นค่าเริ่มต้น</span></div><label class="switch"><input id="dateEnabled" type="checkbox"> แก้วันที่</label></div>
+          <div class="grid3">
+            <div class="field"><label>โหมด</label><select id="dateMode"><option value="dateonly" selected>เปลี่ยนวันที่ เก็บเวลาเดิม</option><option value="offset">เลื่อนวัน / เวลา</option><option value="absolute">กำหนดวัน / เวลาเริ่มต้นใหม่</option></select></div>
+            <div class="field"><label>วันที่</label><input id="newDate" type="date"></div>
+            <div class="field"><label>เวลาเริ่มต้น</label><input id="newTime" type="time" step="1" value="06:00:00"></div>
+          </div>
+          <div class="grid4" style="margin-top:10px">
+            <div class="field"><label>เลื่อนวัน</label><input id="offDays" type="number" value="0"></div>
+            <div class="field"><label>เลื่อนชั่วโมง</label><input id="offHours" type="number" value="0"></div>
+            <div class="field"><label>เลื่อนนาที</label><input id="offMinutes" type="number" value="0"></div>
+            <div class="field"><label>เลื่อนวินาที</label><input id="offSeconds" type="number" value="0"></div>
+          </div>
+          <div class="grid2" style="margin-top:10px">
+            <label class="check"><input id="tzEnabled" type="checkbox"> แก้ Time Zone</label>
+            <div class="field"><label>Time Zone ใหม่</label><select id="timezone"><option value="+07:00" selected>+07:00 Thailand</option><option value="+08:00">+08:00</option><option value="+09:00">+09:00</option><option value="+00:00">+00:00</option></select></div>
+          </div>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <section class="panel">
+    <div class="preview-toolbar"><div class="section-title"><span class="section-icon">≡</span><div><h2>Preview & Review Queue</h2><p>เทียบ Before/After และตรวจเฉพาะภาพ REVIEW ได้ต่อเนื่อง</p></div></div><div class="filter-row"><button class="btn" id="openReviewQueue" type="button" disabled>เปิด REVIEW Queue</button><select id="previewFilter"><option value="all">ทั้งหมด</option><option value="pass">PASS</option><option value="review">REVIEW</option><option value="reject">REJECT</option><option value="unculled">ยังไม่คัด</option></select><span class="pill" id="previewSummary">ยังไม่มีไฟล์</span></div></div>
+    <div class="tablewrap"><table><thead><tr><th>#</th><th>ภาพ</th><th>ไฟล์</th><th>Culling</th><th>Focus</th><th>ชื่อใหม่</th><th>Auto Fine Tune</th><th>Resize</th><th>สถานะ</th></tr></thead><tbody id="rows"><tr><td colspan="9">เลือกรูปก่อน</td></tr></tbody></table></div>
+    <p class="tiny">แสดง Preview สูงสุด 100 รูปตาม Filter เพื่อให้รองรับอัลบั้มขนาดใหญ่ โดยการคัดและ Export จะทำงานกับทุกไฟล์</p>
+  </section>
+
+  <dialog class="photo-dialog" id="photoDialog">
+    <div class="dialog-body">
+      <div class="compare-grid">
+        <div class="compare-pane"><span class="compare-label">BEFORE</span><img class="compare-img" id="dialogImg" alt="ภาพต้นฉบับ"></div>
+        <div class="compare-pane"><span class="compare-label">AFTER · Auto Fine Tune</span><img class="compare-img" id="dialogAfter" alt="ภาพหลังปรับ"><div class="compare-loading hidden" id="dialogAfterLoading">กำลังสร้าง After…</div></div>
+      </div>
+    </div>
+    <div class="dialog-foot"><div class="dialog-info" id="dialogInfo">—</div><div class="dialog-actions"><button class="btn" id="dialogPrev" type="button">← ก่อนหน้า</button><button class="btn" id="dialogNext" type="button">ถัดไป →</button><button class="btn good" id="dialogPass" type="button">PASS</button><button class="btn" id="dialogReview" type="button">REVIEW</button><button class="btn danger" id="dialogReject" type="button">REJECT</button><button class="btn" id="closeDialog" type="button">ปิด</button></div></div>
+  </dialog>
+
+  <section class="panel primary-panel">
+    <div class="section-head"><div class="section-title"><span class="section-icon">↓</span><div><h2>Export</h2><p>ทดสอบ 1 รูปก่อน แล้วจึง Export ทั้งอัลบั้ม</p></div></div></div>
+    <div class="export-card">
+      <div class="export-path"><b>Folder Export</b><span id="folderStatus">ยังไม่ได้เลือก — ระบบจะสร้าง KEITA_EXPORT_วันที่_เวลา</span></div>
+      <button class="btn" id="chooseOutput" type="button">เลือก Folder</button>
+    </div>
+    <div class="export-bottom">
+      <div><div class="muted">แนะนำ: ทดสอบ 1 รูปเพื่อตรวจคุณภาพและชื่อไฟล์ก่อนเริ่มทั้งอัลบั้ม</div><div class="export-options"><label class="check"><input id="exportReview" type="checkbox" checked> Export REVIEW</label><label class="check"><input id="exportReject" type="checkbox"> Export REJECT</label><label class="check"><input id="cullFolders" type="checkbox" checked> แยกโฟลเดอร์ PASS / REVIEW / REJECT</label></div><div class="queue-note">ค่าเริ่มต้นจะไม่ Export REJECT แต่ไฟล์ต้นฉบับบน SD Card จะไม่ถูกลบ</div></div>
+      <div class="export-buttons"><button class="btn" id="testOne" type="button" disabled>ทดสอบ 1 รูป</button><button class="btn primary export-all" id="exportAll" type="button" disabled>EXPORT ALL</button><button class="btn danger hidden" id="cancelExport" type="button">หยุด</button></div>
+    </div>
+    <div class="progress hidden" id="exportProgress"><div id="exportBar"></div></div>
+    <div class="status hidden" id="result"></div>
+  </section>
+
+  <div class="footer">KEITA PHOTO CAMERA · Batch Photo Utility v11</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.1.0/dist/blazeface.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+<script>
+(()=>{
+'use strict';
+const $=id=>document.getElementById(id);
+const state={files:[],filePaths:new Map(),meta:new Map(),analysis:new Map(),culling:new Map(),output:null,sourceHandle:null,resumeRecord:null,savedFileStates:new Map(),analyzing:false,cancelAnalyze:false,cullingRunning:false,cancelCull:false,exporting:false,cancelExport:false,faceModel:null,personModel:null,modelsTried:false,previewUrls:[],dialogUrl:null,dialogAfterUrl:null,dialogIndex:null,dialogReviewMode:false,dialogToken:0,exported:new Set(),exportRoot:null,exportSessionName:null,sessionSaveTimer:null};
+const els=['files','folder','sourceFolder','resumeBox','resumeTitle','resumeText','resumeSource','forgetSession','sessionNote','clear','fileSummary','cullEnabled','cullSensitivity','burstGap','personConfidence','focusPriority','runCull','stopCull','cullStatus','cullProgress','cullBar','cullCounts','autoEnabled','autoStrength','subjectWeight','deadband','sceneMode','toneAuto','wbAuto','skinProtect','vibranceAuto','clarityAuto','detailAuto','analyze','stopAnalyze','autoStatus','analyzeProgress','analyzeBar','renameEnabled','renameMode','photographer','startNo','digits','renamePreview','resizeEnabled','longEdge','fileLimit','minQuality','sharpen','noUpscale','dateEnabled','dateMode','newDate','newTime','offDays','offHours','offMinutes','offSeconds','tzEnabled','timezone','openReviewQueue','previewFilter','previewSummary','rows','photoDialog','dialogImg','dialogAfter','dialogAfterLoading','dialogInfo','dialogPrev','dialogNext','dialogPass','dialogReview','dialogReject','closeDialog','folderStatus','chooseOutput','testOne','exportReview','exportReject','cullFolders','exportAll','cancelExport','exportProgress','exportBar','result'].reduce((o,id)=>(o[id]=$(id),o),{});
+
+function clamp(v,a,b){return Math.min(b,Math.max(a,v))}
+function smoothstep(a,b,x){const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)}
+function baseName(n){return n.replace(/\.[^.]+$/,'')}
+function extName(n){const m=n.match(/(\.[^.]+)$/);return m?m[1]:'.JPG'}
+function fmtBytes(n){if(!Number.isFinite(n))return '—';return n<1048576?(n/1024).toFixed(0)+' KB':(n/1048576).toFixed(2)+' MB'}
+function pad(n,d){return String(n).padStart(d,'0')}
+function nowStamp(){const d=new Date(),p=x=>String(x).padStart(2,'0');return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`}
+function setStatus(el,msg,kind=''){el.textContent=msg;el.className='status'+(kind?' '+kind:'')}
+function fileKey(file){const rel=state.filePaths.get(file)||file.webkitRelativePath||file.name;return `${rel}|${file.size}|${file.lastModified}`}
+function resetExportSession(){state.exported.clear();state.exportRoot=null;state.exportSessionName=null;els.exportBar.style.width='0%';scheduleSaveSession()}
+
+// ---- Resume session (IndexedDB + File System Access handle when available) ----
+const DB_NAME='keita-photo-tools',DB_VER=1,STORE='sessions',SESSION_ID='current';
+function openDb(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,DB_VER);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE,{keyPath:'id'})};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
+async function dbGet(){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readonly'),req=tx.objectStore(STORE).get(SESSION_ID);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error);tx.oncomplete=()=>db.close()})}
+async function dbPut(rec){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(rec);tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>{db.close();reject(tx.error)}})}
+async function dbDelete(){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).delete(SESSION_ID);tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>{db.close();reject(tx.error)}})}
+const SETTING_IDS=['cullEnabled','cullSensitivity','burstGap','personConfidence','focusPriority','autoEnabled','autoStrength','subjectWeight','deadband','sceneMode','toneAuto','wbAuto','skinProtect','vibranceAuto','clarityAuto','detailAuto','renameEnabled','renameMode','photographer','startNo','digits','resizeEnabled','longEdge','fileLimit','minQuality','sharpen','noUpscale','dateEnabled','dateMode','newDate','newTime','offDays','offHours','offMinutes','offSeconds','tzEnabled','timezone','exportReview','exportReject','cullFolders'];
+function captureSettings(){const out={};for(const id of SETTING_IDS){const el=els[id];if(!el)continue;out[id]=el.type==='checkbox'?el.checked:el.value}return out}
+function applySettings(obj){if(!obj)return;for(const [id,val] of Object.entries(obj)){const el=els[id];if(!el)continue;if(el.type==='checkbox')el.checked=!!val;else el.value=String(val)}}
+function serializableFileStates(){const out=[];for(const f of state.files){const c=state.culling.get(f)||null,a=state.analysis.get(f)||null;if(c||a)out.push({key:fileKey(f),culling:c,analysis:a})}return out}
+async function saveSessionNow(){try{const active=state.files.length>0;const rec={id:SESSION_ID,version:11,savedAt:Date.now(),sourceHandle:state.sourceHandle||state.resumeRecord?.sourceHandle||null,sourceName:state.sourceHandle?.name||state.resumeRecord?.sourceName||null,outputHandle:state.output||state.resumeRecord?.outputHandle||null,outputName:state.output?.name||state.resumeRecord?.outputName||null,exportSessionName:active?(state.exportSessionName||null):(state.resumeRecord?.exportSessionName||null),exportedKeys:active?[...state.exported]:(state.resumeRecord?.exportedKeys||[]),settings:captureSettings(),fileStates:active?serializableFileStates():(state.resumeRecord?.fileStates||[])};await dbPut(rec);state.resumeRecord=rec;state.savedFileStates=new Map((rec.fileStates||[]).map(x=>[x.key,x]));updateResumeBox();els.sessionNote.textContent=`บันทึกงานค้างล่าสุด ${new Date(rec.savedAt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`;}catch(e){console.warn('session save failed',e);els.sessionNote.textContent='ไม่สามารถบันทึก Resume ได้ใน Browser นี้'}}
+function scheduleSaveSession(){clearTimeout(state.sessionSaveTimer);state.sessionSaveTimer=setTimeout(saveSessionNow,700)}
+function updateResumeBox(){const r=state.resumeRecord;if(r?.sourceHandle){els.resumeBox.classList.remove('hidden');els.resumeTitle.textContent=`พบงานค้าง: ${r.sourceName||r.sourceHandle.name||'โฟลเดอร์เดิม'}`;const n=(r.fileStates||[]).length,done=(r.exportedKeys||[]).length;els.resumeText.textContent=`บันทึก ${n.toLocaleString()} ไฟล์ · Export แล้ว ${done.toLocaleString()} · กดทำงานต่อเพื่อเปิดโฟลเดอร์เดิม`;}else els.resumeBox.classList.add('hidden')}
+async function initResume(){try{const r=await dbGet();if(!r)return;state.resumeRecord=r;state.savedFileStates=new Map((r.fileStates||[]).map(x=>[x.key,x]));applySettings(r.settings);state.output=r.outputHandle||null;state.exportSessionName=r.exportSessionName||null;state.exported=new Set(r.exportedKeys||[]);updateResumeBox();if(state.output)els.folderStatus.textContent=`จำ Folder เดิมไว้: ${r.outputName||state.output.name} · จะขอสิทธิ์เมื่อ Export`;renderPreview()}catch(e){console.warn('resume load failed',e)}}
+async function forgetSession(){try{await dbDelete()}catch{}state.resumeRecord=null;state.savedFileStates.clear();state.sourceHandle=null;state.output=null;state.exported.clear();state.exportSessionName=null;state.exportRoot=null;updateResumeBox();els.sessionNote.textContent='ล้างงานค้างแล้ว'}
+async function queryHandlePermission(handle,mode='read'){if(!handle)return false;try{if((await handle.queryPermission({mode}))==='granted')return true;return (await handle.requestPermission({mode}))==='granted'}catch{return false}}
+async function collectJpegsFromDirectory(root){const files=[],paths=new Map();async function walk(dir,prefix=''){for await(const [name,h] of dir.entries()){const path=prefix?`${prefix}/${name}`:name;if(h.kind==='directory')await walk(h,path);else if(/\.jpe?g$/i.test(name)){const f=await h.getFile();files.push(f);paths.set(f,path);if(files.length%500===0){els.fileSummary.innerHTML=`<span class="chip">กำลัง Scan ${files.length.toLocaleString()} รูป…</span>`;await new Promise(r=>setTimeout(r,0))}}}}await walk(root);files.sort((a,b)=>(paths.get(a)||a.name).localeCompare(paths.get(b)||b.name,undefined,{numeric:true,sensitivity:'base'}));return {files,paths}}
+async function pickSourceFolder(){if(!window.showDirectoryPicker){setStatus(els.cullStatus,'โหมด Resume ต้องใช้ Chrome/Edge ผ่าน HTTPS','bad');return}try{const h=await showDirectoryPicker({mode:'read'});state.sourceHandle=h;state.resumeRecord={...(state.resumeRecord||{}),sourceHandle:h,sourceName:h.name};els.sessionNote.textContent='กำลังอ่านโฟลเดอร์สำหรับ Resume…';const {files,paths}=await collectJpegsFromDirectory(h);await addFiles(files,{pathMap:paths,restoreSaved:false,preserveSource:true,resumeExport:false});scheduleSaveSession()}catch(e){if(e.name!=='AbortError')console.error(e)}}
+async function resumeSourceFolder(){const h=state.resumeRecord?.sourceHandle;if(!h)return;if(!(await queryHandlePermission(h,'read'))){els.resumeText.textContent='ไม่ได้รับสิทธิ์อ่านโฟลเดอร์เดิม';return}state.sourceHandle=h;els.sessionNote.textContent='กำลังเปิดงานค้าง…';const {files,paths}=await collectJpegsFromDirectory(h);await addFiles(files,{pathMap:paths,restoreSaved:true,preserveSource:true,resumeExport:true});state.output=state.resumeRecord?.outputHandle||state.output;state.exportSessionName=state.resumeRecord?.exportSessionName||state.exportSessionName;state.exported=new Set(state.resumeRecord?.exportedKeys||[]);els.sessionNote.textContent='Resume สำเร็จ — Culling / Auto / Export progress ถูกเรียกคืน';renderPreview()}
+
+
+// ---- EXIF parser/patcher: preserves original APP1 bytes ----
+function getExifSegment(buffer){const u=new Uint8Array(buffer);if(u[0]!==0xff||u[1]!==0xd8)return null;let p=2;while(p+4<u.length){if(u[p]!==0xff)break;const marker=u[p+1];if(marker===0xda||marker===0xd9)break;const len=(u[p+2]<<8)|u[p+3];if(marker===0xe1&&len>=8&&String.fromCharCode(...u.slice(p+4,p+10))==='Exif\0\0')return {start:p,end:p+2+len,bytes:u.slice(p,p+2+len)};p+=2+len}return null}
+function exifViewFromSegment(seg){if(!seg)return null;const u=seg.bytes;const tiff=10;if(u.length<tiff+8)return null;const little=u[tiff]===0x49&&u[tiff+1]===0x49;if(!little&&!(u[tiff]===0x4d&&u[tiff+1]===0x4d))return null;const dv=new DataView(u.buffer,u.byteOffset,u.byteLength);const g16=o=>dv.getUint16(tiff+o,little),g32=o=>dv.getUint32(tiff+o,little);if(g16(2)!==42)return null;return {u,dv,tiff,little,g16,g32}}
+const TYPE_SIZE={1:1,2:1,3:2,4:4,5:8,7:1,9:4,10:8};
+function readIfd(ex,rel){const out=new Map();if(!ex||rel<=0||ex.tiff+rel+2>ex.u.length)return out;const n=ex.g16(rel);for(let i=0;i<n;i++){const e=rel+2+i*12;if(ex.tiff+e+12>ex.u.length)break;const tag=ex.g16(e),type=ex.g16(e+2),count=ex.g32(e+4),size=(TYPE_SIZE[type]||1)*count;let dataRel=size<=4?e+8:ex.g32(e+8);out.set(tag,{tag,type,count,size,entryRel:e,dataRel})}return out}
+function readAscii(ex,entry){if(!entry||entry.type!==2)return null;const start=ex.tiff+entry.dataRel,end=Math.min(start+entry.count,ex.u.length);return new TextDecoder().decode(ex.u.slice(start,end)).replace(/\0+$/,'')}
+function readNum(ex,entry){if(!entry)return null;const o=ex.tiff+entry.dataRel;if(o>=ex.u.length)return null;if(entry.type===3)return ex.dv.getUint16(o,ex.little);if(entry.type===4)return ex.dv.getUint32(o,ex.little);return null}
+function parseExif(buffer){const seg=getExifSegment(buffer),ex=exifViewFromSegment(seg);if(!ex)return {seg:null};const ifd0=readIfd(ex,ex.g32(4));const exifPtr=readNum(ex,ifd0.get(0x8769));const exifIfd=exifPtr?readIfd(ex,exifPtr):new Map();return {seg,ex,ifd0,exifIfd,make:readAscii(ex,ifd0.get(0x010f)),model:readAscii(ex,ifd0.get(0x0110)),date:readAscii(ex,exifIfd.get(0x9003))||readAscii(ex,ifd0.get(0x0132)),tz:readAscii(ex,exifIfd.get(0x9011))||readAscii(ex,exifIfd.get(0x9010)),iso:readNum(ex,exifIfd.get(0x8827)),orientation:readNum(ex,ifd0.get(0x0112))||1}}
+function writeAscii(ex,entry,str){if(!entry||entry.type!==2)return false;const bytes=new TextEncoder().encode(str+'\0');if(bytes.length>entry.count)return false;const start=ex.tiff+entry.dataRel;ex.u.fill(0,start,start+entry.count);ex.u.set(bytes.slice(0,entry.count),start);return true}
+function writeNum(ex,entry,val){if(!entry)return false;const o=ex.tiff+entry.dataRel;if(entry.type===3){ex.dv.setUint16(o,val,ex.little);return true}if(entry.type===4){ex.dv.setUint32(o,val,ex.little);return true}return false}
+function patchExifBytes(seg,opts){if(!seg)return null;const bytes=new Uint8Array(seg.bytes),copy={start:0,end:bytes.length,bytes};const ex=exifViewFromSegment(copy);if(!ex)return bytes;const ifd0=readIfd(ex,ex.g32(4)),ptr=readNum(ex,ifd0.get(0x8769)),exifIfd=ptr?readIfd(ex,ptr):new Map();if(opts.date){writeAscii(ex,ifd0.get(0x0132),opts.date);writeAscii(ex,exifIfd.get(0x9003),opts.date);writeAscii(ex,exifIfd.get(0x9004),opts.date)}if(opts.tz){writeAscii(ex,exifIfd.get(0x9010),opts.tz);writeAscii(ex,exifIfd.get(0x9011),opts.tz);writeAscii(ex,exifIfd.get(0x9012),opts.tz)}if(opts.orientation)writeNum(ex,ifd0.get(0x0112),opts.orientation);if(opts.width){writeNum(ex,exifIfd.get(0xa002),opts.width);writeNum(ex,exifIfd.get(0xa003),opts.height)}return bytes}
+function injectExif(jpegBuf,exifBytes){if(!exifBytes)return jpegBuf;const j=new Uint8Array(jpegBuf),out=new Uint8Array(j.length+exifBytes.length);out.set(j.slice(0,2),0);out.set(exifBytes,2);out.set(j.slice(2),2+exifBytes.length);return out.buffer}
+function parseExifDate(s){if(!s)return null;const m=s.match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/);if(!m)return null;return new Date(Number(m[1]),+m[2]-1,+m[3],+m[4],+m[5],+m[6])}
+function formatExifDate(d){const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}:${p(d.getMonth()+1)}:${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`}
+function adjustedDate(meta,index){if(!els.dateEnabled.checked||!meta.date)return meta.date||null;const old=parseExifDate(meta.date);if(!old)return meta.date;const mode=els.dateMode.value;if(mode==='dateonly'&&els.newDate.value){const [y,m,d]=els.newDate.value.split('-').map(Number);old.setFullYear(y,m-1,d);return formatExifDate(old)}if(mode==='offset'){old.setSeconds(old.getSeconds()+Number(els.offSeconds.value||0)+60*Number(els.offMinutes.value||0)+3600*Number(els.offHours.value||0)+86400*Number(els.offDays.value||0));return formatExifDate(old)}if(mode==='absolute'&&els.newDate.value){const [y,m,d]=els.newDate.value.split('-').map(Number),t=els.newTime.value.split(':').map(Number);const base=state.files[0]&&state.meta.get(state.files[0])?.date?parseExifDate(state.meta.get(state.files[0]).date):null;const delta=base&&old?old-base:0;return formatExifDate(new Date(y,m-1,d,t[0]||0,t[1]||0,t[2]||0).getTime()+delta)}return meta.date}
+
+async function decodeFile(file,max=0){const bmp=await createImageBitmap(file);if(!max||Math.max(bmp.width,bmp.height)<=max)return {bmp,w:bmp.width,h:bmp.height};const scale=max/Math.max(bmp.width,bmp.height),c=document.createElement('canvas');c.width=Math.round(bmp.width*scale);c.height=Math.round(bmp.height*scale);const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(bmp,0,0,c.width,c.height);bmp.close();return {bmp:await createImageBitmap(c),w:c.width,h:c.height}}
+function roiStats(ctx,x,y,w,h){x=Math.max(0,Math.floor(x));y=Math.max(0,Math.floor(y));w=Math.max(1,Math.min(ctx.canvas.width-x,Math.floor(w)));h=Math.max(1,Math.min(ctx.canvas.height-y,Math.floor(h)));const d=ctx.getImageData(x,y,w,h).data;let sum=0,r=0,g=0,b=0,n=0,hi=0,lo=0,sat=0,green=0;const hist=new Uint32Array(256);for(let i=0;i<d.length;i+=16){const R=d[i],G=d[i+1],B=d[i+2],L=.2126*R+.7152*G+.0722*B;sum+=L;r+=R;g+=G;b+=B;n++;hist[L|0]++;if(L>245)hi++;if(L<12)lo++;const mx=Math.max(R,G,B),mn=Math.min(R,G,B);sat+=(mx-mn)/(mx||1);if(G>R*1.08&&G>B*1.08)green++}function pct(p){let target=n*p,c=0;for(let i=0;i<256;i++){c+=hist[i];if(c>=target)return i}return 255}return {mean:sum/n/255,r:r/n/255,g:g/n/255,b:b/n/255,high:hi/n,low:lo/n,sat:sat/n,green:green/n,p10:pct(.1)/255,p50:pct(.5)/255,p90:pct(.9)/255}}
+async function ensureModels(statusEl=els.autoStatus){if(state.modelsTried)return !!state.personModel;state.modelsTried=true;if(!window.tf||!window.blazeface||!window.cocoSsd)return false;try{setStatus(statusEl,'กำลังโหลด Person AI…','warn');state.personModel=await cocoSsd.load({base:'lite_mobilenet_v2'});setStatus(statusEl,'กำลังโหลด Face AI…','warn');state.faceModel=await blazeface.load();return true}catch(e){console.warn('AI model load failed',e);state.faceModel=null;state.personModel=null;return false}}
+
+function focusMetric(ctx,x,y,w,h){
+  x=clamp(Math.floor(x),0,Math.max(0,ctx.canvas.width-1));y=clamp(Math.floor(y),0,Math.max(0,ctx.canvas.height-1));const maxW=ctx.canvas.width-x,maxH=ctx.canvas.height-y;if(maxW<8||maxH<8)return 0;w=Math.min(maxW,Math.max(8,Math.floor(w)));h=Math.min(maxH,Math.max(8,Math.floor(h)));
+  if(w<8||h<8)return 0;
+  const im=ctx.getImageData(x,y,w,h),d=im.data,lum=(i)=>.2126*d[i]+.7152*d[i+1]+.0722*d[i+2];
+  const step=(w*h>90000)?2:1;let n=0,sum=0,sum2=0,edge=0;
+  for(let yy=1;yy<h-1;yy+=step){for(let xx=1;xx<w-1;xx+=step){const i=(yy*w+xx)*4,il=i-4,ir=i+4,iu=i-w*4,id=i+w*4;const c=lum(i),l=lum(il),r=lum(ir),u=lum(iu),b=lum(id);const lap=4*c-l-r-u-b;sum+=lap;sum2+=lap*lap;edge+=Math.abs(r-l)+Math.abs(b-u);n++}}
+  if(!n)return 0;const variance=Math.max(0,sum2/n-Math.pow(sum/n,2)),edgeMean=edge/n;
+  const lapScore=clamp((Math.log2(variance+1)-2.2)*17,0,100),edgeScore=clamp((edgeMean-5)*3.6,0,100);
+  return clamp(lapScore*.68+edgeScore*.32,0,100);
+}
+function boxFocus(ctx,b){if(!b)return 0;return focusMetric(ctx,b.x,b.y,b.w,b.h)}
+function normalizeBox(b,w,h){return {x:clamp(b.x/w,0,1),y:clamp(b.y/h,0,1),w:clamp(b.w/w,0,1),h:clamp(b.h/h,0,1)}}
+function denormalizeBox(b,w,h){return b?{x:b.x*w,y:b.y*h,w:b.w*w,h:b.h*h}:null}
+function cullThresholds(){return {safe:{pass:40,reject:20,subjectPass:48,subjectReject:27,faceReject:22},balanced:{pass:47,reject:27,subjectPass:55,subjectReject:34,faceReject:29},strict:{pass:55,reject:35,subjectPass:62,subjectReject:43,faceReject:37}}[els.cullSensitivity.value]||{pass:40,reject:20,subjectPass:48,subjectReject:27,faceReject:22}}
+function cullLabel(r){if(!r)return '<span class="muted">ยังไม่คัด</span>';const cls=r.status==='pass'?'goodtxt':r.status==='review'?'warntxt':'badtxt';const tag=r.burstTag==='BEST'?'<span class="tag-best">BEST</span>':r.burstTag==='KEEP'?'<span class="tag-keep">BURST KEEP</span>':'';return `<span class="${cls}">${r.status.toUpperCase()}</span>${tag}<br><span class="tiny">${r.reason||''}</span>`}
+function cullCounts(){let pass=0,review=0,reject=0,unculled=0;for(const f of state.files){const r=state.culling.get(f);if(!r)unculled++;else if(r.status==='pass')pass++;else if(r.status==='review')review++;else reject++}return {pass,review,reject,unculled}}
+function renderCullCounts(){const c=cullCounts();els.cullCounts.innerHTML=`<span class="count pass">PASS ${c.pass.toLocaleString()}</span><span class="count review">REVIEW ${c.review.toLocaleString()}</span><span class="count reject">REJECT ${c.reject.toLocaleString()}</span>${c.unculled?`<span class="count">รอ ${c.unculled.toLocaleString()}</span>`:''}`;els.openReviewQueue.disabled=c.review===0}
+async function cullOne(file){
+  const modelsOk=await ensureModels(els.cullStatus);if(!modelsOk||!state.personModel)return {status:'review',reason:'Person AI โหลดไม่สำเร็จ — ไม่คัดทิ้ง',focusScore:0,personCount:0,modelError:true};
+  const {bmp,w,h}=await decodeFile(file,640);const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(bmp,0,0,w,h);
+  const conf=Number(els.personConfidence.value||.25);let persons=[];try{persons=(await state.personModel.detect(c,20,conf)).filter(p=>p.class==='person')}catch(e){bmp.close();throw e}
+  if(!persons.length){bmp.close();return {status:'reject',reason:'ไม่พบคน',focusScore:0,personCount:0,wholeFocus:focusMetric(ctx,0,0,w,h)}}
+  let faces=[];if(state.faceModel){try{faces=await state.faceModel.estimateFaces(c,false)}catch{}}
+  const zoneW=w*.22,zoneH=h*.22,center=focusMetric(ctx,w*.5-zoneW/2,h*.5-zoneH/2,zoneW,zoneH);const thirdW=w*.18,thirdH=h*.18;let thirds=0;for(const px of [1/3,2/3])for(const py of [1/3,2/3])thirds=Math.max(thirds,focusMetric(ctx,w*px-thirdW/2,h*py-thirdH/2,thirdW,thirdH));const whole=focusMetric(ctx,0,0,w,h);
+  let personFocus=0,bestPerson=null;for(const p of persons){const q=p.bbox,b={x:q[0]+q[2]*.08,y:q[1]+q[3]*.05,w:q[2]*.84,h:q[3]*.86},f=boxFocus(ctx,b);if(f>personFocus){personFocus=f;bestPerson=b}}
+  let faceFocus=0,bestFace=null,faceReliable=false;for(const f of faces){const x1=f.topLeft[0],y1=f.topLeft[1],x2=f.bottomRight[0],y2=f.bottomRight[1],fw=x2-x1,fh=y2-y1;if(fw<24||fh<24)continue;const b={x:x1-fw*.10,y:y1-fh*.10,w:fw*1.20,h:fh*1.20},fm=boxFocus(ctx,b);if(fm>faceFocus){faceFocus=fm;bestFace=b;faceReliable=fw>=34&&fh>=34}}
+  bmp.close();const subject=Math.max(personFocus,faceReliable?faceFocus:0),t=cullThresholds();let score;if(els.focusPriority.value==='subject')score=center*.20+thirds*.20+subject*.55+whole*.05;else score=center*.40+thirds*.35+subject*.20+whole*.05;score=clamp(score,0,100);
+  let status='review',reason='โฟกัสก้ำกึ่ง — ควรตรวจ';if(faceReliable&&faceFocus<t.faceReject){status='reject';reason='พบใบหน้าแต่ใบหน้าไม่โฟกัส'}else if(score>=t.pass||subject>=t.subjectPass){status='pass';reason=faceReliable?'พบคน / ใบหน้าคม':'พบคน / โฟกัสดี'}else if(score<t.reject&&subject<t.subjectReject){status='reject';reason='พบคนแต่หลุดโฟกัส/เบลอ'}
+  return {status,reason,focusScore:score,centerFocus:center,thirdFocus:thirds,personFocus,faceFocus,wholeFocus:whole,personCount:persons.length,faceCount:faces.length,personBox:bestPerson?normalizeBox(bestPerson,w,h):null,faceBox:bestFace?normalizeBox(bestFace,w,h):null,faceReliable,burstTag:'',burstId:null};
+}
+function assignBurstTags(){const gap=Number(els.burstGap.value||2)*1000;let group=[],gid=0;for(const f of state.files){const r=state.culling.get(f);if(r){r.burstId=null;r.burstTag=''}}const flush=()=>{if(group.length<2){group=[];return}gid++;let best=null;for(const f of group){const r=state.culling.get(f);if(r&&r.status!=='reject'&&(!best||r.focusScore>state.culling.get(best).focusScore))best=f}for(const f of group){const r=state.culling.get(f);if(!r)continue;r.burstId=gid;r.burstTag=r.status==='reject'?'':(f===best?'BEST':'KEEP')}group=[]};let prevTime=null,prevFile=null;for(let i=0;i<state.files.length;i++){const f=state.files[i],m=state.meta.get(f)||{},d=parseExifDate(m.date),tm=d?d.getTime():null;if(tm!==null&&prevTime!==null&&tm-prevTime>=0&&tm-prevTime<=gap){if(!group.length&&prevFile)group.push(prevFile);group.push(f)}else flush();prevTime=tm;prevFile=f}flush()}
+async function cullAlbum(){if(!state.files.length||state.cullingRunning||!els.cullEnabled.checked)return;state.cullingRunning=true;state.cancelCull=false;els.runCull.disabled=true;els.stopCull.disabled=false;els.cullProgress.classList.remove('hidden');const total=state.files.length,renderEvery=total>5000?100:total>1000?50:20;let cc=cullCounts(),done=total-cc.unculled;els.cullBar.style.width=(done/total*100)+'%';for(let i=0;i<total;i++){if(state.cancelCull)break;const f=state.files[i];if(state.culling.has(f))continue;let r;try{r=await cullOne(f)}catch(e){console.warn(f.name,e);r={status:'review',reason:'วิเคราะห์ไม่สำเร็จ — ควรตรวจ',focusScore:0,error:true}}state.culling.set(f,r);done++;if(done%50===0)await saveSessionNow();cc.unculled=Math.max(0,cc.unculled-1);if(r.status==='pass')cc.pass++;else if(r.status==='review')cc.review++;else cc.reject++;els.cullBar.style.width=(done/total*100)+'%';setStatus(els.cullStatus,`คัด ${done}/${total} · PASS ${cc.pass} · REVIEW ${cc.review} · REJECT ${cc.reject}`,'warn');if(done%renderEvery===0){renderCullCounts();renderPreview()}await new Promise(r=>setTimeout(r,0))}assignBurstTags();if(!state.cancelCull)els.cullBar.style.width='100%';state.cullingRunning=false;els.stopCull.disabled=true;els.runCull.disabled=false;renderCullCounts();cc=cullCounts();setStatus(els.cullStatus,state.cancelCull?`หยุดแล้ว — กดคัดภาพอีกครั้งเพื่อทำต่อ · เหลือ ${cc.unculled}`:`คัดเสร็จแล้ว · PASS ${cc.pass} · REVIEW ${cc.review} · REJECT ${cc.reject}`,'good');await saveSessionNow();renderPreview()}
+function detectScene(full,meta){
+  if(els.sceneMode.value!=='auto') return {mode:els.sceneMode.value,auto:false};
+  const iso=Number(meta?.iso||0),mean=full.mean||0,p50=full.p50||0,p90=full.p90||0,p10=full.p10||0;
+  const dynamic=Math.max(0,p90-p10);
+  const nightScore=(mean<.34?1:0)+(p50<.34?1:0)+(p90<.78?1:0)+(iso>=1600?1:iso>=800?.5:0);
+  const forestScore=(full.green>.14?1:0)+(dynamic>.58?1:0)+(full.low>.025?1:0)+(full.high>.004?1:0)+(p50<.55?0.5:0);
+  const mixed=((full.high>.008&&full.low>.05)||(Math.abs(full.r-full.b)>.09&&iso>=800)||(p90>.93&&p50<.42))?1:0;
+  let mode='day';
+  if(nightScore>=2.5) mode='night';
+  else if(forestScore>=3) mode='forest';
+  else if(mixed) mode='mixed';
+  return {mode,auto:true};
+}
+
+async function analyzeOne(file){const meta=state.meta.get(file)||{};const {bmp,w,h}=await decodeFile(file,640);const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(bmp,0,0,w,h);let source='Histogram',roi={x:0,y:0,w,h},confidence=0;if(els.subjectWeight.value!=='off'){const cr=state.culling.get(file);if(cr?.faceBox&&cr.faceReliable){roi=denormalizeBox(cr.faceBox,w,h);source='Face';confidence=.95}else if(cr?.personBox){roi=denormalizeBox(cr.personBox,w,h);source='Person';confidence=.9}else{await ensureModels(els.autoStatus);if(state.faceModel){try{const faces=await state.faceModel.estimateFaces(c,false);if(faces.length){const f=faces.sort((a,b)=>((b.bottomRight[0]-b.topLeft[0])*(b.bottomRight[1]-b.topLeft[1]))-((a.bottomRight[0]-a.topLeft[0])*(a.bottomRight[1]-a.topLeft[1])))[0];const fw=f.bottomRight[0]-f.topLeft[0],fh=f.bottomRight[1]-f.topLeft[1];roi={x:f.topLeft[0]-fw*.4,y:f.topLeft[1]-fh*.35,w:fw*1.8,h:fh*1.8};source='Face';confidence=f.probability?.[0]||.9}}catch{}}if(source==='Histogram'&&state.personModel){try{const ps=(await state.personModel.detect(c,10,.30)).filter(p=>p.class==='person');if(ps.length){const p=ps.sort((a,b)=>b.score-a.score)[0],q=p.bbox;roi={x:q[0]+q[2]*.15,y:q[1],w:q[2]*.7,h:q[3]*.55};source='Person';confidence=p.score}}catch{}}}}
+  const full=roiStats(x,0,0,w,h),sub=source==='Histogram'?roiStats(x,w*.2,h*.15,w*.6,h*.7):roiStats(x,roi.x,roi.y,roi.w,roi.h),scene=detectScene(full,meta);bmp.close();
+  const sw=els.subjectWeight.value==='high'?.68:els.subjectWeight.value==='medium'?.48:0;const lum=full.mean*(1-sw)+sub.mean*sw;
+  const sceneTarget={
+    day:(source==='Face'?.56:source==='Person'?.53:.50),
+    forest:(source==='Face'?.54:source==='Person'?.51:.48),
+    night:(source==='Face'?.47:source==='Person'?.45:.43),
+    mixed:(source==='Face'?.52:source==='Person'?.49:.47)
+  }[scene.mode]||.50;
+  let strength={natural:.45,standard:.65,punchy:.82}[els.autoStrength.value]||.45;
+  if(scene.mode==='night')strength*=.75;else if(scene.mode==='mixed')strength*=.86;else if(scene.mode==='forest')strength*=.95;
+  let ev=Math.log2(sceneTarget/Math.max(.03,lum));ev*=strength;
+  const dbBase={wide:.10,normal:.065,narrow:.035}[els.deadband.value];
+  const db=scene.mode==='night'?dbBase*.95:scene.mode==='mixed'?dbBase*.9:scene.mode==='forest'?dbBase*.92:dbBase;
+  if(Math.abs(ev)<db)ev=0;
+  const evMin=scene.mode==='night'?-.24:scene.mode==='mixed'?-.30:scene.mode==='forest'?-.24:-.38;
+  const evMax=scene.mode==='night'?.24:scene.mode==='mixed'?.30:scene.mode==='forest'?.24:.38;
+  ev=clamp(ev,evMin,evMax);
+  let highlights=0,shadows=0,forestRange=0;
+  if(els.toneAuto.checked){
+    if(scene.mode==='forest'){
+      const dynamic=Math.max(0,full.p90-full.p10);forestRange=dynamic;
+      const hot=Math.max(0,(full.p90-.82)*90)+Math.max(0,full.high-.003)*1200;
+      const dark=Math.max(0,(.14-full.p10)*120)+Math.max(0,full.low-.015)*650;
+      highlights=-clamp(12+hot,12,48)*strength;
+      shadows=clamp(10+dark,10,40)*strength;
+      if(full.p90<.84&&full.high<.003)highlights*=.55;
+      if(full.p10>.13&&full.low<.02)shadows*=.55;
+    }else if(scene.mode==='night'){
+      highlights=full.high>.006?-clamp((full.high-.006)*900,0,28):full.p90>.84?-8:0;
+      shadows=full.low>.04?clamp((full.low-.04)*180,0,8):full.p10<.08?3:0;
+      highlights*=strength;shadows*=strength;
+    }else if(scene.mode==='mixed'){
+      highlights=full.high>.010?-clamp((full.high-.010)*820,0,26):full.p90>.90?-7:0;
+      shadows=full.low>.03?clamp((full.low-.03)*320,0,14):full.p10<.095?5:0;
+      highlights*=strength;shadows*=strength;
+    }else{
+      highlights=full.high>.012?-clamp((full.high-.012)*700,0,22):full.p90>.91?-6:0;
+      shadows=full.low>.025?clamp((full.low-.025)*450,0,22):full.p10<.10?6:0;
+      highlights*=strength;shadows*=strength;
+    }
+  }
+  let gains={r:1,g:1,b:1};
+  if(els.wbAuto.checked){
+    const avg=(full.r+full.g+full.b)/3;
+    const wr=scene.mode==='night'?.18:scene.mode==='mixed'?.20:scene.mode==='forest'?.20:.28;
+    const wg=scene.mode==='night'?.12:scene.mode==='mixed'?.14:scene.mode==='forest'?.13:.18;
+    gains.r=clamp(1+(avg/full.r-1)*wr*strength,.96,1.04);
+    gains.g=clamp(1+(avg/full.g-1)*wg*strength,.97,1.03);
+    gains.b=clamp(1+(avg/full.b-1)*wr*strength,.96,1.04);
+  }
+  let vibrance=0,green=0,clarity=0;
+  if(els.vibranceAuto.checked){
+    vibrance=clamp((.28-full.sat)*24*strength,-2,scene.mode==='night'?4:scene.mode==='forest'?5:8);
+    green=scene.mode==='night'?clamp((full.green-.25)*12*strength,0,3):scene.mode==='forest'?clamp((full.green-.20)*15*strength,0,5):clamp((full.green-.23)*22*strength,0,6);
+  }
+  if(els.clarityAuto.checked)clarity=(scene.mode==='night'?{natural:1,standard:2,punchy:3}:scene.mode==='forest'?{natural:1.5,standard:3,punchy:4}:{natural:2,standard:4,punchy:6})[els.autoStrength.value]||2;
+  const iso=meta.iso||100;let nr=0,sharp=0;
+  if(els.detailAuto.checked){
+    if(scene.mode==='night'){nr=iso>=6400?12:iso>=3200?9:iso>=1600?6:iso>=800?4:2;sharp=iso>=6400?1:iso>=3200?2:iso>=1600?2:3}
+    else if(scene.mode==='forest'){nr=iso>=3200?8:iso>=1600?5:iso>=800?3:iso>=400?1:0;sharp=iso>=3200?2:iso>=1600?3:4}
+    else{nr=iso>=3200?8:iso>=1600?5:iso>=800?3:iso>=400?1:0;sharp=iso>=3200?2:iso>=1600?3:5}
+  }
+  return {source,confidence,scene:scene.mode,ev,highlights,shadows,forestRange,gains,vibrance,green,clarity,nr,sharp,full,sub};
+}
+
+function skinLike(r,g,b){return r>g*1.05&&g>b*1.05&&r-b>18&&r>70&&g>45&&b>25}
+function applyTone(imageData,a){
+  const d=imageData.data,exp=Math.pow(2,a.ev||0),contrast=1+(a.clarity||0)/100,hl=(a.highlights||0)/100,sh=(a.shadows||0)/100,vr=(a.vibrance||0)/100,gr=(a.green||0)/100;
+  const forest=a.scene==='forest';
+  for(let i=0;i<d.length;i+=4){
+    let r=d[i]*a.gains.r,g=d[i+1]*a.gains.g,b=d[i+2]*a.gains.b;
+    r*=exp;g*=exp;b*=exp;
+    let L=(.2126*r+.7152*g+.0722*b)/255;
+    if(forest){
+      let target=L;
+      if(sh>0){
+        const toe=smoothstep(.025,.11,L),fall=1-smoothstep(.34,.60,L),mask=toe*fall;
+        target+=Math.max(0,.40-L)*sh*.72*mask;
+      }
+      if(hl<0){
+        const shoulder=smoothstep(.52,.90,L),amount=(-hl)*.72;
+        target-=Math.max(0,L-.50)*amount*shoulder;
+      }
+      target=clamp(target,0,1);
+      const ratio=clamp(target/Math.max(.012,L),.72,1.42);
+      r*=ratio;g*=ratio;b*=ratio;
+      // Mild S-curve in midtones to keep forest depth after DR compression.
+      const m=(.2126*r+.7152*g+.0722*b)/255;
+      const mid=(m-.5)*(1+Math.min(.035,Math.abs(hl-sh)*.025));
+      const mt=clamp(.5+mid,0,1),mr=clamp(mt/Math.max(.012,m),.93,1.07);
+      r*=mr;g*=mr;b*=mr;
+    }else{
+      if(sh>0){const m=(1-smoothstep(.18,.60,L))*sh*.42,delta=(255*(.52-L))*m;r+=delta;g+=delta;b+=delta}
+      if(hl<0){const m=smoothstep(.55,.96,L)*(-hl)*.48,delta=(255*(L-.55))*m;r-=delta;g-=delta;b-=delta}
+    }
+    r=(r-127.5)*contrast+127.5;g=(g-127.5)*contrast+127.5;b=(b-127.5)*contrast+127.5;
+    if(gr>0&&g>r*1.06&&g>b*1.06)g-=255*gr*.12;
+    const avg=(r+g+b)/3,sat=Math.max(r,g,b)-Math.min(r,g,b),skin=els.skinProtect.checked&&skinLike(r,g,b);
+    const vv=vr*(1-clamp(sat/170,0,.8))*(skin?.2:1);
+    r=avg+(r-avg)*(1+vv);g=avg+(g-avg)*(1+vv);b=avg+(b-avg)*(1+vv);
+    d[i]=clamp(r,0,255);d[i+1]=clamp(g,0,255);d[i+2]=clamp(b,0,255);
+  }
+  return imageData
+}
+function sharpenImageData(img,amount){if(amount<=0)return img;const w=img.width,h=img.height,d=img.data,src=new Uint8ClampedArray(d),a=amount;for(let y=1;y<h-1;y++){let i=(y*w+1)*4;for(let x=1;x<w-1;x++,i+=4){for(let c=0;c<3;c++){const center=src[i+c],blur=(src[i-4+c]+src[i+4+c]+src[i-w*4+c]+src[i+w*4+c]+center*4)/8;d[i+c]=clamp(center+(center-blur)*a,0,255)}}}return img}
+async function processVisual(file,a){const bmp=await createImageBitmap(file);let tw=bmp.width,th=bmp.height;if(els.resizeEnabled.checked){const le=clamp(Number(els.longEdge.value||4500),500,12000),mx=Math.max(tw,th);if(!(els.noUpscale.checked&&mx<=le)){const s=le/mx;tw=Math.max(1,Math.round(tw*s));th=Math.max(1,Math.round(th*s))}}
+  let work=bmp;let cw=bmp.width,ch=bmp.height;while(Math.max(cw/tw,ch/th)>2){const nw=Math.max(tw,Math.round(cw/2)),nh=Math.max(th,Math.round(ch/2)),c=document.createElement('canvas');c.width=nw;c.height=nh;const x=c.getContext('2d');x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.drawImage(work,0,0,nw,nh);if(work!==bmp)work.close();work=await createImageBitmap(c);cw=nw;ch=nh}
+  const c=document.createElement('canvas');c.width=tw;c.height=th;const x=c.getContext('2d',{willReadFrequently:true});x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';if(a?.nr>=5)x.filter='blur(0.25px)';x.drawImage(work,0,0,tw,th);x.filter='none';if(work!==bmp)work.close();bmp.close();if(a&&els.autoEnabled.checked){let img=x.getImageData(0,0,tw,th);applyTone(img,a);let sh=0;if(els.sharpen.value!=='off'){if(els.sharpen.value==='low')sh=.18;else if(els.sharpen.value==='medium')sh=.28;else sh=(a.sharp||4)*.045}if(sh>0)sharpenImageData(img,clamp(sh,.08,.32));x.putImageData(img,0,0)}return {canvas:c,w:tw,h:th}}
+function canvasBlob(c,q){return new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error('JPEG encode failed')),'image/jpeg',q))}
+async function encodeToLimit(canvas,exifBytes){if(!els.resizeEnabled.checked&&!els.autoEnabled.checked)return null;const limit=Number(els.fileLimit.value||4.8)*1048576,exifExtra=exifBytes?.length||0,target=Math.max(100000,limit-exifExtra-2048),minQ=clamp(Number(els.minQuality.value||78)/100,.5,.98);let lo=minQ,hi=.99,best=null,bq=minQ;for(let i=0;i<7;i++){const q=(lo+hi)/2,b=await canvasBlob(canvas,q);if(b.size<=target){best=b;bq=q;lo=q}else hi=q}if(!best){best=await canvasBlob(canvas,minQ);bq=minQ}return {blob:best,quality:bq}}
+function outputName(file,index){if(!els.renameEnabled.checked)return file.name;const n=Number(els.startNo.value||1)+index,d=Number(els.digits.value||4),run=pad(n,d),code=String(els.photographer.value||'').replace(/[^A-Za-z0-9_-]/g,'');const b=baseName(file.name);if(els.renameMode.value==='pse')return `PSE${code}-${run}.JPG`;if(els.renameMode.value==='original')return `${b}-${run}.JPG`;return `${b}PSE${code}-${run}.JPG`}
+async function readMeta(file){try{const head=await file.slice(0,262144).arrayBuffer(),p=parseExif(head);return {date:p.date,tz:p.tz,iso:p.iso,model:p.model,orientation:p.orientation,size:file.size}}catch{return {size:file.size}}}
+async function addFiles(list,{pathMap=null,restoreSaved=true,preserveSource=false,resumeExport=false}={}){const files=[...list].filter(f=>/jpe?g$/i.test(f.name)).sort((a,b)=>((pathMap?.get(a))||a.webkitRelativePath||a.name).localeCompare((pathMap?.get(b))||b.webkitRelativePath||b.name,undefined,{numeric:true,sensitivity:'base'}));state.files=files;state.filePaths.clear();if(pathMap)for(const f of files)state.filePaths.set(f,pathMap.get(f)||f.name);else for(const f of files)state.filePaths.set(f,f.webkitRelativePath||f.name);state.meta.clear();state.analysis.clear();state.culling.clear();state.exportRoot=null;if(!resumeExport){state.exported.clear();state.exportSessionName=null}if(!preserveSource){state.sourceHandle=null;if(state.resumeRecord){state.resumeRecord.sourceHandle=null;state.resumeRecord.sourceName=null}};els.analyze.disabled=!files.length;els.runCull.disabled=!files.length;els.testOne.disabled=!files.length;els.exportAll.disabled=!files.length;els.openReviewQueue.disabled=true;setStatus(els.autoStatus,files.length?'กำลังอ่าน EXIF…':'เลือกรูปก่อน');setStatus(els.cullStatus,files.length?'กำลัง Scan metadata…':'เลือกรูปก่อน');const chunk=24;for(let start=0;start<files.length;start+=chunk){const part=files.slice(start,start+chunk),metas=await Promise.all(part.map(readMeta));for(let j=0;j<part.length;j++){const f=part[j];state.meta.set(f,metas[j]);if(restoreSaved){const saved=state.savedFileStates.get(fileKey(f));if(saved?.culling)state.culling.set(f,saved.culling);if(saved?.analysis)state.analysis.set(f,saved.analysis)}}updateFileSummary();setStatus(els.cullStatus,`Scan metadata ${Math.min(start+chunk,files.length)}/${files.length}`,'warn');await new Promise(r=>setTimeout(r,0))}assignBurstTags();setStatus(els.autoStatus,files.length?(state.analysis.size?`เรียกคืน Auto ${state.analysis.size.toLocaleString()} รูป · พร้อมทำต่อ`:'พร้อมวิเคราะห์ Auto Fine Tune'):'เลือกรูปก่อน','good');const cc=cullCounts();setStatus(els.cullStatus,files.length?(cc.unculled<files.length?`เรียกคืน Culling ${files.length-cc.unculled}/${files.length} · พร้อมทำต่อ`:'พร้อมคัดภาพ — ประมวลผลทีละรูป ไม่โหลดทั้งอัลบั้มเข้า RAM'):'เลือกรูปก่อน','good');updateFileSummary();renderCullCounts();renderPreview();scheduleSaveSession()}
+function updateFileSummary(){const total=state.files.reduce((s,f)=>s+f.size,0),iso=[...state.meta.values()].map(m=>m.iso).filter(Boolean);els.fileSummary.innerHTML=state.files.length?`<span class="chip">${state.files.length.toLocaleString()} รูป</span><span class="chip">${fmtBytes(total)}</span>${iso.length?`<span class="chip">ISO ${Math.min(...iso)}–${Math.max(...iso)}</span>`:''}`:'<span class="chip">ยังไม่มีไฟล์</span>'}
+function analysisText(a){if(!a)return 'ยังไม่วิเคราะห์';const dir=a.ev>.045?`สว่าง +${a.ev.toFixed(2)} EV`:a.ev<-.045?`มืด ${a.ev.toFixed(2)} EV`:'Exposure คงเดิม';const wb=Math.max(Math.abs(a.gains.r-1),Math.abs(a.gains.b-1))>.012?'WB Auto':'WB เดิม';const scene=(a.scene||'day').toUpperCase();const dr=a.scene==='forest'?` · DR ${(a.forestRange||0).toFixed(2)}`:'';return `${scene}${dr} · ${dir} · H ${Math.round(a.highlights)} · S +${Math.round(a.shadows)} · ${wb} · Vib ${a.vibrance.toFixed(1)} · ${a.source}`}
+function focusText(r){if(!r)return '<span class="muted">—</span>';const sc=Math.round(r.focusScore||0),tone=sc>=50?'var(--green)':sc>=28?'var(--amber)':'var(--red)';return `<span class="focus-meter"><span class="focus-bar"><i style="width:${sc}%;background:${tone}"></i></span><b>${sc}</b></span><br><span class="tiny">C ${Math.round(r.centerFocus||0)} · ⅓ ${Math.round(r.thirdFocus||0)} · คน ${Math.round(r.personFocus||0)}${r.faceReliable?` · หน้า ${Math.round(r.faceFocus||0)}`:''}</span>`}
+function releasePreviewUrls(){for(const u of state.previewUrls)try{URL.revokeObjectURL(u)}catch{}state.previewUrls=[]}
+function setManualCull(index,status){const f=state.files[index];if(!f)return;resetExportSession();if(!status)state.culling.delete(f);else{const r=state.culling.get(f)||{focusScore:0};r.status=status;r.reason='ปรับสถานะด้วยตนเอง';r.manual=true;state.culling.set(f,r)}assignBurstTags();renderCullCounts();renderPreview();scheduleSaveSession()}
+async function makeAfterPreviewUrl(file){
+  if(!els.autoEnabled.checked)return URL.createObjectURL(file);
+  let a=state.analysis.get(file);if(!a){a=await analyzeOne(file);state.analysis.set(file,a);scheduleSaveSession()}
+  const {bmp,w,h}=await decodeFile(file,1200),c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});if(a?.nr>=5)x.filter='blur(0.25px)';x.drawImage(bmp,0,0,w,h);x.filter='none';bmp.close();let img=x.getImageData(0,0,w,h);applyTone(img,a);let sh=0;if(els.sharpen.value!=='off'){if(els.sharpen.value==='low')sh=.12;else if(els.sharpen.value==='medium')sh=.20;else sh=(a.sharp||4)*.032}if(sh>0)sharpenImageData(img,clamp(sh,.06,.24));x.putImageData(img,0,0);const blob=await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error('Preview encode failed')),'image/jpeg',.90));return URL.createObjectURL(blob)
+}
+function reviewIndices(){const a=[];for(let i=0;i<state.files.length;i++)if(state.culling.get(state.files[i])?.status==='review')a.push(i);return a}
+function reviewQueueText(i){if(!state.dialogReviewMode)return '';const q=reviewIndices(),p=q.indexOf(i);return p>=0?` · REVIEW ${p+1}/${q.length}`:` · REVIEW เหลือ ${q.length}`}
+function updateDialogNav(){const i=state.dialogIndex;if(i==null)return;if(state.dialogReviewMode){const q=reviewIndices();els.dialogPrev.disabled=!q.some(x=>x<i);els.dialogNext.disabled=!q.some(x=>x>i);const pos=q.indexOf(i);if(pos>=0)els.dialogInfo.dataset.queue=`REVIEW ${pos+1}/${q.length}`;else els.dialogInfo.dataset.queue=`REVIEW เหลือ ${q.length}`}else{els.dialogPrev.disabled=i<=0;els.dialogNext.disabled=i>=state.files.length-1;els.dialogInfo.dataset.queue=''}}
+async function openPhotoPreview(index,reviewMode=false){const f=state.files[index];if(!f)return;state.dialogToken++;const token=state.dialogToken;if(state.dialogUrl)URL.revokeObjectURL(state.dialogUrl);if(state.dialogAfterUrl)URL.revokeObjectURL(state.dialogAfterUrl);state.dialogUrl=URL.createObjectURL(f);state.dialogAfterUrl=null;state.dialogIndex=index;state.dialogReviewMode=reviewMode||state.dialogReviewMode;els.dialogImg.src=state.dialogUrl;els.dialogAfter.removeAttribute('src');els.dialogAfterLoading.classList.remove('hidden');els.dialogAfterLoading.textContent=els.autoEnabled.checked?'กำลังสร้าง After…':'Auto Edit ปิด — แสดงต้นฉบับ';const r=state.culling.get(f),m=state.meta.get(f)||{},a=state.analysis.get(f);els.dialogInfo.innerHTML=`<b>${f.name}</b>${reviewQueueText(index)}<br>${r?`${r.status.toUpperCase()} · Focus ${Math.round(r.focusScore||0)} · ${r.reason}`:'ยังไม่คัด'} · ISO ${m.iso||'—'}${a?`<br>${analysisText(a)}`:''}`;updateDialogNav();if(!els.photoDialog.open){if(typeof els.photoDialog.showModal==='function')els.photoDialog.showModal();else els.photoDialog.setAttribute('open','')}try{const u=await makeAfterPreviewUrl(f);if(token!==state.dialogToken){URL.revokeObjectURL(u);return}state.dialogAfterUrl=u;els.dialogAfter.src=u;els.dialogAfterLoading.classList.add('hidden');const aa=state.analysis.get(f);if(aa)els.dialogInfo.innerHTML=`<b>${f.name}</b>${reviewQueueText(index)}<br>${r?`${r.status.toUpperCase()} · Focus ${Math.round(r.focusScore||0)} · ${r.reason}`:'ยังไม่คัด'} · ISO ${m.iso||'—'}<br>${analysisText(aa)}`;}catch(e){console.warn(e);if(token===state.dialogToken){els.dialogAfterLoading.textContent='สร้าง After ไม่สำเร็จ';}}
+}
+function openReviewQueue(){const q=reviewIndices();if(!q.length){setStatus(els.cullStatus,'ไม่มีภาพ REVIEW แล้ว','good');return}state.dialogReviewMode=true;openPhotoPreview(q[0],true)}
+function moveDialog(delta){const i=state.dialogIndex;if(i==null)return;if(state.dialogReviewMode){const q=reviewIndices();let target=null;if(delta>0)target=q.find(x=>x>i);else{for(let n=q.length-1;n>=0;n--)if(q[n]<i){target=q[n];break}}if(target!=null)openPhotoPreview(target,true)}else{const target=i+delta;if(target>=0&&target<state.files.length)openPhotoPreview(target,false)}}
+function dialogSetStatus(status){const idx=state.dialogIndex;if(idx==null)return;const reviewMode=state.dialogReviewMode;setManualCull(idx,status);if(reviewMode&&status!=='review'){const q=reviewIndices(),next=q.find(x=>x>idx)??q[0];if(next!=null)openPhotoPreview(next,true);else els.photoDialog.close()}else openPhotoPreview(idx,reviewMode)}
+function renderPreview(){
+  releasePreviewUrls();
+  if(!state.files.length){els.rows.innerHTML='<tr><td colspan="9">เลือกรูปก่อน</td></tr>';els.previewSummary.textContent='ยังไม่มีไฟล์';els.renamePreview.textContent='ตัวอย่าง: —';return}
+  const seqMap=new Map();let seq=0;for(const f of state.files)if(shouldExport(f))seqMap.set(f,seq++);
+  els.renamePreview.textContent=`ตัวอย่าง: ${state.files[0].name} → ${outputName(state.files[0],seqMap.get(state.files[0])??0)}`;
+  const filter=els.previewFilter.value||'all',items=[];for(let i=0;i<state.files.length;i++){const f=state.files[i],r=state.culling.get(f);if(filter==='all'||(filter==='unculled'&&!r)||(r&&r.status===filter))items.push({f,i,r})}
+  els.previewSummary.textContent=`${items.length.toLocaleString()} / ${state.files.length.toLocaleString()} ไฟล์`;
+  els.rows.innerHTML=items.slice(0,100).map(({f,i,r})=>{const m=state.meta.get(f)||{},a=state.analysis.get(f),resize=els.resizeEnabled.checked?`Long Edge ${els.longEdge.value}px · ≤ ${els.fileLimit.value}MB`:'ไม่ Resize',url=URL.createObjectURL(f);state.previewUrls.push(url);const options=`<option value="" ${!r?'selected':''}>ยังไม่คัด</option><option value="pass" ${r?.status==='pass'?'selected':''}>PASS</option><option value="review" ${r?.status==='review'?'selected':''}>REVIEW</option><option value="reject" ${r?.status==='reject'?'selected':''}>REJECT</option>`;return `<tr><td>${i+1}</td><td><button class="thumb-btn" data-preview-index="${i}" type="button" title="เปิดดูภาพ"><img class="thumb" loading="lazy" src="${url}" alt="${f.name.replace(/\"/g,'')}"></button></td><td>${f.name}<br><span class="tiny">${fmtBytes(f.size)} · ISO ${m.iso||'—'} · ${m.date||'ไม่มี EXIF'}</span></td><td>${cullLabel(r)}<br><select class="status-select" data-index="${i}">${options}</select></td><td>${focusText(r)}</td><td>${outputName(f,seqMap.get(f)??i)}</td><td>${analysisText(a)}</td><td>${resize}</td><td>${r?.status==='reject'?'<span class="badtxt">ไม่ Export ตามค่าเริ่มต้น</span>':a?'<span class="goodtxt">พร้อม</span>':'<span class="muted">รอ Auto / Export</span>'}</td></tr>`}).join('');
+  els.rows.querySelectorAll('.status-select').forEach(sel=>sel.addEventListener('change',()=>setManualCull(Number(sel.dataset.index),sel.value)));
+  els.rows.querySelectorAll('.thumb-btn').forEach(btn=>btn.addEventListener('click',()=>openPhotoPreview(Number(btn.dataset.previewIndex))));
+}
+async function analyzeAlbum(){if(!state.files.length||state.analyzing)return;state.analyzing=true;state.cancelAnalyze=false;els.analyze.disabled=true;els.stopAnalyze.disabled=false;els.analyzeProgress.classList.remove('hidden');let up=0,same=0,down=0,skipped=0;for(let i=0;i<state.files.length;i++){if(state.cancelAnalyze)break;const f=state.files[i],cr=state.culling.get(f);if(els.cullEnabled.checked&&cr?.status==='reject'&&!els.exportReject.checked){skipped++;els.analyzeBar.style.width=((i+1)/state.files.length*100)+'%';continue}if(state.analysis.has(f)){const a=state.analysis.get(f);if(a.ev>.045)up++;else if(a.ev<-.045)down++;else same++;els.analyzeBar.style.width=((i+1)/state.files.length*100)+'%';continue}try{const a=await analyzeOne(f);state.analysis.set(f,a);if(a.ev>.045)up++;else if(a.ev<-.045)down++;else same++;}catch(e){console.warn(f.name,e)}if((i+1)%50===0)await saveSessionNow();els.analyzeBar.style.width=((i+1)/state.files.length*100)+'%';setStatus(els.autoStatus,`วิเคราะห์ ${i+1}/${state.files.length} · สว่างขึ้น ${up} · คงเดิม ${same} · มืดลง ${down} · ข้าม Reject ${skipped}`,'warn');if(i%(state.files.length>5000?100:state.files.length>1000?50:20)===0)renderPreview();await new Promise(r=>setTimeout(r,0))}state.analyzing=false;els.stopAnalyze.disabled=true;els.analyze.disabled=false;setStatus(els.autoStatus,state.cancelAnalyze?'หยุดการวิเคราะห์แล้ว':`เสร็จแล้ว · สว่างขึ้น ${up} · คงเดิม ${same} · มืดลง ${down} · ข้าม Reject ${skipped}`,'good');await saveSessionNow();renderPreview()}
+async function chooseOutput(){if(!window.showDirectoryPicker){setStatus(els.result,'Browser นี้ไม่รองรับ Folder Export แนะนำ Chrome/Edge ผ่าน HTTPS','bad');els.result.classList.remove('hidden');return}try{state.output=await showDirectoryPicker({mode:'readwrite'});state.exportRoot=null;state.exportSessionName=null;state.exported.clear();els.folderStatus.textContent=`เลือกแล้ว: ${state.output.name} · จะสร้าง KEITA_EXPORT_...`;scheduleSaveSession()}catch(e){if(e.name!=='AbortError')throw e}}
+function shouldExport(file){if(!els.cullEnabled.checked)return true;const r=state.culling.get(file);if(!r)return true;if(r.status==='reject')return !!els.exportReject.checked;if(r.status==='review')return !!els.exportReview.checked;return true}
+async function exportTargetDir(root,file){if(!els.cullFolders.checked)return root;const r=state.culling.get(file),name=r?.status==='reject'?'REJECT':r?.status==='review'?'REVIEW':'PASS';return await root.getDirectoryHandle(name,{create:true})}
+async function buildOutput(file,index){const origBuf=await file.arrayBuffer(),p=parseExif(origBuf),m=state.meta.get(file)||{},date=adjustedDate(m,index),tz=els.tzEnabled.checked?els.timezone.value:m.tz;let a=state.analysis.get(file);if(els.autoEnabled.checked&&!a){a=await analyzeOne(file);state.analysis.set(file,a)}const needsVisual=els.autoEnabled.checked||els.resizeEnabled.checked;let outBuf,w=null,h=null,q=null,reencoded=false;if(needsVisual){const v=await processVisual(file,a);w=v.w;h=v.h;const patched=patchExifBytes(p.seg,{date:els.dateEnabled.checked?date:null,tz:els.tzEnabled.checked?tz:null,orientation:1,width:w,height:h});const enc=await encodeToLimit(v.canvas,patched);const jb=await enc.blob.arrayBuffer();outBuf=injectExif(jb,patched);q=enc.quality;reencoded=true}else{const u=new Uint8Array(origBuf);const patched=patchExifBytes(p.seg,{date:els.dateEnabled.checked?date:null,tz:els.tzEnabled.checked?tz:null});if(p.seg&&patched){const out=new Uint8Array(u.length);out.set(u);out.set(patched,p.seg.start);outBuf=out.buffer}else outBuf=origBuf}return {buf:outBuf,name:outputName(file,index),w,h,q,reencoded,a}}
+async function saveOne(dir,res){const fh=await dir.getFileHandle(res.name,{create:true}),wr=await fh.createWritable();await wr.write(res.buf);await wr.close()}
+async function testOne(){const f=state.files.find(shouldExport);if(!f)return;els.result.classList.remove('hidden');setStatus(els.result,'กำลังทดสอบไฟล์แรกที่พร้อม Export…','warn');try{const r=await buildOutput(f,0);const cr=state.culling.get(f);setStatus(els.result,`ทดสอบผ่าน: ${r.name} · ${r.w?`${r.w}×${r.h} · `:''}${fmtBytes(r.buf.byteLength)}${r.q?` · Q${Math.round(r.q*100)}`:''} · ${cr?cr.status.toUpperCase()+' · ':''}${analysisText(r.a)}`,'good')}catch(e){console.error(e);setStatus(els.result,`ทดสอบไม่ผ่าน: ${e.message||e}`,'bad')}}
+async function exportAll(){
+  if(!state.files.length||state.exporting)return;
+  if(!state.output){await chooseOutput();if(!state.output)return}
+  if(!(await queryHandlePermission(state.output,'readwrite'))){els.result.classList.remove('hidden');setStatus(els.result,'ไม่ได้รับสิทธิ์เขียน Folder Export','bad');return}
+  const queue=state.files.filter(shouldExport);if(!queue.length){els.result.classList.remove('hidden');setStatus(els.result,'ไม่มีไฟล์ที่ตรงเงื่อนไข Export','bad');return}
+  if(!state.exportRoot){if(!state.exportSessionName)state.exportSessionName=`KEITA_EXPORT_${nowStamp()}`;state.exportRoot=await state.output.getDirectoryHandle(state.exportSessionName,{create:true});scheduleSaveSession()}
+  const indexMap=new Map(queue.map((f,i)=>[f,i])),pending=queue.filter(f=>!state.exported.has(fileKey(f)));
+  if(!pending.length){els.result.classList.remove('hidden');setStatus(els.result,`Export ชุดนี้ครบแล้ว ${queue.length} ไฟล์ · Resume progress ถูกบันทึกแล้ว`,'good');return}
+  state.exporting=true;state.cancelExport=false;els.cancelExport.classList.remove('hidden');els.exportProgress.classList.remove('hidden');els.exportAll.disabled=true;els.result.classList.remove('hidden');let ok=0,fail=0,re=0,kept=0;const skipped=state.files.length-queue.length,already=queue.length-pending.length;
+  for(let pidx=0;pidx<pending.length;pidx++){
+    if(state.cancelExport)break;const f=pending[pidx],seq=indexMap.get(f);
+    try{const r=await buildOutput(f,seq);const target=await exportTargetDir(state.exportRoot,f);await saveOne(target,r);state.exported.add(fileKey(f));ok++;r.reencoded?re++:kept++;}catch(e){fail++;console.error(f.name,e)}
+    const done=already+pidx+1;els.exportBar.style.width=(done/queue.length*100)+'%';setStatus(els.result,`กำลัง Export ${done}/${queue.length} · รอบนี้สำเร็จ ${ok} · ผิดพลาด ${fail} · ข้าม Culling ${skipped}`,'warn');if(ok%10===0)scheduleSaveSession();await new Promise(r=>setTimeout(r,0))
+  }
+  state.exporting=false;els.cancelExport.classList.add('hidden');els.exportAll.disabled=false;const totalDone=queue.filter(f=>state.exported.has(fileKey(f))).length;scheduleSaveSession();
+  if(state.cancelExport)setStatus(els.result,`หยุดแล้วที่ ${totalDone}/${queue.length} · ปิดหน้าเว็บได้ แล้ว Resume ต่อจากจุดเดิม`,'warn');else setStatus(els.result,`เสร็จแล้ว · ${totalDone}/${queue.length} · ผิดพลาดรอบนี้ ${fail} · ข้ามตาม Culling ${skipped} · Re-encode ${re} · เก็บ JPEG เดิม ${kept}`,(fail?'warn':'good'))
+}
+
+els.closeDialog.addEventListener('click',()=>els.photoDialog.close());
+els.dialogPrev.addEventListener('click',()=>moveDialog(-1));els.dialogNext.addEventListener('click',()=>moveDialog(1));
+els.dialogPass.addEventListener('click',()=>dialogSetStatus('pass'));els.dialogReview.addEventListener('click',()=>dialogSetStatus('review'));els.dialogReject.addEventListener('click',()=>dialogSetStatus('reject'));
+els.photoDialog.addEventListener('close',()=>{state.dialogToken++;if(state.dialogUrl){URL.revokeObjectURL(state.dialogUrl);state.dialogUrl=null}if(state.dialogAfterUrl){URL.revokeObjectURL(state.dialogAfterUrl);state.dialogAfterUrl=null}els.dialogImg.removeAttribute('src');els.dialogAfter.removeAttribute('src');state.dialogIndex=null;state.dialogReviewMode=false});
+els.photoDialog.addEventListener('keydown',e=>{if(e.target.matches('input,select,textarea'))return;if(e.key==='ArrowLeft'){e.preventDefault();moveDialog(-1)}else if(e.key==='ArrowRight'){e.preventDefault();moveDialog(1)}else if(e.key==='1'){e.preventDefault();dialogSetStatus('pass')}else if(e.key==='2'){e.preventDefault();dialogSetStatus('review')}else if(e.key==='3'){e.preventDefault();dialogSetStatus('reject')}});
+els.openReviewQueue.addEventListener('click',openReviewQueue);
+els.sourceFolder.addEventListener('click',pickSourceFolder);els.resumeSource.addEventListener('click',resumeSourceFolder);els.forgetSession.addEventListener('click',forgetSession);
+els.files.addEventListener('change',e=>addFiles(e.target.files,{restoreSaved:true,resumeExport:false}));els.folder.addEventListener('change',e=>addFiles(e.target.files,{restoreSaved:true,resumeExport:false}));
+els.clear.addEventListener('click',()=>{state.files=[];state.filePaths.clear();state.meta.clear();state.analysis.clear();state.culling.clear();resetExportSession();updateFileSummary();renderCullCounts();renderPreview();els.analyze.disabled=true;els.runCull.disabled=true;els.testOne.disabled=true;els.exportAll.disabled=true;els.openReviewQueue.disabled=true;setStatus(els.cullStatus,'เลือกรูปก่อน');setStatus(els.autoStatus,'เลือกรูปก่อน')});
+els.runCull.addEventListener('click',cullAlbum);els.stopCull.addEventListener('click',()=>state.cancelCull=true);els.analyze.addEventListener('click',analyzeAlbum);els.stopAnalyze.addEventListener('click',()=>state.cancelAnalyze=true);els.chooseOutput.addEventListener('click',chooseOutput);els.testOne.addEventListener('click',testOne);els.exportAll.addEventListener('click',exportAll);els.cancelExport.addEventListener('click',()=>state.cancelExport=true);els.previewFilter.addEventListener('change',renderPreview);els.cullEnabled.addEventListener('change',()=>{els.runCull.disabled=!els.cullEnabled.checked||!state.files.length;renderPreview();scheduleSaveSession()});
+['renameEnabled','renameMode','photographer','startNo','digits','resizeEnabled','longEdge','fileLimit','minQuality','dateEnabled','dateMode','newDate','newTime','offDays','offHours','offMinutes','offSeconds','tzEnabled','timezone','autoEnabled','sceneMode','cullEnabled','exportReview','exportReject','cullFolders'].forEach(id=>els[id].addEventListener('input',()=>{resetExportSession();renderPreview()}));
+['autoStrength','subjectWeight','deadband','sceneMode','toneAuto','wbAuto','skinProtect','vibranceAuto','clarityAuto','detailAuto'].forEach(id=>els[id].addEventListener('input',()=>{state.analysis.clear();setStatus(els.autoStatus,state.files.length?'ตั้งค่า Auto เปลี่ยนแล้ว — กดวิเคราะห์ใหม่':'เลือกรูปก่อน','warn');renderPreview();scheduleSaveSession()}));
+['cullSensitivity','personConfidence','focusPriority'].forEach(id=>els[id].addEventListener('input',()=>{state.culling.clear();state.analysis.clear();resetExportSession();renderCullCounts();setStatus(els.cullStatus,state.files.length?'ตั้งค่า Culling เปลี่ยนแล้ว — กดคัดภาพใหม่':'เลือกรูปก่อน','warn');renderPreview()}));els.burstGap.addEventListener('input',()=>{assignBurstTags();renderPreview();scheduleSaveSession()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&state.files.length)saveSessionNow()});
+const today=new Date();els.newDate.value=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+renderCullCounts();
+renderPreview();
+initResume();
+})();
+</script>
+</body>
+</html>
