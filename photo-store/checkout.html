@@ -1931,9 +1931,10 @@
     let cartKey = null;
     let cart = [];
     let eventId = null;
+    let currentEvent = null;
     let isSubmitting = false;
 
-    const IMAGE_SINGLE_PRICE = Number(CONFIG.DEFAULT_PHOTO_PRICE || 60);
+    let IMAGE_SINGLE_PRICE = Number(CONFIG.DEFAULT_PHOTO_PRICE || 60);
     const IMAGE_PACK_10_PRICE = Number(CONFIG.IMAGE_PACK_10_PRICE || 250);
     const IMAGE_PACK_20_PRICE = Number(CONFIG.IMAGE_PACK_20_PRICE || 500);
 
@@ -2202,6 +2203,8 @@
           return;
         }
 
+        await loadEventPricing();
+
         normalizeCartItems();
         saveCart();
 
@@ -2382,6 +2385,45 @@
       return cart.filter(item => isVideoItem(item));
     }
 
+    async function loadEventPricing() {
+      if (!eventId) {
+        eventId = getEventIdFromUrl();
+      }
+
+      if (!eventId) {
+        console.warn("ไม่พบ eventId สำหรับโหลดราคา Event");
+        return;
+      }
+
+      const { data, error } = await db
+        .from("events")
+        .select("id,title,name,price,photo_price")
+        .eq("id", eventId)
+        .single();
+
+      if (error) {
+        console.warn("โหลดราคา Event ไม่สำเร็จ ใช้ราคา fallback แทน:", error);
+        return;
+      }
+
+      currentEvent = data || null;
+
+      const eventPrice = Number(
+        currentEvent?.price ||
+        currentEvent?.photo_price ||
+        0
+      );
+
+      if (Number.isFinite(eventPrice) && eventPrice > 0) {
+        IMAGE_SINGLE_PRICE = eventPrice;
+      }
+
+      console.log("Checkout Event price:", {
+        eventId,
+        eventPrice: IMAGE_SINGLE_PRICE
+      });
+    }
+
     function normalizeCartItems() {
       cart = cart.map(item => {
         const mediaType = getMediaType(item);
@@ -2414,6 +2456,9 @@
         return {
           ...item,
           media_type: mediaType,
+          price: isVid
+            ? Number(item.price || VIDEO_SINGLE_PRICE)
+            : IMAGE_SINGLE_PRICE,
 
           preview_url: img,
           photo_url: img,
