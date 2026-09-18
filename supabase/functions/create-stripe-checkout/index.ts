@@ -89,6 +89,18 @@ Deno.serve(async (req) => {
 
     const isStripeTestMode = STRIPE_SECRET_KEY.startsWith("sk_test_");
 
+    // Production safety: refuse to create real checkout flow with a test key.
+    // Set ALLOW_STRIPE_TEST_MODE=1 only when intentionally running sandbox tests.
+    if (
+      isStripeTestMode &&
+      String(Deno.env.get("ALLOW_STRIPE_TEST_MODE") || "").trim() !== "1"
+    ) {
+      throw new HttpError(
+        503,
+        "Stripe ยังอยู่ในโหมดทดสอบ กรุณาตั้งค่า STRIPE_SECRET_KEY เป็น Live key ก่อนรับชำระเงินจริง",
+      );
+    }
+
     const supabase = createClient(
       SUPABASE_URL,
       SUPABASE_SERVICE_ROLE_KEY,
