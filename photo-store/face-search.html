@@ -1067,23 +1067,16 @@
           watermark_url: item.watermark_url,
           r2_preview_url: item.r2_preview_url,
           r2_watermark_url: item.r2_watermark_url,
-          r2_key: item.r2_key,
-          r2_original_key: item.r2_original_key,
           preview_path: item.preview_path,
           watermark_path: item.watermark_path,
-          original_path: item.original_path,
 
           thumbnail_url: item.thumbnail_url,
           thumbnail_path: item.thumbnail_path,
           r2_thumbnail_url: item.r2_thumbnail_url,
 
-          video_url: item.video_url,
-          video_path: item.video_path,
           video_preview_url: item.video_preview_url,
           video_preview_path: item.video_preview_path,
-          r2_video_url: item.r2_video_url,
           r2_video_preview_url: item.r2_video_preview_url,
-          r2_video_key: item.r2_video_key,
           r2_video_preview_key: item.r2_video_preview_key
         });
 
@@ -1167,11 +1160,8 @@
         filename.endsWith(".mp4") ||
         filename.endsWith(".mov") ||
         filename.endsWith(".webm") ||
-        photo.video_url ||
-        photo.video_path ||
         photo.video_preview_url ||
         photo.video_preview_path ||
-        photo.r2_video_url ||
         photo.r2_video_preview_url
       ) {
         return "video";
@@ -1427,7 +1417,7 @@
         thumbnail_path: mediaIsVideo ? (photo.thumbnail_path || null) : null,
 
         video_url: mediaIsVideo ? videoUrl : null,
-        video_path: mediaIsVideo ? (photo.video_path || photo.video_preview_path || null) : null,
+        video_path: mediaIsVideo ? (photo.video_preview_path || null) : null,
         duration_seconds: mediaIsVideo ? (photo.duration_seconds || null) : null,
 
         price,
@@ -1486,7 +1476,6 @@
         photo.thumbnail_url ||
         photo.public_url ||
         photo.url ||
-        photo.r2_key ||
         photo.preview_path ||
         photo.watermark_path ||
         `https://placehold.co/600x800/111827/ffffff?text=${encodeURIComponent(t().previewFallback)}`
@@ -1530,8 +1519,6 @@
         photo.video_preview_url ||
         photo.r2_video_preview_url ||
         photo.preview_video_url ||
-        photo.video_url ||
-        photo.r2_video_url ||
         "";
 
       if (raw) {
@@ -1541,11 +1528,6 @@
       const key =
         photo.video_preview_path ||
         photo.r2_video_preview_key ||
-        photo.video_path ||
-        photo.r2_video_key ||
-        photo.r2_key ||
-        photo.r2_original_key ||
-        photo.original_path ||
         "";
 
       if (key) {
