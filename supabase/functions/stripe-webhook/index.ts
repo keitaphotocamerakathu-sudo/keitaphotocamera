@@ -2,7 +2,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "npm:stripe@18.5.0";
 
 const STRIPE_SECRET_KEY = mustEnv("STRIPE_SECRET_KEY");
-const STRIPE_WEBHOOK_SECRET = mustEnv("STRIPE_WEBHOOK_SECRET");
+const STRIPE_WEBHOOK_SECRET =
+  String(Deno.env.get("STRIPE_WEBHOOK_SECRET") || "").trim();
 const SUPABASE_URL = mustEnv("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = mustEnv("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -42,18 +43,70 @@ Deno.serve(async (req) => {
     );
   }
 
-  let event: Stripe.Event;
+  let event: Stripe.Event | null = null;
 
-  try {
-    event = await stripe.webhooks.constructEventAsync(
-      rawBody,
-      signature,
-      STRIPE_WEBHOOK_SECRET,
-      undefined,
-      cryptoProvider,
+  const webhookSecrets: string[] = [];
+
+  const { data: managedWebhookConfig, error: managedWebhookConfigError } =
+    await supabase
+      .from("stripe_webhook_config")
+      .select("signing_secret")
+      .eq("id", 1)
+      .maybeSingle();
+
+  if (managedWebhookConfigError) {
+    console.warn(
+      "Unable to load managed Stripe webhook secret:",
+      managedWebhookConfigError,
     );
-  } catch (error) {
-    console.error("Webhook signature verification failed:", error);
+  }
+
+  const managedSecret =
+    String(managedWebhookConfig?.signing_secret || "").trim();
+
+  if (managedSecret) {
+    webhookSecrets.push(managedSecret);
+  }
+
+  if (
+    STRIPE_WEBHOOK_SECRET &&
+    !webhookSecrets.includes(STRIPE_WEBHOOK_SECRET)
+  ) {
+    webhookSecrets.push(STRIPE_WEBHOOK_SECRET);
+  }
+
+  if (!webhookSecrets.length) {
+    return jsonResponse(
+      {
+        received: false,
+        error: "Stripe webhook signing secret is not configured",
+      },
+      500,
+    );
+  }
+
+  let lastVerifyError: unknown = null;
+
+  for (const webhookSecret of webhookSecrets) {
+    try {
+      event = await stripe.webhooks.constructEventAsync(
+        rawBody,
+        signature,
+        webhookSecret,
+        undefined,
+        cryptoProvider,
+      );
+      break;
+    } catch (error) {
+      lastVerifyError = error;
+    }
+  }
+
+  if (!event) {
+    console.error(
+      "Webhook signature verification failed:",
+      lastVerifyError,
+    );
 
     return jsonResponse(
       {
@@ -62,6 +115,29 @@ Deno.serve(async (req) => {
       },
       400,
     );
+  }
+
+  const usingLiveStripeKey =
+    STRIPE_SECRET_KEY.startsWith("sk_live_") ||
+    STRIPE_SECRET_KEY.startsWith("rk_live_");
+
+  // Never try to retrieve a test Checkout Session using a live Stripe key,
+  // or a live Session using a test key.
+  if (Boolean(event.livemode) !== usingLiveStripeKey) {
+    console.log(
+      "Ignored Stripe event from different mode:",
+      event.id,
+      event.type,
+      event.livemode,
+    );
+
+    return jsonResponse({
+      received: true,
+      ignored: true,
+      reason: "stripe_mode_mismatch",
+      event_id: event.id,
+      livemode: event.livemode,
+    });
   }
 
   console.log("Stripe event:", event.id, event.type);
