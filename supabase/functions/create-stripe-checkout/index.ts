@@ -17,6 +17,10 @@ const PHOTO_PACK_10_PRICE = envNumber("PHOTO_PACK_10_PRICE", 250);
 const PHOTO_PACK_20_PRICE = envNumber("PHOTO_PACK_20_PRICE", 500);
 const VIDEO_SINGLE_PRICE = envNumber("VIDEO_SINGLE_PRICE", 199);
 const VIDEO_ADDON_PRICE = envNumber("VIDEO_ADDON_PRICE", 149);
+const ORDER_PAYMENT_TIMEOUT_MINUTES = Math.max(
+  30,
+  Math.min(1440, Math.round(envNumber("ORDER_PAYMENT_TIMEOUT_MINUTES", 30))),
+);
 
 type JsonRecord = Record<string, unknown>;
 
@@ -568,6 +572,16 @@ async function createStripeCheckoutSession(input: {
   params.set("success_url", input.successUrl);
   params.set("cancel_url", input.cancelUrl);
   params.set("client_reference_id", input.orderId);
+
+  // Unpaid Checkout Sessions expire automatically. Stripe requires
+  // expires_at to be between 30 minutes and 24 hours from creation.
+  params.set(
+    "expires_at",
+    String(
+      Math.floor(Date.now() / 1000) +
+        (ORDER_PAYMENT_TIMEOUT_MINUTES * 60),
+    ),
+  );
 
   // Let Stripe decide which eligible payment methods to show.
   // No payment_method_types are hard-coded here.
