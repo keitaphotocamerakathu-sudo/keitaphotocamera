@@ -1379,6 +1379,22 @@
 
         if (oldCart.length) {
           localStorage.setItem(cartKey, JSON.stringify(oldCart));
+
+          // Migration is one-time. Remove this Event from the legacy cart
+          // so removed items do not come back on the next read.
+          const legacyRemainder = legacyCart.filter(
+            cartItem =>
+              String(cartItem?.event_id || "") !== String(eventId)
+          );
+
+          if (legacyRemainder.length) {
+            localStorage.setItem(
+              `photo_cart_${userId}`,
+              JSON.stringify(legacyRemainder)
+            );
+          } else {
+            localStorage.removeItem(`photo_cart_${userId}`);
+          }
         }
       }
 
