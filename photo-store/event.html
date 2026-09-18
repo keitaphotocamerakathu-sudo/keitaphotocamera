@@ -3328,6 +3328,22 @@
           if (migrated.length) {
             localStorage.setItem(scopedKey, JSON.stringify(migrated));
             scopedCart = migrated;
+
+            // Remove migrated items from the old per-user cart so they
+            // cannot be resurrected after the user removes them.
+            const legacyRemainder = legacyCart.filter(
+              item =>
+                String(item?.event_id || "") !== String(eventId)
+            );
+
+            if (legacyRemainder.length) {
+              localStorage.setItem(
+                getLegacyCartKey(),
+                JSON.stringify(legacyRemainder)
+              );
+            } else {
+              localStorage.removeItem(getLegacyCartKey());
+            }
           }
         }
 
