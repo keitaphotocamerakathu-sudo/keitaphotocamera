@@ -15,6 +15,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
 
   <script src="../js/config.js?v=new-supabase-003"></script>
 
@@ -206,6 +207,13 @@
         CONFIG.SUPABASE_URL,
         CONFIG.SUPABASE_ANON_KEY
       );
+
+    const FACE_MODEL_URL =
+      CONFIG.FACE_MODEL_URL ||
+      "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
+
+    const FACE_SYNC_VERSION = "high-recall-v2";
+    let faceModelsPromise = null;
 
     const MAX_VIDEO_SECONDS = 10;
     const MAX_VIDEO_SIZE_MB = 300;
@@ -412,6 +420,219 @@
         .replace(/\.[^/.]+$/, "")
         .replace(/[^\wก-๙.-]+/g, "_")
         .slice(0, 80);
+    }
+
+    async function ensureUploadFaceModels() {
+      if (faceModelsPromise) return faceModelsPromise;
+
+      faceModelsPromise = Promise.all([
+        faceapi.nets.ssdMobilenetv1.loadFromUri(FACE_MODEL_URL),
+        faceapi.nets.tinyFaceDetector.loadFromUri(FACE_MODEL_URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(FACE_MODEL_URL),
+        faceapi.nets.faceRecognitionNet.loadFromUri(FACE_MODEL_URL)
+      ]);
+
+      return faceModelsPromise;
+    }
+
+    function faceDescriptorDistance(a, b) {
+      const aa = Array.from(a || []);
+      const bb = Array.from(b || []);
+
+      if (!aa.length || aa.length !== bb.length) return 999;
+
+      let sum = 0;
+
+      for (let i = 0; i < aa.length; i++) {
+        const diff = Number(aa[i]) - Number(bb[i]);
+        sum += diff * diff;
+      }
+
+      return Math.sqrt(sum);
+    }
+
+    function dedupeUploadFaces(items, duplicateDistance = 0.18) {
+      const sorted = [...(items || [])].sort((a, b) => {
+        return Number(b?.detection?.score || 0) - Number(a?.detection?.score || 0);
+      });
+
+      const kept = [];
+
+      for (const item of sorted) {
+        if (!item?.descriptor) continue;
+
+        const duplicate = kept.some(old =>
+          faceDescriptorDistance(item.descriptor, old.descriptor) <= duplicateDistance
+        );
+
+        if (!duplicate) kept.push(item);
+      }
+
+      return kept;
+    }
+
+    function createUploadFaceTiles(img) {
+      const width = Number(img.naturalWidth || img.width || 0);
+      const height = Number(img.naturalHeight || img.height || 0);
+
+      if (!width || !height || Math.max(width, height) < 1350) {
+        return [];
+      }
+
+      const tileWidth = Math.min(width, Math.ceil(width * 0.62));
+      const tileHeight = Math.min(height, Math.ceil(height * 0.62));
+
+      const positions = [
+        [0, 0],
+        [Math.max(0, width - tileWidth), 0],
+        [0, Math.max(0, height - tileHeight)],
+        [Math.max(0, width - tileWidth), Math.max(0, height - tileHeight)]
+      ];
+
+      return positions.map(([sx, sy]) => {
+        const canvas = document.createElement("canvas");
+        const maxLongEdge = 1600;
+        const ratio = Math.min(
+          1,
+          maxLongEdge / Math.max(tileWidth, tileHeight)
+        );
+
+        canvas.width = Math.max(1, Math.round(tileWidth * ratio));
+        canvas.height = Math.max(1, Math.round(tileHeight * ratio));
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return null;
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(
+          img,
+          sx,
+          sy,
+          tileWidth,
+          tileHeight,
+          0,
+          0,
+          canvas.width,
+          canvas.height
+        );
+
+        return canvas;
+      }).filter(Boolean);
+    }
+
+    async function detectUploadFaces(faceScanFile) {
+      await ensureUploadFaceModels();
+
+      const img = await faceapi.bufferToImage(faceScanFile);
+      const all = [];
+
+      try {
+        const ssd = await faceapi
+          .detectAllFaces(
+            img,
+            new faceapi.SsdMobilenetv1Options({ minConfidence: 0.12 })
+          )
+          .withFaceLandmarks()
+          .withFaceDescriptors();
+
+        all.push(...(ssd || []));
+      } catch (err) {
+        console.warn("Upload SSD face pass failed:", err);
+      }
+
+      try {
+        const tiny = await faceapi
+          .detectAllFaces(
+            img,
+            new faceapi.TinyFaceDetectorOptions({
+              inputSize: 768,
+              scoreThreshold: 0.08
+            })
+          )
+          .withFaceLandmarks()
+          .withFaceDescriptors();
+
+        all.push(...(tiny || []));
+      } catch (err) {
+        console.warn("Upload Tiny face pass failed:", err);
+      }
+
+      for (const tile of createUploadFaceTiles(img)) {
+        try {
+          const found = await faceapi
+            .detectAllFaces(
+              tile,
+              new faceapi.TinyFaceDetectorOptions({
+                inputSize: 608,
+                scoreThreshold: 0.06
+              })
+            )
+            .withFaceLandmarks()
+            .withFaceDescriptors();
+
+          all.push(...(found || []));
+        } catch (err) {
+          console.warn("Upload tile face pass failed:", err);
+        }
+      }
+
+      return dedupeUploadFaces(all, 0.18);
+    }
+
+    async function autoSyncUploadedImage(photo, faceScanFile, previewUrl) {
+      try {
+        const detections = await detectUploadFaces(faceScanFile);
+
+        await supabaseClient
+          .from("faces")
+          .delete()
+          .eq("photo_id", photo.id);
+
+        if (detections.length) {
+          const rows = detections.map((det, faceIndex) => ({
+            event_id: photo.event_id,
+            photo_id: photo.id,
+            descriptor: Array.from(det.descriptor || []),
+            face_index: faceIndex,
+            image_url: previewUrl || null,
+            filename: photo.filename || null,
+            media_type: "image",
+            frame_index: null,
+            video_time_seconds: null
+          }));
+
+          const { error: insertError } = await supabaseClient
+            .from("faces")
+            .insert(rows);
+
+          if (insertError) throw insertError;
+        }
+
+        const { error: updateError } = await supabaseClient
+          .from("photos")
+          .update({
+            face_sync_version: FACE_SYNC_VERSION,
+            face_synced_at: new Date().toISOString(),
+            face_count: detections.length
+          })
+          .eq("id", photo.id);
+
+        if (updateError) throw updateError;
+
+        return {
+          success: true,
+          faceCount: detections.length
+        };
+      } catch (err) {
+        console.error("Auto Face Sync failed:", err);
+
+        return {
+          success: false,
+          faceCount: 0,
+          error: err?.message || String(err)
+        };
+      }
     }
 
     async function getVideoDuration(file) {
@@ -876,6 +1097,7 @@
         let previewUrl = null;
         let faceScanKey = null;
         let faceScanUrl = null;
+        let faceScanFile = null;
 
         if (!isVideo) {
           statusDiv.innerHTML = `
@@ -886,7 +1108,7 @@
             </div>
           `;
 
-          const faceScanFile = await createFaceScanFile(file);
+          faceScanFile = await createFaceScanFile(file);
 
           const faceScanResult = await uploadFileToR2(
             faceScanFile,
@@ -939,7 +1161,7 @@
           thumbnailUrl = thumbResult.publicUrl;
         }
 
-        await saveMediaToSupabase({
+        const savedMedia = await saveMediaToSupabase({
           eventId,
           file,
           price,
@@ -954,6 +1176,24 @@
           thumbnailKey,
           thumbnailUrl
         });
+
+        let faceSyncResult = null;
+
+        if (!isVideo && faceScanFile) {
+          statusDiv.innerHTML = `
+            <div class="font-bold">กำลัง Auto Sync ใบหน้า ${index}/${total}</div>
+            <div class="break-all">${escapeHtml(file.name)}</div>
+            <div class="text-xs text-slate-500 mt-1">
+              ตรวจหลายรอบเพื่อจับใบหน้าเล็ก/ไกล
+            </div>
+          `;
+
+          faceSyncResult = await autoSyncUploadedImage(
+            savedMedia,
+            faceScanFile,
+            previewUrl
+          );
+        }
 
         const previewHtml = isVideo
           ? `
@@ -988,6 +1228,21 @@
                 ${isVideo ? ` · ${mediaInfo.durationSeconds.toFixed(2)} วินาที` : ""}
                 · ${escapeHtml(formatFileSize(file.size))}
               </div>
+              ${
+                !isVideo
+                  ? `<div class="mt-1 text-xs ${
+                      faceSyncResult?.success
+                        ? "text-green-800 dark:text-green-200"
+                        : "text-amber-700 dark:text-amber-300"
+                    }">
+                      ${
+                        faceSyncResult?.success
+                          ? `Face Sync: ${faceSyncResult.faceCount} หน้า`
+                          : `Face Sync รอทำใหม่: ${escapeHtml(faceSyncResult?.error || "ไม่สำเร็จ")}`
+                      }
+                    </div>`
+                  : ""
+              }
               <div class="mt-1 text-xs break-all">
                 Key: ${escapeHtml(r2Key)}
               </div>
