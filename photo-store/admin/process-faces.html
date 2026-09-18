@@ -963,7 +963,7 @@
 
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mt-5">
 
         <label class="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 cursor-pointer">
           <input
@@ -1001,6 +1001,20 @@
           <div>
             <p class="font-bold">ลบผล Sync เดิมก่อน</p>
             <p class="text-xs text-slate-500 dark:text-slate-400">กันข้อมูลใบหน้าซ้ำ</p>
+          </div>
+        </label>
+
+        <label class="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 cursor-pointer">
+          <input
+            id="pendingOnly"
+            type="checkbox"
+            checked
+            onchange="loadMedia()"
+            class="w-5 h-5"
+          />
+          <div>
+            <p class="font-bold">เฉพาะไฟล์ที่ยังไม่ Sync รุ่นล่าสุด</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">เร็วขึ้น และไม่สแกนไฟล์เดิมซ้ำ</p>
           </div>
         </label>
 
@@ -1136,6 +1150,8 @@
       CONFIG.FACE_MODEL_URL ||
       "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
 
+    const FACE_SYNC_VERSION = "high-recall-v2";
+
     const eventSelect = document.getElementById("eventSelect");
     const eventHelp = document.getElementById("eventHelp");
     const mediaList = document.getElementById("mediaList");
@@ -1260,6 +1276,7 @@
 
       const includeImages = document.getElementById("includeImages").checked;
       const includeVideos = document.getElementById("includeVideos").checked;
+      const pendingOnly = document.getElementById("pendingOnly")?.checked !== false;
 
       mediaItems = (data || [])
         .map(normalizeMediaItem)
@@ -1267,6 +1284,10 @@
           if (item.media_type === "image") return includeImages;
           if (item.media_type === "video") return includeVideos;
           return false;
+        })
+        .filter(item => {
+          if (!pendingOnly) return true;
+          return String(item.face_sync_version || "") !== FACE_SYNC_VERSION;
         });
 
       renderMediaList();
@@ -1354,8 +1375,12 @@
                 }
               </div>
 
-              <div id="status-${escapeAttr(item.id)}" class="text-xs text-slate-400 mt-1">
-                รอ Sync
+              <div id="status-${escapeAttr(item.id)}" class="text-xs mt-1 ${String(item.face_sync_version || "") === FACE_SYNC_VERSION ? "text-emerald-600 dark:text-emerald-300" : "text-slate-400"}">
+                ${
+                  String(item.face_sync_version || "") === FACE_SYNC_VERSION
+                    ? `✅ Sync แล้ว · ${Number(item.face_count || 0)} หน้า`
+                    : "รอ Sync รุ่นล่าสุด"
+                }
               </div>
             </div>
           </div>
@@ -1540,6 +1565,28 @@
       }
     }
 
+    async function markFaceSyncComplete(item, faceCount) {
+      const syncedAt = new Date().toISOString();
+      const count = Math.max(0, Number(faceCount || 0));
+
+      const { error } = await sb
+        .from("photos")
+        .update({
+          face_sync_version: FACE_SYNC_VERSION,
+          face_synced_at: syncedAt,
+          face_count: count
+        })
+        .eq("id", item.id);
+
+      if (error) {
+        throw new Error("บันทึกสถานะ Face Sync ไม่สำเร็จ: " + error.message);
+      }
+
+      item.face_sync_version = FACE_SYNC_VERSION;
+      item.face_synced_at = syncedAt;
+      item.face_count = count;
+    }
+
     async function processImageItem(item, index, total) {
       setMediaStatus(item.id, `กำลังสแกนรูปภาพ ${index}/${total}`, "working");
       log(`สแกนรูปภาพ ${index}/${total}: ${item.filename || item.id}`);
@@ -1557,8 +1604,9 @@
       const safePreviewUrl = getImagePreviewUrl(item) || imageUrl;
 
       if (!detections.length) {
-        setMediaStatus(item.id, "ไม่พบใบหน้า", "normal");
-        log(`ไม่พบใบหน้า: ${item.filename || item.id}`, "warn");
+        await markFaceSyncComplete(item, 0);
+        setMediaStatus(item.id, "✅ Sync แล้ว · ไม่พบใบหน้า", "success");
+        log(`Sync สำเร็จ แต่ไม่พบใบหน้า: ${item.filename || item.id}`, "warn");
         return;
       }
 
@@ -1575,6 +1623,7 @@
       });
 
       await insertFaceRows(rows);
+      await markFaceSyncComplete(item, rows.length);
 
       facesFoundCount += rows.length;
       updateStats();
@@ -1651,12 +1700,14 @@
         await insertFaceRows(allRows);
       }
 
+      await markFaceSyncComplete(item, allRows.length);
+
       facesFoundCount += allRows.length;
       updateStats();
 
       if (!allRows.length) {
-        setMediaStatus(item.id, "ไม่พบใบหน้าในวิดีโอ", "normal");
-        log(`ไม่พบใบหน้าในวิดีโอ: ${item.filename || item.id}`, "warn");
+        setMediaStatus(item.id, "✅ Sync แล้ว · ไม่พบใบหน้าในวิดีโอ", "success");
+        log(`Sync วิดีโอสำเร็จ แต่ไม่พบใบหน้า: ${item.filename || item.id}`, "warn");
         return;
       }
 
