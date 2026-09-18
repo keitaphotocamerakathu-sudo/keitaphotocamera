@@ -605,8 +605,38 @@
         .select(`
           *,
           order_items (
-            *,
-            photos (*)
+            id,
+            order_id,
+            photo_id,
+            event_id,
+            filename,
+            price,
+            photo_url,
+            photos (
+              id,
+              event_id,
+              filename,
+              price,
+              status,
+              preview_path,
+              watermark_path,
+              preview_url,
+              watermark_url,
+              storage_provider,
+              r2_preview_url,
+              r2_watermark_url,
+              media_type,
+              mime_type,
+              file_size,
+              duration_seconds,
+              thumbnail_url,
+              thumbnail_path,
+              video_preview_url,
+              video_preview_path,
+              r2_thumbnail_url,
+              r2_video_preview_url,
+              r2_video_preview_key
+            )
           )
         `)
         .eq("line_user_id", profile.userId)
@@ -929,10 +959,8 @@
             photo.r2_preview_url ||
             photo.watermark_url ||
             photo.preview_url ||
-            photo.r2_key ||
             photo.preview_path ||
             photo.watermark_path ||
-            photo.original_path ||
             ""
           );
 
