@@ -529,6 +529,74 @@
       });
     }
 
+    async function createFaceScanFile(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+
+        img.onload = () => {
+          try {
+            const sourceWidth = Number(img.naturalWidth || img.width || 0);
+            const sourceHeight = Number(img.naturalHeight || img.height || 0);
+
+            if (!sourceWidth || !sourceHeight) {
+              throw new Error("อ่านขนาดรูปไม่ได้");
+            }
+
+            const maxLongEdge = 2400;
+            const ratio = Math.min(
+              1,
+              maxLongEdge / Math.max(sourceWidth, sourceHeight)
+            );
+
+            const width = Math.max(1, Math.round(sourceWidth * ratio));
+            const height = Math.max(1, Math.round(sourceHeight * ratio));
+
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext("2d", { alpha: false });
+
+            if (!ctx) {
+              throw new Error("Canvas not supported");
+            }
+
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = "high";
+            ctx.drawImage(img, 0, 0, width, height);
+
+            canvas.toBlob((blob) => {
+              URL.revokeObjectURL(url);
+
+              if (!blob) {
+                reject(new Error("สร้างไฟล์ Face Scan ไม่สำเร็จ"));
+                return;
+              }
+
+              resolve(
+                new File(
+                  [blob],
+                  `${getBaseFilename(file.name)}_face_scan.jpg`,
+                  { type: "image/jpeg" }
+                )
+              );
+            }, "image/jpeg", 0.86);
+          } catch (err) {
+            URL.revokeObjectURL(url);
+            reject(err);
+          }
+        };
+
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error("Browser เปิดไฟล์รูปไม่ได้"));
+        };
+
+        img.src = url;
+      });
+    }
+
     async function createVideoThumbnailFile(file, durationSeconds) {
       return new Promise((resolve) => {
         const url = URL.createObjectURL(file);
@@ -710,6 +778,8 @@
       publicUrl,
       previewKey,
       previewUrl,
+      faceScanKey,
+      faceScanUrl,
       thumbnailKey,
       thumbnailUrl
     }) {
@@ -739,6 +809,9 @@
         r2_preview_url: isVideo ? thumbnailUrl : previewUrl,
         r2_watermark_url: isVideo ? thumbnailUrl : previewUrl,
         r2_original_key: r2Key,
+
+        face_scan_path: isVideo ? null : faceScanKey,
+        face_scan_url: isVideo ? null : faceScanUrl,
 
         video_url: isVideo ? publicUrl : null,
         video_path: isVideo ? r2Key : null,
@@ -801,8 +874,29 @@
 
         let previewKey = null;
         let previewUrl = null;
+        let faceScanKey = null;
+        let faceScanUrl = null;
 
         if (!isVideo) {
+          statusDiv.innerHTML = `
+            <div class="font-bold">กำลังสร้างไฟล์สำหรับสแกนใบหน้า ${index}/${total}</div>
+            <div class="break-all">${escapeHtml(file.name)}</div>
+            <div class="text-xs text-slate-500 mt-1">
+              ด้านยาวไม่เกิน 2,400px · คุณภาพสูงสำหรับ AI
+            </div>
+          `;
+
+          const faceScanFile = await createFaceScanFile(file);
+
+          const faceScanResult = await uploadFileToR2(
+            faceScanFile,
+            eventId,
+            "images/face-scan"
+          );
+
+          faceScanKey = faceScanResult.key;
+          faceScanUrl = faceScanResult.publicUrl;
+
           statusDiv.innerHTML = `
             <div class="font-bold">กำลังสร้าง Preview เบา ๆ ${index}/${total}</div>
             <div class="break-all">${escapeHtml(file.name)}</div>
@@ -855,6 +949,8 @@
           publicUrl,
           previewKey,
           previewUrl,
+          faceScanKey,
+          faceScanUrl,
           thumbnailKey,
           thumbnailUrl
         });
