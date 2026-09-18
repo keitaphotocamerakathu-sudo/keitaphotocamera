@@ -603,6 +603,21 @@
 
           if (rawCart.length) {
             localStorage.setItem(cartKey, JSON.stringify(rawCart));
+
+            // Migration is one-time. Drain only this Event from legacy.
+            const legacyRemainder = legacyCart.filter(
+              item =>
+                String(item?.event_id || "") !== String(eventId)
+            );
+
+            if (legacyRemainder.length) {
+              localStorage.setItem(
+                getLegacyCartKey(),
+                JSON.stringify(legacyRemainder)
+              );
+            } else {
+              localStorage.removeItem(getLegacyCartKey());
+            }
           }
         }
       }
