@@ -79,15 +79,24 @@ Deno.serve(async (req) => {
     const SITE_URL = stripTrailingSlash(mustEnv("SITE_URL"));
     const LINE_CHANNEL_ID = mustEnv("LINE_CHANNEL_ID");
 
-    if (!STRIPE_SECRET_KEY.startsWith("sk_test_") &&
-        !STRIPE_SECRET_KEY.startsWith("sk_live_")) {
+    const isStripeSecretKey =
+      STRIPE_SECRET_KEY.startsWith("sk_test_") ||
+      STRIPE_SECRET_KEY.startsWith("sk_live_");
+
+    const isStripeRestrictedKey =
+      STRIPE_SECRET_KEY.startsWith("rk_test_") ||
+      STRIPE_SECRET_KEY.startsWith("rk_live_");
+
+    if (!isStripeSecretKey && !isStripeRestrictedKey) {
       throw new HttpError(
         500,
-        "STRIPE_SECRET_KEY รูปแบบไม่ถูกต้อง",
+        "STRIPE_SECRET_KEY รูปแบบไม่ถูกต้อง ต้องเป็น sk_live_... หรือ rk_live_... และในช่อง Value ห้ามใส่ชื่อ STRIPE_SECRET_KEY= นำหน้า",
       );
     }
 
-    const isStripeTestMode = STRIPE_SECRET_KEY.startsWith("sk_test_");
+    const isStripeTestMode =
+      STRIPE_SECRET_KEY.startsWith("sk_test_") ||
+      STRIPE_SECRET_KEY.startsWith("rk_test_");
 
     // Production safety: refuse to create real checkout flow with a test key.
     // Set ALLOW_STRIPE_TEST_MODE=1 only when intentionally running sandbox tests.
