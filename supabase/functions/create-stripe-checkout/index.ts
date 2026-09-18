@@ -76,7 +76,15 @@ Deno.serve(async (req) => {
     const SUPABASE_URL = mustEnv("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = mustEnv("SUPABASE_SERVICE_ROLE_KEY");
     const STRIPE_SECRET_KEY = mustEnv("STRIPE_SECRET_KEY");
-    const SITE_URL = stripTrailingSlash(mustEnv("SITE_URL"));
+    const SITE_URL = stripTrailingSlash(
+      cleanString(Deno.env.get("SITE_URL")) ||
+      "https://keitaphotocamerakathu-sudo.github.io"
+    );
+
+    const STORE_BASE_URL = stripTrailingSlash(
+      cleanString(Deno.env.get("STORE_BASE_URL")) ||
+      `${SITE_URL}/keitaphotocamera/photo-store`
+    );
     const LINE_CHANNEL_ID = mustEnv("LINE_CHANNEL_ID");
 
     const isStripeSecretKey =
@@ -413,13 +421,13 @@ Deno.serve(async (req) => {
     // 11) Create Stripe Checkout Session
     // The browser receives only session.url.
     // -------------------------------------------------------
+    // Always return to the actual GitHub Pages storefront path.
+    // STORE_BASE_URL can be overridden later if the storefront moves.
     const successUrl =
-      cleanString(Deno.env.get("STRIPE_SUCCESS_URL")) ||
-      `${SITE_URL}/order.html?stripe=success&session_id={CHECKOUT_SESSION_ID}`;
+      `${STORE_BASE_URL}/order.html?stripe=success&session_id={CHECKOUT_SESSION_ID}`;
 
     const cancelUrlBase =
-      cleanString(Deno.env.get("STRIPE_CANCEL_URL")) ||
-      `${SITE_URL}/checkout.html`;
+      `${STORE_BASE_URL}/checkout.html`;
 
     const cancelUrl =
       `${cancelUrlBase}${cancelUrlBase.includes("?") ? "&" : "?"}` +
