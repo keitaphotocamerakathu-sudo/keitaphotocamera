@@ -2995,7 +2995,15 @@
 
       const { data, error } = await sb
         .from("photos")
-        .select("*")
+        .select(`
+          id,event_id,filename,price,status,
+          preview_path,watermark_path,preview_url,watermark_url,
+          storage_provider,r2_preview_url,r2_watermark_url,
+          created_at,updated_at,media_type,mime_type,file_size,duration_seconds,
+          video_preview_url,video_preview_path,
+          thumbnail_url,thumbnail_path,r2_thumbnail_url,
+          r2_video_preview_url,r2_video_preview_key
+        `)
         .eq("event_id", eventId)
         .eq("status", "active")
         .order("created_at", { ascending: false });
@@ -3182,11 +3190,8 @@
       }
 
       const key =
-        photo.r2_key ||
-        photo.r2_original_key ||
         photo.preview_path ||
         photo.watermark_path ||
-        photo.original_path ||
         "";
 
       if (key) {
@@ -3229,8 +3234,6 @@
         photo.video_preview_url ||
         photo.r2_video_preview_url ||
         photo.preview_video_url ||
-        photo.video_url ||
-        photo.r2_video_url ||
         "";
 
       if (raw) {
@@ -3240,8 +3243,6 @@
       const key =
         photo.video_preview_path ||
         photo.r2_video_preview_key ||
-        photo.video_path ||
-        photo.r2_video_key ||
         "";
 
       if (key) {
@@ -3396,7 +3397,7 @@
           watermark_url: previewUrl,
 
           video_url: mediaIsVideo ? videoPreviewUrl : null,
-          video_path: mediaIsVideo ? (photo.video_path || photo.video_preview_path || null) : null,
+          video_path: mediaIsVideo ? (photo.video_preview_path || null) : null,
           thumbnail_url: mediaIsVideo ? previewUrl : null,
           thumbnail_path: mediaIsVideo ? (photo.thumbnail_path || null) : null,
           duration_seconds: mediaIsVideo ? (photo.duration_seconds || null) : null,
