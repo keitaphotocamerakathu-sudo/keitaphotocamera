@@ -202,7 +202,18 @@ Deno.serve(async (req) => {
     const body = await req.json();
 
     const event_id = body.event_id;
-    const inputDescriptor = parseVector(body.descriptor);
+
+    const requestedDescriptors = Array.isArray(body.descriptors)
+      ? body.descriptors
+      : [body.descriptor];
+
+    const inputDescriptors = requestedDescriptors
+      .map((value: unknown) => parseVector(value))
+      .filter((value: number[]) => isValidDescriptor(value));
+
+    const inputDescriptor =
+      inputDescriptors[0] ||
+      parseVector(body.descriptor);
 
     /**
      * strict เปิดเป็น default
@@ -238,7 +249,7 @@ Deno.serve(async (req) => {
       throw new Error("Missing event_id");
     }
 
-    if (!isValidDescriptor(inputDescriptor)) {
+    if (!inputDescriptors.length || !isValidDescriptor(inputDescriptor)) {
       throw new Error(
         `Invalid input descriptor length: ${inputDescriptor.length}`
       );
@@ -281,7 +292,11 @@ Deno.serve(async (req) => {
         const descriptorValid = isValidDescriptor(storedDescriptor);
 
         const distance = descriptorValid
-          ? euclideanDistance(inputDescriptor, storedDescriptor)
+          ? Math.min(
+              ...inputDescriptors.map((queryDescriptor: number[]) =>
+                euclideanDistance(queryDescriptor, storedDescriptor)
+              )
+            )
           : 999;
 
         const confidence = confidenceFromDistance(distance);
@@ -457,6 +472,7 @@ Deno.serve(async (req) => {
         bestDistance === null ? null : roundNumber(bestDistance),
 
       input_descriptor_length: inputDescriptor.length,
+      input_descriptor_count: inputDescriptors.length,
 
       total_faces: rawFaces.length,
       checked_faces: checked.length,
