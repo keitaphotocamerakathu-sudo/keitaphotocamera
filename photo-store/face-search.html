@@ -1382,6 +1382,13 @@
         }
       }
 
+      // Defense-in-depth: never keep another Event's items in this cart.
+      oldCart = oldCart.filter(
+        cartItem =>
+          !cartItem?.event_id ||
+          String(cartItem.event_id) === String(eventId)
+      );
+
       const map = new Map(oldCart.map(i => [String(i.photo_id), i]));
 
       const previewUrl = getSafePreviewUrl(photo);
@@ -1433,12 +1440,20 @@
     }
 
     function getPhotoPrice(photo) {
+      if (isVideo(photo)) {
+        return Number(
+          photo.price ||
+          CONFIG.DEFAULT_VIDEO_PRICE ||
+          199
+        );
+      }
+
       return Number(
-        photo.price ||
         eventData?.price ||
         eventData?.photo_price ||
+        photo.price ||
         CONFIG.DEFAULT_PHOTO_PRICE ||
-        0
+        60
       );
     }
 
