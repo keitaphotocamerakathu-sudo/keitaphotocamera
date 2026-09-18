@@ -1067,6 +1067,57 @@
       protectMedia();
     }
 
+    async function detectSearchFace(input) {
+      let detection = await faceapi
+        .detectSingleFace(
+          input,
+          new faceapi.SsdMobilenetv1Options({ minConfidence: 0.18 })
+        )
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      if (!detection) {
+        detection = await faceapi
+          .detectSingleFace(
+            input,
+            new faceapi.TinyFaceDetectorOptions({
+              inputSize: 512,
+              scoreThreshold: 0.12
+            })
+          )
+          .withFaceLandmarks()
+          .withFaceDescriptor();
+      }
+
+      return detection || null;
+    }
+
+    function createMirroredFaceCanvas(img) {
+      const width = Number(img.naturalWidth || img.width || 0);
+      const height = Number(img.naturalHeight || img.height || 0);
+
+      if (!width || !height) return null;
+
+      const maxLongEdge = 1600;
+      const ratio = Math.min(
+        1,
+        maxLongEdge / Math.max(width, height)
+      );
+
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(width * ratio));
+      canvas.height = Math.max(1, Math.round(height * ratio));
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      return canvas;
+    }
+
     async function searchByFace() {
       try {
         if (!selectedFile) {
@@ -1083,20 +1134,7 @@
 
         const img = await faceapi.bufferToImage(selectedFile);
 
-        let detection = await faceapi
-          .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.18 }))
-          .withFaceLandmarks()
-          .withFaceDescriptor();
-
-        if (!detection) {
-          detection = await faceapi
-            .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({
-              inputSize: 512,
-              scoreThreshold: 0.12
-            }))
-            .withFaceLandmarks()
-            .withFaceDescriptor();
-        }
+        const detection = await detectSearchFace(img);
 
         if (!detection) {
           Swal.fire(t().noFace, t().noFaceDesc, "warning");
@@ -1104,6 +1142,24 @@
         }
 
         const descriptor = Array.from(detection.descriptor);
+        const descriptors = [descriptor];
+
+        // A mirrored descriptor is a cheap second view of the same face.
+        // The server will use the best (smallest) distance, while keeping
+        // the same strict match threshold.
+        try {
+          const mirroredCanvas = createMirroredFaceCanvas(img);
+
+          if (mirroredCanvas) {
+            const mirroredDetection = await detectSearchFace(mirroredCanvas);
+
+            if (mirroredDetection?.descriptor) {
+              descriptors.push(Array.from(mirroredDetection.descriptor));
+            }
+          }
+        } catch (mirrorErr) {
+          console.warn("Mirror face descriptor skipped:", mirrorErr);
+        }
 
         Swal.update({
           title: t().loadingSearch
@@ -1112,6 +1168,7 @@
         const data = await callFaceSearchFunction({
           event_id: eventId,
           descriptor,
+          descriptors,
           threshold: 0.42,
           max_results: 50,
           gap_limit: 0.06,
