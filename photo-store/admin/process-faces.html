@@ -1390,8 +1390,17 @@
       const imageCount = mediaItems.filter(i => i.media_type === "image").length;
       const videoCount = mediaItems.filter(i => i.media_type === "video").length;
 
+      const pendingOnly = document.getElementById("pendingOnly")?.checked !== false;
+
       mediaSummaryText.textContent =
-        `ทั้งหมด ${mediaItems.length} ไฟล์ · รูปภาพ ${imageCount} · วิดีโอ ${videoCount}`;
+        pendingOnly
+          ? `รอ Sync รุ่นล่าสุด ${mediaItems.length} ไฟล์ · รูปภาพ ${imageCount} · วิดีโอ ${videoCount}`
+          : `ทั้งหมด ${mediaItems.length} ไฟล์ · รูปภาพ ${imageCount} · วิดีโอ ${videoCount}`;
+
+      startBtn.textContent =
+        mediaItems.length
+          ? `เริ่ม Sync Faces (${mediaItems.length} ไฟล์)`
+          : "ไม่มีไฟล์ที่ต้อง Sync";
     }
 
     function updateStats() {
@@ -1546,7 +1555,10 @@
       if (active) {
         startBtn.textContent = "กำลัง Sync...";
       } else {
-        startBtn.textContent = "เริ่ม Sync Faces";
+        startBtn.textContent =
+          mediaItems.length
+            ? `เริ่ม Sync Faces (${mediaItems.length} ไฟล์)`
+            : "ไม่มีไฟล์ที่ต้อง Sync";
       }
     }
 
