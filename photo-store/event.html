@@ -3331,6 +3331,15 @@
           }
         }
 
+        // Defense-in-depth: a scoped cart must contain only this Event.
+        if (eventId) {
+          scopedCart = scopedCart.filter(
+            item =>
+              !item?.event_id ||
+              String(item.event_id) === String(eventId)
+          );
+        }
+
         return scopedCart;
       } catch {
         return [];
