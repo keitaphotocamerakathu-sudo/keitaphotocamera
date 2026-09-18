@@ -347,7 +347,7 @@ async function fulfillPaidOrder(
   const { data: freshOrder, error: freshOrderError } =
     await supabase
       .from("orders")
-      .select("id,line_notified_at")
+      .select("id,line_notified_at,telegram_notified_at")
       .eq("id", orderId)
       .single();
 
@@ -358,7 +358,7 @@ async function fulfillPaidOrder(
     );
   }
 
-  if (!freshOrder.line_notified_at) {
+  if (!freshOrder.line_notified_at || !freshOrder.telegram_notified_at) {
     await callSendOrderApproved(orderId);
 
     const { error: notifyStampError } = await supabase
