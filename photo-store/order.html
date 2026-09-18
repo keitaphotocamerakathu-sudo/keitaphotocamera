@@ -403,6 +403,7 @@
         try {
           initDarkMode();
           applyLanguage();
+          clearStripePaidCart();
 
           if (!db) {
             throw new Error(t().supabaseNotFound);
@@ -448,6 +449,27 @@
         }
       }
     );
+
+    function clearStripePaidCart() {
+      const params = new URLSearchParams(window.location.search);
+
+      if (params.get("stripe") !== "success") {
+        return;
+      }
+
+      const pendingCartKey =
+        sessionStorage.getItem("stripe_pending_cart_key") ||
+        "";
+
+      if (pendingCartKey) {
+        localStorage.removeItem(pendingCartKey);
+      }
+
+      sessionStorage.removeItem("stripe_pending_cart_key");
+      sessionStorage.removeItem("stripe_pending_event_id");
+      sessionStorage.removeItem("stripe_pending_order_id");
+      sessionStorage.removeItem("stripe_checkout_session_id");
+    }
 
     function setText(id, value) {
       const el = document.getElementById(id);
