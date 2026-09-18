@@ -1339,13 +1339,15 @@
       const mediaIsVideo = isVideo(photo);
       const price = getPhotoPrice(photo);
 
-      let cartKey = "photo_cart_guest";
+      const userId =
+        profile?.userId ||
+        localStorage.getItem("line_user_id") ||
+        "guest";
+
+      let cartKey = `photo_cart_${userId}_${String(eventId || "no-event")}`;
 
       if (window.AppLIFF && AppLIFF.getCartKey) {
-        cartKey = AppLIFF.getCartKey();
-      } else {
-        const userId = profile?.userId || localStorage.getItem("line_user_id") || "guest";
-        cartKey = `photo_cart_${userId}`;
+        cartKey = AppLIFF.getCartKey(eventId);
       }
 
       let oldCart = [];
@@ -1354,6 +1356,30 @@
         oldCart = JSON.parse(localStorage.getItem(cartKey) || "[]");
       } catch {
         oldCart = [];
+      }
+
+      // One-time migration from the old per-user cart.
+      if (!Array.isArray(oldCart) || !oldCart.length) {
+        let legacyCart = [];
+
+        try {
+          legacyCart = JSON.parse(
+            localStorage.getItem(`photo_cart_${userId}`) || "[]"
+          );
+        } catch {
+          legacyCart = [];
+        }
+
+        oldCart = Array.isArray(legacyCart)
+          ? legacyCart.filter(
+              item =>
+                String(item?.event_id || "") === String(eventId)
+            )
+          : [];
+
+        if (oldCart.length) {
+          localStorage.setItem(cartKey, JSON.stringify(oldCart));
+        }
       }
 
       const map = new Map(oldCart.map(i => [String(i.photo_id), i]));
