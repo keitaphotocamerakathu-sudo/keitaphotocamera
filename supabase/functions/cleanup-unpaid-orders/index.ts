@@ -156,6 +156,33 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const presentedCronToken =
+      String(req.headers.get("x-cron-token") || "").trim();
+
+    const { data: jobSecret, error: jobSecretError } =
+      await supabase
+        .from("internal_job_secrets")
+        .select("token")
+        .eq("job_name", "cleanup-unpaid-orders")
+        .maybeSingle();
+
+    if (jobSecretError) {
+      throw jobSecretError;
+    }
+
+    const expectedCronToken =
+      String(jobSecret?.token || "").trim();
+
+    if (
+      !presentedCronToken ||
+      !expectedCronToken ||
+      presentedCronToken !== expectedCronToken
+    ) {
+      return json(
+        { success: false, error: "Unauthorized" },
+        401,
+      );
+    }
     const cutoff = new Date(
       Date.now() - timeoutMinutes * 60 * 1000,
     ).toISOString();
