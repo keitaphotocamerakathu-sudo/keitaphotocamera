@@ -187,13 +187,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    const expiresAt =
-      Math.floor(Date.now() / 1000) + (10 * 60);
-
     const payload = {
       o: orderId,
       i: orderItemId,
-      e: expiresAt,
     };
 
     const payloadPart = base64Url(
@@ -209,8 +205,7 @@ Deno.serve(async (req) => {
     return json({
       success: true,
       url: downloadUrl,
-      expires_in: 600,
-      expires_at: expiresAt,
+      permanent: true,
     });
   } catch (error) {
     console.error("create-secure-download-link error:", error);
