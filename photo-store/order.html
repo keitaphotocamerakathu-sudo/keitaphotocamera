@@ -431,6 +431,11 @@
 
           showProfile();
 
+          // Reconcile recent Stripe payments directly with Stripe before
+          // loading orders. Webhook remains primary; this is a safe fallback
+          // for delayed/misconfigured Live webhook delivery.
+          await reconcileStripeOrders();
+
           await loadOrders();
 
         } catch (err) {
@@ -525,6 +530,59 @@
         linePicture.src =
           profile.pictureUrl ||
           "https://placehold.co/100x100?text=LINE";
+      }
+    }
+
+    async function reconcileStripeOrders() {
+      try {
+        const lineIdToken =
+          window.liff &&
+          typeof liff.isLoggedIn === "function" &&
+          liff.isLoggedIn() &&
+          typeof liff.getIDToken === "function"
+            ? liff.getIDToken()
+            : null;
+
+        if (!lineIdToken) {
+          return;
+        }
+
+        const params = new URLSearchParams(window.location.search);
+        const sessionId = params.get("session_id") || "";
+
+        const res = await fetch(
+          `${CONFIG.SUPABASE_URL}/functions/v1/reconcile-stripe-orders`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: CONFIG.SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify({
+              line_id_token: lineIdToken,
+              session_id: sessionId
+            })
+          }
+        );
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || !data?.success) {
+          console.warn("Stripe reconcile skipped:", data);
+          return;
+        }
+
+        const approved = Array.isArray(data.results)
+          ? data.results.filter(item => item?.status === "approved")
+          : [];
+
+        if (approved.length) {
+          console.log("Stripe payment reconciled:", approved);
+        }
+      } catch (error) {
+        // Never block My Orders if Stripe reconciliation is unavailable.
+        console.warn("Stripe reconcile error:", error);
       }
     }
 
