@@ -5,15 +5,7 @@ const SUPABASE_URL = mustEnv("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = mustEnv("SUPABASE_SERVICE_ROLE_KEY");
 const STRIPE_SECRET_KEY = mustEnv("STRIPE_SECRET_KEY");
 
-const timeoutMinutes = Math.max(
-  30,
-  Math.min(
-    1440,
-    Math.round(
-      Number(Deno.env.get("ORDER_PAYMENT_TIMEOUT_MINUTES") || 30),
-    ),
-  ),
-);
+const timeoutMinutes = 10;
 
 const stripe = new Stripe(STRIPE_SECRET_KEY, {
   httpClient: Stripe.createFetchHttpClient(),
@@ -139,7 +131,7 @@ async function markPaid(
 
   if (orderError) throw orderError;
 
-  if (!order.line_notified_at) {
+  if (!order.line_notified_at || !order.telegram_notified_at) {
     await callSendOrderApproved(String(order.id));
   }
 }
