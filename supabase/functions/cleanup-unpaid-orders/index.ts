@@ -194,7 +194,6 @@ Deno.serve(async (req) => {
       .is("paid_at", null)
       .in("status", ["pending_payment", "pending", "unpaid"])
       .not("stripe_checkout_session_id", "is", null)
-      .lte("created_at", cutoff)
       .order("created_at", { ascending: true })
       .limit(100);
 
@@ -224,13 +223,33 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        const createdAtMs =
+          new Date(order.created_at).getTime();
+
+        const isPastTimeout =
+          Number.isFinite(createdAtMs) &&
+          createdAtMs <= new Date(cutoff).getTime();
+
+        // Before 10 minutes, only reconcile payment status.
+        // Do not expire or delete a still-valid Checkout Session.
+        if (!isPastTimeout) {
+          results.push({
+            order_id: order.id,
+            status: "waiting",
+            stripe_status: session.status,
+            payment_status: session.payment_status,
+          });
+
+          continue;
+        }
+
         if (session.status === "open") {
           session =
             await stripe.checkout.sessions.expire(sessionId);
         }
 
-        // Only hard-delete after Stripe confirms the Checkout Session
-        // is expired and still unpaid.
+        // After 10 minutes, hard-delete only when Stripe confirms
+        // the Checkout Session is expired and still unpaid.
         if (
           session.status === "expired" &&
           session.payment_status !== "paid"
