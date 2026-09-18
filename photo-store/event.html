@@ -1396,16 +1396,55 @@
 
     function getCartKey() {
       if (window.AppLIFF && AppLIFF.getCartKey) {
-        return AppLIFF.getCartKey();
+        return AppLIFF.getCartKey(eventId);
       }
 
+      const userId = localStorage.getItem("line_user_id") || "guest";
+      const cleanEventId = String(eventId || "").trim() || "no-event";
+      return `photo_cart_${userId}_${cleanEventId}`;
+    }
+
+    function getLegacyCartKey() {
       const userId = localStorage.getItem("line_user_id") || "guest";
       return `photo_cart_${userId}`;
     }
 
     function getCart() {
+      const scopedKey = getCartKey();
+
       try {
-        return JSON.parse(localStorage.getItem(getCartKey()) || "[]");
+        let scopedCart = JSON.parse(localStorage.getItem(scopedKey) || "[]");
+
+        if (!Array.isArray(scopedCart)) {
+          scopedCart = [];
+        }
+
+        // One-time migration from the old per-user cart.
+        if (!scopedCart.length && eventId) {
+          let legacyCart = [];
+
+          try {
+            legacyCart = JSON.parse(
+              localStorage.getItem(getLegacyCartKey()) || "[]"
+            );
+          } catch {
+            legacyCart = [];
+          }
+
+          const migrated = Array.isArray(legacyCart)
+            ? legacyCart.filter(
+                item =>
+                  String(item?.event_id || "") === String(eventId)
+              )
+            : [];
+
+          if (migrated.length) {
+            localStorage.setItem(scopedKey, JSON.stringify(migrated));
+            scopedCart = migrated;
+          }
+        }
+
+        return scopedCart;
       } catch {
         return [];
       }
@@ -3244,16 +3283,55 @@
 
     function getCartKey() {
       if (window.AppLIFF && AppLIFF.getCartKey) {
-        return AppLIFF.getCartKey();
+        return AppLIFF.getCartKey(eventId);
       }
 
+      const userId = localStorage.getItem("line_user_id") || "guest";
+      const cleanEventId = String(eventId || "").trim() || "no-event";
+      return `photo_cart_${userId}_${cleanEventId}`;
+    }
+
+    function getLegacyCartKey() {
       const userId = localStorage.getItem("line_user_id") || "guest";
       return `photo_cart_${userId}`;
     }
 
     function getCart() {
+      const scopedKey = getCartKey();
+
       try {
-        return JSON.parse(localStorage.getItem(getCartKey()) || "[]");
+        let scopedCart = JSON.parse(localStorage.getItem(scopedKey) || "[]");
+
+        if (!Array.isArray(scopedCart)) {
+          scopedCart = [];
+        }
+
+        // One-time migration from the old per-user cart.
+        if (!scopedCart.length && eventId) {
+          let legacyCart = [];
+
+          try {
+            legacyCart = JSON.parse(
+              localStorage.getItem(getLegacyCartKey()) || "[]"
+            );
+          } catch {
+            legacyCart = [];
+          }
+
+          const migrated = Array.isArray(legacyCart)
+            ? legacyCart.filter(
+                item =>
+                  String(item?.event_id || "") === String(eventId)
+              )
+            : [];
+
+          if (migrated.length) {
+            localStorage.setItem(scopedKey, JSON.stringify(migrated));
+            scopedCart = migrated;
+          }
+        }
+
+        return scopedCart;
       } catch {
         return [];
       }
