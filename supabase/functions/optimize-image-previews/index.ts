@@ -59,20 +59,15 @@ function sourceUrl(photo: any) {
   return clean(photo.preview_url || photo.r2_preview_url);
 }
 
-async function optimizeOne(photo: any) {
-  const src = sourceUrl(photo);
-  if (!src) throw new Error("Missing source URL");
-
-  const response = await fetch(src);
-  if (!response.ok) {
-    throw new Error(`Source fetch failed (${response.status})`);
-  }
-
-  const sourceBytes = new Uint8Array(await response.arrayBuffer());
-
+async function uploadVariant(
+  photo: any,
+  sourceBytes: Uint8Array,
+  maxLongEdge: number,
+  quality: number,
+  folder: string,
+  suffix: string,
+) {
   const image = await Image.decode(sourceBytes);
-
-  const maxLongEdge = 1200;
 
   if (Math.max(image.width, image.height) > maxLongEdge) {
     if (image.width >= image.height) {
@@ -82,10 +77,9 @@ async function optimizeOne(photo: any) {
     }
   }
 
-  const encoded = await image.encodeJPEG(72);
-
+  const encoded = await image.encodeJPEG(quality);
   const fileName =
-    `${basenameNoExt(clean(photo.filename) || "preview")}_preview.jpg`;
+    `${basenameNoExt(clean(photo.filename) || "image")}_${suffix}.jpg`;
 
   const formData = new FormData();
   formData.append(
@@ -94,7 +88,7 @@ async function optimizeOne(photo: any) {
     fileName,
   );
   formData.append("event_id", clean(photo.event_id));
-  formData.append("folder", "images/preview");
+  formData.append("folder", folder);
 
   const uploadResponse = await fetch(
     `${R2_WORKER_URL.replace(/\/+$/, "")}/upload`,
@@ -114,21 +108,91 @@ async function optimizeOne(photo: any) {
   ) {
     throw new Error(
       uploadData?.message ||
-      `Preview upload failed (${uploadResponse.status})`,
+      `Variant upload failed (${uploadResponse.status})`,
     );
+  }
+
+  return {
+    key: uploadData.key,
+    publicUrl: uploadData.publicUrl,
+    bytes: encoded.byteLength,
+    width: image.width,
+    height: image.height,
+  };
+}
+
+async function optimizeOne(photo: any) {
+  const src = sourceUrl(photo);
+  if (!src) throw new Error("Missing source URL");
+
+  const response = await fetch(src);
+  if (!response.ok) {
+    throw new Error(`Source fetch failed (${response.status})`);
+  }
+
+  const sourceBytes = new Uint8Array(await response.arrayBuffer());
+
+  const previewPath = clean(photo.preview_path);
+  const originalPath =
+    clean(photo.r2_original_key) ||
+    clean(photo.original_path) ||
+    clean(photo.r2_key);
+
+  const needsPreview = Boolean(
+    !previewPath ||
+    previewPath === originalPath ||
+    !previewPath.includes("/images/preview/")
+  );
+
+  const faceScanPath = clean(photo.face_scan_path);
+  const needsFaceScan = !faceScanPath.includes("/images/face-scan/");
+
+  let preview: any = null;
+  let faceScan: any = null;
+
+  if (needsFaceScan) {
+    faceScan = await uploadVariant(
+      photo,
+      sourceBytes,
+      2400,
+      86,
+      "images/face-scan",
+      "face_scan",
+    );
+  }
+
+  if (needsPreview) {
+    preview = await uploadVariant(
+      photo,
+      sourceBytes,
+      1200,
+      72,
+      "images/preview",
+      "preview",
+    );
+  }
+
+  const updates: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+
+  if (faceScan) {
+    updates.face_scan_path = faceScan.key;
+    updates.face_scan_url = faceScan.publicUrl;
+  }
+
+  if (preview) {
+    updates.preview_path = preview.key;
+    updates.watermark_path = preview.key;
+    updates.preview_url = preview.publicUrl;
+    updates.watermark_url = preview.publicUrl;
+    updates.r2_preview_url = preview.publicUrl;
+    updates.r2_watermark_url = preview.publicUrl;
   }
 
   const { error: updateError } = await supabase
     .from("photos")
-    .update({
-      preview_path: uploadData.key,
-      watermark_path: uploadData.key,
-      preview_url: uploadData.publicUrl,
-      watermark_url: uploadData.publicUrl,
-      r2_preview_url: uploadData.publicUrl,
-      r2_watermark_url: uploadData.publicUrl,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updates)
     .eq("id", photo.id);
 
   if (updateError) throw updateError;
@@ -137,10 +201,14 @@ async function optimizeOne(photo: any) {
     photo_id: photo.id,
     filename: photo.filename,
     before_bytes: sourceBytes.byteLength,
-    after_bytes: encoded.byteLength,
-    width: image.width,
-    height: image.height,
-    preview_key: uploadData.key,
+    preview_bytes: preview?.bytes ?? null,
+    preview_width: preview?.width ?? null,
+    preview_height: preview?.height ?? null,
+    preview_key: preview?.key ?? (previewPath || null),
+    face_scan_bytes: faceScan?.bytes ?? null,
+    face_scan_width: faceScan?.width ?? null,
+    face_scan_height: faceScan?.height ?? null,
+    face_scan_key: faceScan?.key ?? (faceScanPath || null),
   };
 }
 
@@ -176,7 +244,7 @@ Deno.serve(async (req) => {
     let query = supabase
       .from("photos")
       .select(
-        "id,event_id,filename,media_type,original_path,preview_path,preview_url,r2_key,r2_original_key,r2_preview_url"
+        "id,event_id,filename,media_type,original_path,preview_path,preview_url,r2_key,r2_original_key,r2_preview_url,face_scan_path,face_scan_url"
       )
       .eq("status", "active")
       .eq("media_type", "image")
@@ -200,13 +268,20 @@ Deno.serve(async (req) => {
           clean(photo.original_path) ||
           clean(photo.r2_key);
 
+        const faceScanPath = clean(photo.face_scan_path);
+
+        const needsPreview =
+          previewPath === originalPath ||
+          !previewPath ||
+          !previewPath.includes("/images/preview/");
+
+        const needsFaceScan =
+          !faceScanPath ||
+          !faceScanPath.includes("/images/face-scan/");
+
         return Boolean(
           originalPath &&
-          (
-            previewPath === originalPath ||
-            !previewPath ||
-            !previewPath.includes("/images/preview/")
-          )
+          (needsPreview || needsFaceScan)
         );
       })
       .slice(0, limit);
