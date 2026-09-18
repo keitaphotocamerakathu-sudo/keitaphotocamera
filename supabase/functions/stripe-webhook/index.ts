@@ -145,6 +145,21 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "checkout.session.expired": {
+        const eventSession =
+          event.data.object as Stripe.Checkout.Session;
+
+        const session = await retrieveCheckoutSession(
+          eventSession.id,
+        );
+
+        orderId = getOrderId(session);
+
+        await deleteExpiredUnpaidOrder(session);
+
+        break;
+      }
+
       default:
         console.log("Ignored Stripe event:", event.type);
     }
@@ -437,6 +452,57 @@ async function markPaymentFailed(
   if (orderError) {
     throw orderError;
   }
+}
+
+async function deleteExpiredUnpaidOrder(
+  session: Stripe.Checkout.Session,
+) {
+  const orderId = getOrderId(session);
+
+  if (!orderId) return;
+
+  // Never delete anything Stripe reports as paid.
+  if (session.payment_status === "paid") {
+    await fulfillPaidOrder(session);
+    return;
+  }
+
+  const { data: order, error } = await supabase
+    .from("orders")
+    .select("id,status,paid_at,stripe_checkout_session_id")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  // The periodic cleanup may already have removed it.
+  if (!order) return;
+
+  if (order.paid_at || String(order.status || "") === "approved") {
+    return;
+  }
+
+  if (
+    order.stripe_checkout_session_id &&
+    String(order.stripe_checkout_session_id) !== session.id
+  ) {
+    throw new Error("Stripe Checkout Session does not match Order");
+  }
+
+  const { error: deleteError } = await supabase
+    .from("orders")
+    .delete()
+    .eq("id", orderId)
+    .is("paid_at", null)
+    .in("status", ["pending_payment", "pending", "unpaid"]);
+
+  if (deleteError) {
+    throw deleteError;
+  }
+
+  console.log("Deleted expired unpaid order:", orderId, session.id);
 }
 
 // ===========================================================
