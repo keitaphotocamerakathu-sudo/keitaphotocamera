@@ -1067,18 +1067,57 @@
       protectMedia();
     }
 
-    async function detectSearchFace(input) {
-      let detection = await faceapi
-        .detectSingleFace(
-          input,
-          new faceapi.SsdMobilenetv1Options({ minConfidence: 0.18 })
-        )
-        .withFaceLandmarks()
-        .withFaceDescriptor();
+    function dedupeSearchDetections(items, duplicateDistance = 0.18) {
+      const kept = [];
 
-      if (!detection) {
-        detection = await faceapi
-          .detectSingleFace(
+      for (const item of items || []) {
+        if (!item?.descriptor) continue;
+
+        const current = Array.from(item.descriptor);
+
+        const duplicate = kept.some(old => {
+          const other = Array.from(old.descriptor || []);
+
+          if (current.length !== other.length || !current.length) {
+            return false;
+          }
+
+          let sum = 0;
+
+          for (let i = 0; i < current.length; i++) {
+            const diff = Number(current[i]) - Number(other[i]);
+            sum += diff * diff;
+          }
+
+          return Math.sqrt(sum) <= duplicateDistance;
+        });
+
+        if (!duplicate) kept.push(item);
+      }
+
+      return kept;
+    }
+
+    async function detectSearchFaces(input) {
+      const all = [];
+
+      try {
+        const ssd = await faceapi
+          .detectAllFaces(
+            input,
+            new faceapi.SsdMobilenetv1Options({ minConfidence: 0.18 })
+          )
+          .withFaceLandmarks()
+          .withFaceDescriptors();
+
+        all.push(...(ssd || []));
+      } catch (err) {
+        console.warn("Search SSD pass failed:", err);
+      }
+
+      try {
+        const tiny = await faceapi
+          .detectAllFaces(
             input,
             new faceapi.TinyFaceDetectorOptions({
               inputSize: 512,
@@ -1086,10 +1125,14 @@
             })
           )
           .withFaceLandmarks()
-          .withFaceDescriptor();
+          .withFaceDescriptors();
+
+        all.push(...(tiny || []));
+      } catch (err) {
+        console.warn("Search Tiny pass failed:", err);
       }
 
-      return detection || null;
+      return dedupeSearchDetections(all, 0.18);
     }
 
     function createMirroredFaceCanvas(img) {
@@ -1134,32 +1177,35 @@
 
         const img = await faceapi.bufferToImage(selectedFile);
 
-        const detection = await detectSearchFace(img);
+        const detections = await detectSearchFaces(img);
 
-        if (!detection) {
+        if (!detections.length) {
           Swal.fire(t().noFace, t().noFaceDesc, "warning");
           return;
         }
 
-        const descriptor = Array.from(detection.descriptor);
-        const descriptors = [descriptor];
+        const descriptors = detections.map(item =>
+          Array.from(item.descriptor)
+        );
 
-        // A mirrored descriptor is a cheap second view of the same face.
-        // The server will use the best (smallest) distance, while keeping
-        // the same strict match threshold.
+        // Also inspect every face in the mirrored image. This helps
+        // side-facing / asymmetric poses while keeping the same strict
+        // server threshold.
         try {
           const mirroredCanvas = createMirroredFaceCanvas(img);
 
           if (mirroredCanvas) {
-            const mirroredDetection = await detectSearchFace(mirroredCanvas);
+            const mirroredDetections = await detectSearchFaces(mirroredCanvas);
 
-            if (mirroredDetection?.descriptor) {
-              descriptors.push(Array.from(mirroredDetection.descriptor));
+            for (const item of mirroredDetections) {
+              descriptors.push(Array.from(item.descriptor));
             }
           }
         } catch (mirrorErr) {
-          console.warn("Mirror face descriptor skipped:", mirrorErr);
+          console.warn("Mirror face descriptors skipped:", mirrorErr);
         }
+
+        const descriptor = descriptors[0];
 
         Swal.update({
           title: t().loadingSearch
