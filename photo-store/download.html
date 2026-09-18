@@ -411,10 +411,48 @@
       const { data, error } = await db
         .from("orders")
         .select(`
-          *,
+          id,
+          order_no,
+          line_user_id,
+          event_id,
+          total_amount,
+          status,
+          language,
+          created_at,
+          paid_at,
           order_items (
-            *,
-            photos (*)
+            id,
+            order_id,
+            photo_id,
+            event_id,
+            filename,
+            price,
+            photo_url,
+            photos (
+              id,
+              event_id,
+              filename,
+              price,
+              status,
+              preview_path,
+              watermark_path,
+              preview_url,
+              watermark_url,
+              storage_provider,
+              r2_preview_url,
+              r2_watermark_url,
+              media_type,
+              mime_type,
+              file_size,
+              duration_seconds,
+              thumbnail_url,
+              thumbnail_path,
+              video_preview_url,
+              video_preview_path,
+              r2_thumbnail_url,
+              r2_video_preview_url,
+              r2_video_preview_key
+            )
           )
         `)
         .eq("id", orderId)
@@ -469,7 +507,7 @@
         const mediaIsVideo = isVideoItem(item, photo);
 
         const preview = getPreviewUrl(item, photo);
-        const downloadUrl = getDownloadUrl(item, photo);
+        const canDownload = Boolean(item?.id && item?.photo_id);
 
         const filename =
           photo.filename ||
@@ -528,7 +566,7 @@
               type="button"
               onclick="downloadItemByIndex(${index})"
               class="mt-4 w-full bg-emerald-600 text-white rounded-2xl py-3 font-bold disabled:opacity-40"
-              ${downloadUrl ? "" : "disabled"}
+              ${canDownload ? "" : "disabled"}
             >
               ${escapeHtml(mediaIsVideo ? t().downloadVideoBtn : t().downloadBtn)}
             </button>
@@ -606,56 +644,70 @@
             photo.preview_url ||
             photo.preview_path ||
             photo.watermark_path ||
-            photo.r2_key ||
-            photo.original_path ||
             ""
           );
 
       return normalizeFileUrl(raw);
     }
 
-    function getDownloadUrl(item, photo) {
-      const mediaIsVideo = isVideoItem(item, photo);
+    function getLineIdTokenForDownload() {
+      if (
+        window.liff &&
+        typeof liff.isLoggedIn === "function" &&
+        liff.isLoggedIn() &&
+        typeof liff.getIDToken === "function"
+      ) {
+        return liff.getIDToken();
+      }
 
-      /*
-        สำคัญ:
-        - VDO ห้ามใช้ item.photo_url เป็นอันดับแรก เพราะมักเป็น thumbnail/preview
-        - VDO ต้องใช้ video_url / video_path ก่อน
-        - ภาพนิ่งให้พยายามใช้ original / r2_original_key ก่อน
-      */
-      const raw = mediaIsVideo
-        ? (
-            photo.video_url ||
-            photo.video_path ||
-            photo.r2_video_url ||
-            photo.r2_video_key ||
-            photo.video_preview_url ||
-            photo.video_preview_path ||
-            photo.r2_video_preview_url ||
-            photo.r2_video_preview_key ||
-            photo.r2_original_key ||
-            photo.r2_key ||
-            photo.original_path ||
-            ""
-          )
-        : (
-            photo.r2_original_key ||
-            photo.original_path ||
-            photo.r2_key ||
-            photo.r2_preview_url ||
-            photo.preview_url ||
-            photo.r2_watermark_url ||
-            photo.watermark_url ||
-            item.photo_url ||
-            photo.preview_path ||
-            photo.watermark_path ||
-            ""
-          );
-
-      return normalizeFileUrl(raw);
+      return null;
     }
 
-    function downloadItemByIndex(index) {
+    async function requestSecureDownloadLink(item) {
+      const lineIdToken = getLineIdTokenForDownload();
+
+      if (!lineIdToken) {
+        throw new Error(
+          "LINE login หมดอายุ กรุณาปิดแล้วเปิด Mini App ใหม่"
+        );
+      }
+
+      if (!item?.id || !item?.photo_id) {
+        throw new Error(t().noFileDesc);
+      }
+
+      const response = await fetch(
+        `${CONFIG.SUPABASE_URL}/functions/v1/create-secure-download-link`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: CONFIG.SUPABASE_ANON_KEY,
+            Authorization:
+              `Bearer ${CONFIG.SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({
+            order_id: orderId,
+            order_item_id: item.id,
+            line_id_token: lineIdToken
+          })
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || !data?.success || !data?.url) {
+        throw new Error(
+          data?.error ||
+          data?.message ||
+          "สร้างลิงก์ดาวน์โหลดไม่สำเร็จ"
+        );
+      }
+
+      return data.url;
+    }
+
+    async function downloadItemByIndex(index) {
       const items = order?.order_items || [];
       const item = items[index];
 
@@ -664,18 +716,20 @@
         return;
       }
 
-      const photo = item.photos || {};
-      const mediaIsVideo = isVideoItem(item, photo);
-      const url = getDownloadUrl(item, photo);
+      try {
+        const secureUrl =
+          await requestSecureDownloadLink(item);
 
-      const filename =
-        photo.filename ||
-        item.filename ||
-        item.file_name ||
-        item.photo_id ||
-        (mediaIsVideo ? "video.mp4" : "photo.jpg");
+        openSecureDownload(secureUrl);
+      } catch (error) {
+        console.error("SECURE DOWNLOAD ERROR:", error);
 
-      downloadFile(url, filename);
+        Swal.fire(
+          t().errorTitle,
+          error?.message || t().noFileDesc,
+          "error"
+        );
+      }
     }
 
     function normalizeFileUrl(url) {
@@ -704,55 +758,23 @@
       return encodeURI(cleanUrl);
     }
 
-    function makeForceDownloadUrl(url, filename) {
-      if (!url) return "";
-
-      const absoluteUrl = new URL(url, window.location.href);
-
-      const workerBase = String(CONFIG.R2_WORKER_URL || "").replace(/\/+$/, "");
-
-      if (workerBase) {
-        const workerUrl = new URL(workerBase);
-
-        if (
-          absoluteUrl.origin === workerUrl.origin &&
-          absoluteUrl.pathname.startsWith("/file/")
-        ) {
-          absoluteUrl.pathname =
-            absoluteUrl.pathname.replace("/file/", "/download/");
-
-          if (filename) {
-            absoluteUrl.searchParams.set("filename", filename);
-          }
-
-          return absoluteUrl.href;
-        }
-      }
-
-      return absoluteUrl.href;
-    }
-
-    function downloadFile(url, filename) {
+    function openSecureDownload(url) {
       if (!url) {
-        Swal.fire(t().noFile, t().noFileDesc, "warning");
         return;
       }
 
-      const finalUrl = makeForceDownloadUrl(url, filename);
-
       if (window.liff && liff.isInClient()) {
         liff.openWindow({
-          url: finalUrl,
+          url,
           external: true
         });
         return;
       }
 
       const a = document.createElement("a");
-      a.href = finalUrl;
+      a.href = url;
       a.target = "_blank";
       a.rel = "noopener noreferrer";
-      a.download = filename || "file";
 
       document.body.appendChild(a);
       a.click();
@@ -769,24 +791,10 @@
         return;
       }
 
-      const files = (order.order_items || [])
-        .map(item => {
-          const photo = item.photos || {};
-          const mediaIsVideo = isVideoItem(item, photo);
+      const items = (order.order_items || [])
+        .filter(item => item?.id && item?.photo_id);
 
-          return {
-            url: getDownloadUrl(item, photo),
-            filename:
-              photo.filename ||
-              item.filename ||
-              item.file_name ||
-              item.photo_id ||
-              (mediaIsVideo ? "video.mp4" : "photo.jpg")
-          };
-        })
-        .filter(item => item.url);
-
-      if (!files.length) {
+      if (!items.length) {
         Swal.fire(
           t().noFile,
           t().noFileDesc,
@@ -798,7 +806,9 @@
       const confirm = await Swal.fire({
         icon: "info",
         title: t().downloadAllTitle,
-        text: t().downloadAllText,
+        text:
+          t().downloadAllText +
+          " ลิงก์แต่ละไฟล์มีอายุ 10 นาที",
         showCancelButton: true,
         confirmButtonText: t().startDownload,
         cancelButtonText: t().cancel
@@ -806,11 +816,33 @@
 
       if (!confirm.isConfirmed) return;
 
-      for (const file of files) {
-        downloadFile(file.url, file.filename);
+      let failed = 0;
 
-        await new Promise(resolve =>
-          setTimeout(resolve, 900)
+      for (const item of items) {
+        try {
+          const secureUrl =
+            await requestSecureDownloadLink(item);
+
+          openSecureDownload(secureUrl);
+
+          await new Promise(resolve =>
+            setTimeout(resolve, 900)
+          );
+        } catch (error) {
+          failed++;
+          console.error(
+            "SECURE DOWNLOAD ALL ERROR:",
+            item?.id,
+            error
+          );
+        }
+      }
+
+      if (failed) {
+        Swal.fire(
+          t().errorTitle,
+          `มี ${failed} ไฟล์ที่เปิดดาวน์โหลดไม่สำเร็จ กรุณากดดาวน์โหลดทีละไฟล์`,
+          "warning"
         );
       }
     }
