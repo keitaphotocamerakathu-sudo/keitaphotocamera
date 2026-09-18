@@ -2543,6 +2543,146 @@
       position: relative !important;
       z-index: 80 !important;
     }
+
+    /****************************************
+     * PREVIEW MODAL V7 — CLEAN / BALANCED
+     * Final overrides for enlarged photo/video preview only.
+     ****************************************/
+    #imageModal {
+      padding:
+        max(14px, env(safe-area-inset-top))
+        max(12px, env(safe-area-inset-right))
+        max(14px, env(safe-area-inset-bottom))
+        max(12px, env(safe-area-inset-left)) !important;
+      background: rgba(2, 6, 23, .88) !important;
+      backdrop-filter: blur(14px) saturate(.9);
+      -webkit-backdrop-filter: blur(14px) saturate(.9);
+    }
+
+    #imageModal > .event-preview-shell {
+      width: fit-content !important;
+      max-width: 96vw !important;
+      max-height: 96dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: center;
+      margin: auto;
+    }
+
+    #modalMediaBox {
+      --modal-wm-tile: 170px;
+      width: fit-content !important;
+      max-width: min(94vw, 1120px) !important;
+      max-height: calc(100dvh - 150px) !important;
+      margin: 0 auto;
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+      border-radius: 22px !important;
+      background: #020617 !important;
+      border: 1px solid rgba(255,255,255,.12);
+      box-shadow:
+        0 28px 80px rgba(0,0,0,.55),
+        0 0 0 1px rgba(255,255,255,.025) inset;
+    }
+
+    #modalImage,
+    #modalVideo {
+      width: auto !important;
+      height: auto !important;
+      max-width: min(94vw, 1120px) !important;
+      max-height: calc(100dvh - 150px) !important;
+      object-fit: contain !important;
+      display: block;
+      border-radius: 21px;
+      filter: none !important;
+      transform: none !important;
+      background: #020617;
+    }
+
+    #modalImage.hidden,
+    #modalVideo.hidden {
+      display: none !important;
+    }
+
+    /* Watermark follows the real displayed media box instead of the viewport. */
+    #modalMediaBox.modal-watermark-media.watermark-dense::before {
+      inset: 0 !important;
+      border-radius: inherit;
+      opacity: .76 !important;
+      background-size: var(--modal-wm-tile) auto !important;
+      background-position: center center !important;
+    }
+
+    /* Large central PREVIEW was visually heavy in enlarged view. */
+    #modalMediaBox.modal-watermark-media.watermark-dense::after {
+      display: none !important;
+      content: none !important;
+    }
+
+    #modalMediaBox .modal-soft-mask {
+      z-index: 20;
+      background:
+        linear-gradient(to bottom, rgba(0,0,0,.035), transparent 18%, transparent 82%, rgba(0,0,0,.08)) !important;
+    }
+
+    #imageModal .event-preview-actions {
+      width: 100%;
+      margin-top: 12px !important;
+      padding: 8px;
+      gap: 8px !important;
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 18px;
+      background: rgba(15,23,42,.72);
+      box-shadow: 0 12px 34px rgba(0,0,0,.25);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    #modalAddBtn,
+    #modalCloseBtn {
+      min-height: 46px;
+      border-radius: 14px !important;
+    }
+
+    #modalXBtn {
+      position: fixed !important;
+      top: max(12px, env(safe-area-inset-top)) !important;
+      right: max(12px, env(safe-area-inset-right)) !important;
+      width: 44px !important;
+      height: 44px !important;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(15,23,42,.68) !important;
+      box-shadow: 0 10px 28px rgba(0,0,0,.28);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      font-size: 26px !important;
+    }
+
+    @media (max-width: 640px) {
+      #imageModal {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+      }
+
+      #modalMediaBox,
+      #modalImage,
+      #modalVideo {
+        max-width: 96vw !important;
+        max-height: calc(100dvh - 145px) !important;
+      }
+
+      #imageModal .event-preview-actions {
+        margin-top: 8px !important;
+      }
+
+      #modalAddBtn,
+      #modalCloseBtn {
+        padding-top: 11px !important;
+        padding-bottom: 11px !important;
+      }
+    }
 </style>
 </head>
 
@@ -2682,7 +2822,7 @@
       ×
     </button>
 
-    <div class="relative max-w-4xl w-full" onclick="event.stopPropagation()">
+    <div class="event-preview-shell relative" onclick="event.stopPropagation()">
       <div id="modalMediaBox" class="relative rounded-2xl overflow-hidden bg-black protected-media watermark-dense modal-watermark-media">
         <img
           id="modalImage"
@@ -2690,7 +2830,7 @@
           class="w-full max-h-[78vh] object-contain select-none protected-img"
           draggable="false"
           referrerpolicy="no-referrer"
-          onload="markPreviewOrientation(this)"
+          onload="markPreviewOrientation(this); fitEventModalWatermark();"
           oncontextmenu="return false;"
           onerror="this.onerror=null; this.src='https://placehold.co/1000x750/111827/ffffff?text=NO+IMAGE';"
         />
@@ -2703,6 +2843,7 @@
           disablePictureInPicture
           playsinline
           preload="none"
+          onloadedmetadata="fitEventModalWatermark()"
           oncontextmenu="return false;"
         ></video>
 
@@ -2728,7 +2869,7 @@
         </div>
       </div>
 
-      <div class="mt-4 flex gap-3">
+      <div class="event-preview-actions mt-4 flex gap-3">
         <button
           id="modalAddBtn"
           class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl px-4 py-3 font-bold"
@@ -3452,6 +3593,40 @@
       window.location.href = `checkout.html?event=${encodeURIComponent(eventId)}`;
     }
 
+    function fitEventModalWatermark() {
+      const box = document.getElementById("modalMediaBox");
+      const image = document.getElementById("modalImage");
+      const video = document.getElementById("modalVideo");
+
+      if (!box) return;
+
+      const media =
+        image && !image.classList.contains("hidden") && image.src
+          ? image
+          : video && !video.classList.contains("hidden") && video.src
+            ? video
+            : null;
+
+      if (!media) return;
+
+      requestAnimationFrame(() => {
+        const rect = media.getBoundingClientRect();
+
+        if (!rect.width || !rect.height) return;
+
+        const portrait = rect.height > rect.width;
+
+        // Keep watermark density proportional to the displayed photo itself.
+        const ratio = portrait ? 0.42 : 0.27;
+        const tile = Math.round(
+          Math.max(112, Math.min(rect.width * ratio, 190))
+        );
+
+        box.style.setProperty("--modal-wm-tile", `${tile}px`);
+        box.classList.toggle("portrait", portrait);
+      });
+    }
+
     function openImageModal(photoId) {
       const photo = photos.find(p => String(p.id) === String(photoId));
       if (!photo) return;
@@ -3498,6 +3673,7 @@
 
       document.getElementById("imageModal").classList.remove("hidden");
       document.getElementById("imageModal").classList.add("flex");
+      setTimeout(fitEventModalWatermark, 40);
 
       document.getElementById("modalAddBtn").onclick = () => {
         toggleCart(photo.id);
