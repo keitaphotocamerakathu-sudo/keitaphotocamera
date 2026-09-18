@@ -461,6 +461,74 @@
       });
     }
 
+    async function createImagePreviewFile(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+
+        img.onload = () => {
+          try {
+            const sourceWidth = Number(img.naturalWidth || img.width || 0);
+            const sourceHeight = Number(img.naturalHeight || img.height || 0);
+
+            if (!sourceWidth || !sourceHeight) {
+              throw new Error("อ่านขนาดรูปไม่ได้");
+            }
+
+            const maxLongEdge = 1200;
+            const ratio = Math.min(
+              1,
+              maxLongEdge / Math.max(sourceWidth, sourceHeight)
+            );
+
+            const width = Math.max(1, Math.round(sourceWidth * ratio));
+            const height = Math.max(1, Math.round(sourceHeight * ratio));
+
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext("2d", { alpha: false });
+
+            if (!ctx) {
+              throw new Error("Canvas not supported");
+            }
+
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = "high";
+            ctx.drawImage(img, 0, 0, width, height);
+
+            canvas.toBlob((blob) => {
+              URL.revokeObjectURL(url);
+
+              if (!blob) {
+                reject(new Error("สร้าง Preview ไม่สำเร็จ"));
+                return;
+              }
+
+              resolve(
+                new File(
+                  [blob],
+                  `${getBaseFilename(file.name)}_preview.jpg`,
+                  { type: "image/jpeg" }
+                )
+              );
+            }, "image/jpeg", 0.72);
+          } catch (err) {
+            URL.revokeObjectURL(url);
+            reject(err);
+          }
+        };
+
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error("Browser เปิดไฟล์รูปไม่ได้"));
+        };
+
+        img.src = url;
+      });
+    }
+
     async function createVideoThumbnailFile(file, durationSeconds) {
       return new Promise((resolve) => {
         const url = URL.createObjectURL(file);
@@ -640,6 +708,8 @@
       durationSeconds,
       r2Key,
       publicUrl,
+      previewKey,
+      previewUrl,
       thumbnailKey,
       thumbnailUrl
     }) {
@@ -659,15 +729,15 @@
         storage_provider: "r2",
 
         original_path: r2Key,
-        preview_path: isVideo ? thumbnailKey : r2Key,
-        watermark_path: isVideo ? thumbnailKey : r2Key,
+        preview_path: isVideo ? thumbnailKey : previewKey,
+        watermark_path: isVideo ? thumbnailKey : previewKey,
 
-        preview_url: isVideo ? thumbnailUrl : publicUrl,
-        watermark_url: isVideo ? thumbnailUrl : publicUrl,
+        preview_url: isVideo ? thumbnailUrl : previewUrl,
+        watermark_url: isVideo ? thumbnailUrl : previewUrl,
 
         r2_key: r2Key,
-        r2_preview_url: isVideo ? thumbnailUrl : publicUrl,
-        r2_watermark_url: isVideo ? thumbnailUrl : publicUrl,
+        r2_preview_url: isVideo ? thumbnailUrl : previewUrl,
+        r2_watermark_url: isVideo ? thumbnailUrl : previewUrl,
         r2_original_key: r2Key,
 
         video_url: isVideo ? publicUrl : null,
@@ -714,7 +784,7 @@
         const mediaInfo = await validateMediaFile(file);
 
         const isVideo = mediaInfo.mediaType === "video";
-        const uploadFolder = isVideo ? "videos/original" : "preview";
+        const uploadFolder = isVideo ? "videos/original" : "images/original";
 
         statusDiv.innerHTML = `
           <div class="font-bold">กำลังอัปโหลดเข้า R2 ${index}/${total}</div>
@@ -728,6 +798,30 @@
 
         const r2Key = r2Result.key;
         const publicUrl = r2Result.publicUrl;
+
+        let previewKey = null;
+        let previewUrl = null;
+
+        if (!isVideo) {
+          statusDiv.innerHTML = `
+            <div class="font-bold">กำลังสร้าง Preview เบา ๆ ${index}/${total}</div>
+            <div class="break-all">${escapeHtml(file.name)}</div>
+            <div class="text-xs text-slate-500 mt-1">
+              ย่อด้านยาวไม่เกิน 1,200px · คุณภาพ 72%
+            </div>
+          `;
+
+          const previewFile = await createImagePreviewFile(file);
+
+          const previewResult = await uploadFileToR2(
+            previewFile,
+            eventId,
+            "images/preview"
+          );
+
+          previewKey = previewResult.key;
+          previewUrl = previewResult.publicUrl;
+        }
 
         let thumbnailKey = null;
         let thumbnailUrl = null;
@@ -759,6 +853,8 @@
           durationSeconds: mediaInfo.durationSeconds,
           r2Key,
           publicUrl,
+          previewKey,
+          previewUrl,
           thumbnailKey,
           thumbnailUrl
         });
@@ -777,7 +873,7 @@
           : `
             <div class="w-20 h-16 rounded-xl overflow-hidden bg-slate-200 shrink-0">
               <img
-                src="${escapeAttr(publicUrl)}"
+                src="${escapeAttr(previewUrl || publicUrl)}"
                 class="w-full h-full object-cover"
                 onerror="this.style.display='none'"
               />
