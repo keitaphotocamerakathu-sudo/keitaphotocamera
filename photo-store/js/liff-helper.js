@@ -58,9 +58,13 @@ window.AppLIFF = {
     return localStorage.getItem("line_picture") || "";
   },
 
-  getCartKey() {
+  getCartKey(eventId = "") {
     const userId = this.getLineUserId() || "guest";
-    return `photo_cart_${userId}`;
+    const cleanEventId = String(eventId || "").trim();
+
+    return cleanEventId
+      ? `photo_cart_${userId}_${cleanEventId}`
+      : `photo_cart_${userId}`;
   },
 
   clearUser() {
