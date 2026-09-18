@@ -617,7 +617,45 @@
         throw error;
       }
 
-      orders = data || [];
+      const rawOrders = data || [];
+
+      // Hide orders/photos that belong to Events which no longer exist.
+      // This prevents deleted Events from confusing customers in My Orders.
+      const eventIds = [
+        ...new Set(
+          rawOrders
+            .map(order => String(order?.event_id || "").trim())
+            .filter(Boolean)
+        )
+      ];
+
+      let existingEventIds = new Set();
+
+      if (eventIds.length) {
+        const { data: existingEvents, error: eventsError } = await db
+          .from("events")
+          .select("id")
+          .in("id", eventIds);
+
+        if (eventsError) {
+          console.warn("LOAD EXISTING EVENTS WARNING:", eventsError);
+        } else {
+          existingEventIds = new Set(
+            (existingEvents || []).map(event => String(event.id))
+          );
+        }
+      }
+
+      orders = rawOrders.filter(order => {
+        const orderEventId = String(order?.event_id || "").trim();
+
+        // Event ID missing (for example, the Event was deleted with FK SET NULL)
+        // or the referenced Event no longer exists: hide it from My Orders.
+        return (
+          orderEventId &&
+          existingEventIds.has(orderEventId)
+        );
+      });
 
       loadingBox.classList.add("hidden");
 
