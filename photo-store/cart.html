@@ -244,11 +244,17 @@
   </footer>
 
   <script>
+    const db =
+      window.sb ||
+      window.supabaseClient ||
+      null;
+
     let profile = null;
     let cartKey = null;
     let cart = [];
+    let eventId = null;
 
-    const IMAGE_SINGLE_PRICE = Number(CONFIG.DEFAULT_PHOTO_PRICE || 50);
+    let IMAGE_SINGLE_PRICE = Number(CONFIG.DEFAULT_PHOTO_PRICE || 60);
     const IMAGE_PACK_10_PRICE = Number(CONFIG.IMAGE_PACK_10_PRICE || 250);
     const IMAGE_PACK_20_PRICE = Number(CONFIG.IMAGE_PACK_20_PRICE || 500);
 
@@ -421,10 +427,12 @@
           };
         }
 
+        eventId = getEventIdFromUrl();
         cartKey = getCartKey();
 
         showProfile();
         loadCart();
+        await loadEventPricing();
         normalizeCartItems();
         saveCart();
         renderCart();
@@ -442,11 +450,62 @@
 
     function getCartKey() {
       if (window.AppLIFF && AppLIFF.getCartKey) {
-        return AppLIFF.getCartKey();
+        return AppLIFF.getCartKey(eventId);
       }
 
-      const userId = profile?.userId || localStorage.getItem("line_user_id") || "guest";
+      const userId =
+        profile?.userId ||
+        localStorage.getItem("line_user_id") ||
+        "guest";
+
+      const cleanEventId =
+        String(eventId || "").trim() ||
+        "no-event";
+
+      return `photo_cart_${userId}_${cleanEventId}`;
+    }
+
+    function getLegacyCartKey() {
+      const userId =
+        profile?.userId ||
+        localStorage.getItem("line_user_id") ||
+        "guest";
+
       return `photo_cart_${userId}`;
+    }
+
+    function getEventIdFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      return (
+        params.get("event") ||
+        params.get("event_id") ||
+        params.get("id") ||
+        null
+      );
+    }
+
+    async function loadEventPricing() {
+      if (!eventId || !db) return;
+
+      const { data, error } = await db
+        .from("events")
+        .select("id,title,price")
+        .eq("id", eventId)
+        .single();
+
+      if (error) {
+        console.warn(
+          "โหลดราคา Event ไม่สำเร็จ ใช้ราคา fallback แทน:",
+          error
+        );
+        return;
+      }
+
+      const eventPrice = Number(data?.price || 0);
+
+      if (Number.isFinite(eventPrice) && eventPrice > 0) {
+        IMAGE_SINGLE_PRICE = eventPrice;
+      }
     }
 
     function applyLanguage() {
@@ -506,6 +565,55 @@
         rawCart = JSON.parse(localStorage.getItem(cartKey) || "[]");
       } catch {
         rawCart = [];
+      }
+
+      if (!Array.isArray(rawCart)) {
+        rawCart = [];
+      }
+
+      // One-time migration from the old per-user cart.
+      if (!rawCart.length) {
+        let legacyCart = [];
+
+        try {
+          legacyCart = JSON.parse(
+            localStorage.getItem(getLegacyCartKey()) || "[]"
+          );
+        } catch {
+          legacyCart = [];
+        }
+
+        if (Array.isArray(legacyCart) && legacyCart.length) {
+          if (!eventId) {
+            eventId =
+              legacyCart.find(item => item?.event_id)?.event_id ||
+              null;
+
+            if (eventId) {
+              cartKey = getCartKey();
+            }
+          }
+
+          rawCart = eventId
+            ? legacyCart.filter(
+                item =>
+                  String(item?.event_id || "") === String(eventId)
+              )
+            : [];
+
+          if (rawCart.length) {
+            localStorage.setItem(cartKey, JSON.stringify(rawCart));
+          }
+        }
+      }
+
+      // Never allow another Event's items into this cart.
+      if (eventId) {
+        rawCart = rawCart.filter(
+          item =>
+            !item?.event_id ||
+            String(item.event_id) === String(eventId)
+        );
       }
 
       const map = new Map();
