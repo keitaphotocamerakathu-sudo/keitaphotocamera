@@ -1,0 +1,99 @@
+KEITA PHOTO TOOLS v17.13 — ตั้งค่า License แบบ 1 Key = 1 เครื่อง
+============================================================
+
+แนวคิด
+- เอสส่งลิงก์ user.html + License Key ให้ผู้ใช้
+- ผู้ใช้ไม่ต้องส่ง Device ID หรือไฟล์ Request มาก่อน
+- เครื่องแรกที่กรอก Key สำเร็จจะถูกผูกกับ Key นั้นทันที
+- Key เดิมเอาไปกรอกเครื่องอื่นไม่ได้
+- Trial / รายเดือน / รายปี เริ่มนับจากวันที่ Activate ครั้งแรก
+- ถาวรไม่มีวันหมดอายุ
+- หน้า license.html ของเอสใช้สร้าง Key และจัดการ License
+- ระบบไม่ใช้ Supabase และไม่ใช้ OpenAI API
+- Backend ใช้ Cloudflare Worker + D1
+
+ไฟล์สำคัญ
+- user.html                       หน้าสำหรับผู้ใช้ทั่วไป
+- license.html                    หน้าจัดการ License ของเอส
+- keita-license-config.json       URL ของ Worker ที่ user.html จะเรียกใช้
+- cloudflare-worker/worker.js     API License
+- cloudflare-worker/schema.sql    ตาราง D1
+- cloudflare-worker/wrangler.toml ตัวอย่าง config สำหรับ deploy
+
+ตั้งค่าครั้งแรกด้วย Wrangler
+1) ติดตั้ง/ล็อกอิน Cloudflare
+   npx wrangler login
+
+2) สร้าง D1
+   npx wrangler d1 create keita-license
+
+3) นำ database_id ที่ได้ ไปแทน PUT_YOUR_D1_DATABASE_ID_HERE
+   ใน cloudflare-worker/wrangler.toml
+
+4) สร้างตาราง
+   cd cloudflare-worker
+   npx wrangler d1 execute keita-license --remote --file=schema.sql
+
+5) ตั้ง Secret 2 ค่า (อย่าใส่ Secret ลง GitHub)
+   npx wrangler secret put ADMIN_SECRET
+   npx wrangler secret put LICENSE_PEPPER
+
+   แนะนำให้ทั้งสองค่าเป็นรหัสสุ่มยาวอย่างน้อย 32-64 ตัว
+   บน Mac สร้างได้ด้วย:
+   openssl rand -base64 48
+
+6) Deploy Worker
+   npx wrangler deploy
+
+7) Wrangler จะแจ้ง URL เช่น
+   https://keita-license-api.<ชื่อบัญชี>.workers.dev
+
+8) เปิด license.html ของเอส
+   - ใส่ Worker API URL
+   - ใส่ ADMIN_SECRET
+   - กด “ทดสอบการเชื่อมต่อ”
+   - กด “ดาวน์โหลด keita-license-config.json”
+
+9) เอา keita-license-config.json ที่ดาวน์โหลด ไปวางโฟลเดอร์เดียวกับ user.html บน GitHub Pages
+   เช่น
+   /keita-photo-tools-v17-13/user.html
+   /keita-photo-tools-v17-13/keita-license-config.json
+
+10) ส่งลิงก์ user.html ให้ลูกค้า
+
+การสร้าง License
+- เปิด license.html
+- ใส่ Worker API URL + Admin Secret
+- เลือกประเภท:
+  * ทดลองใช้: ใส่จำนวนวัน
+  * รายเดือน: ใส่จำนวนเดือน
+  * รายปี: ใส่จำนวนปี
+  * กำหนดวันหมดอายุเอง
+  * ถาวร
+- กด “สร้าง License Key”
+- ระบบแสดง Key จริง 20 ตัวเพียงตอนสร้าง
+- ส่ง Key ให้ User
+
+พฤติกรรมการ Activate
+- User เปิด user.html
+- กรอก Key 20 ตัว
+- Browser สร้าง Device Private Key ภายในเครื่อง
+- Worker ผูก Key กับ Device ID ของเครื่องแรกที่ Activate
+- ถ้า Key เดิมถูกกรอกจากเครื่องอื่น -> ปฏิเสธ
+- User ไม่ต้องใส่ Key ใหม่ทุกครั้งหลัง Activate สำเร็จ
+- user.html จะตรวจสถานะกับ Worker เมื่อเปิดระบบ และตรวจอีกครั้งก่อน Smart Culling / Highlight / Export
+
+ความปลอดภัย
+- Key 20 ตัวถูกสุ่มด้วย crypto.getRandomValues() บน Worker
+- ทุก Key มี A-Z, a-z, 0-9, อักขระพิเศษ
+- D1 ไม่เก็บ Key จริง เก็บ HMAC-SHA256 โดยใช้ LICENSE_PEPPER ที่เป็น Secret เท่านั้น
+- Device ใช้ ECDSA P-384 Private Key ที่เก็บใน IndexedDB และไม่ export หลังสร้าง
+- Status check ต้องมีลายเซ็นจาก Device Private Key
+- มี rate limit เบื้องต้นสำหรับการเดา Key
+- Admin API ต้องมี ADMIN_SECRET
+- CORS จำกัดให้เว็บ GitHub Pages ของ KEITA ตามค่า ALLOWED_ORIGINS
+
+หมายเหตุ
+- ถ้า User ล้าง Chrome/Site Data จน Device Private Key หาย เครื่องนั้นจะถูกมองว่าเป็นเครื่องใหม่ และ Key เดิมจะ Activate ไม่ได้
+- ถ้าต้องการย้ายเครื่อง ให้เอสเปิด license.html แล้วกด Reset Device ของ License นั้นก่อน
+- ถ้าต้องการปิดสิทธิ์ทันที ให้กด Revoke
