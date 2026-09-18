@@ -52,6 +52,10 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const LINE_CHANNEL_ACCESS_TOKEN =
       Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN");
+    const TELEGRAM_BOT_TOKEN =
+      Deno.env.get("TELEGRAM_BOT_TOKEN");
+    const TELEGRAM_CHAT_ID =
+      Deno.env.get("TELEGRAM_CHAT_ID");
 
     if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
       return jsonResponse(
@@ -128,17 +132,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Idempotency: if already notified, don't push twice.
-    if (order.line_notified_at) {
-      return jsonResponse({
-        success: true,
-        duplicate: true,
-        message: "LINE already notified",
-        order_id,
-        order_no: order.order_no || String(order.id),
-        line_notified_at: order.line_notified_at,
-      });
-    }
+    // LINE and Telegram have separate idempotency markers.
+    // A retry may need to send one channel without duplicating the other.
+    const lineAlreadyNotified = Boolean(order.line_notified_at);
+    const telegramAlreadyNotified = Boolean(order.telegram_notified_at);
 
     const currentLang =
       ["th", "en", "ru"].includes(String(order.language || ""))
@@ -236,62 +233,163 @@ Deno.serve(async (req) => {
       ],
     };
 
-    const lineRes = await fetch(
-      "https://api.line.me/v2/bot/message/push",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization:
-            `Bearer ${LINE_CHANNEL_ACCESS_TOKEN}`,
-        },
-        body: JSON.stringify(payload),
-      },
-    );
+    let lineNotifiedAt =
+      order.line_notified_at || null;
 
-    const lineText = await lineRes.text();
-
-    if (!lineRes.ok) {
-      console.error(
-        "LINE push failed:",
-        lineRes.status,
-        lineText,
-      );
-
-      return jsonResponse(
+    if (!lineAlreadyNotified) {
+      const lineRes = await fetch(
+        "https://api.line.me/v2/bot/message/push",
         {
-          success: false,
-          error: "LINE push failed",
-          line_status: lineRes.status,
-          line_response: lineText,
-          order_id,
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization:
+              `Bearer ${LINE_CHANNEL_ACCESS_TOKEN}`,
+          },
+          body: JSON.stringify(payload),
         },
-        502,
       );
+
+      const lineText = await lineRes.text();
+
+      if (!lineRes.ok) {
+        console.error(
+          "LINE push failed:",
+          lineRes.status,
+          lineText,
+        );
+
+        return jsonResponse(
+          {
+            success: false,
+            error: "LINE push failed",
+            line_status: lineRes.status,
+            line_response: lineText,
+            order_id,
+          },
+          502,
+        );
+      }
+
+      lineNotifiedAt = new Date().toISOString();
+
+      const { error: stampError } = await supabase
+        .from("orders")
+        .update({ line_notified_at: lineNotifiedAt })
+        .eq("id", order_id)
+        .is("line_notified_at", null);
+
+      if (stampError) {
+        console.warn(
+          "LINE sent but line_notified_at update failed:",
+          stampError,
+        );
+      }
     }
 
-    const notifiedAt = new Date().toISOString();
+    let telegramNotifiedAt =
+      order.telegram_notified_at || null;
 
-    const { error: stampError } = await supabase
-      .from("orders")
-      .update({ line_notified_at: notifiedAt })
-      .eq("id", order_id)
-      .is("line_notified_at", null);
+    if (!telegramAlreadyNotified) {
+      if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+        console.warn(
+          "Telegram notification skipped: missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID",
+        );
+      } else {
+        let eventName = "-";
 
-    if (stampError) {
-      console.warn(
-        "LINE sent but line_notified_at update failed:",
-        stampError,
-      );
+        if (order.event_id) {
+          const { data: eventData } = await supabase
+            .from("events")
+            .select("title,name")
+            .eq("id", order.event_id)
+            .maybeSingle();
+
+          eventName =
+            String(
+              eventData?.title ||
+              eventData?.name ||
+              order.event_id
+            );
+        }
+
+        const paidTime = new Intl.DateTimeFormat(
+          "th-TH",
+          {
+            timeZone: "Asia/Bangkok",
+            dateStyle: "medium",
+            timeStyle: "medium",
+          },
+        ).format(
+          new Date(order.paid_at || Date.now()),
+        );
+
+        const telegramText = [
+          "✅ คำสั่งซื้อชำระเงินสำเร็จ",
+          `Order: ${orderNo}`,
+          `ลูกค้า: ${order.line_display_name || "LINE User"}`,
+          `Event: ${eventName}`,
+          `ยอดชำระ: ${Number(order.total_amount || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} บาท`,
+          "ช่องทาง: Stripe",
+          `เวลา: ${paidTime}`,
+        ].join("\n");
+
+        const telegramRes = await fetch(
+          `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              chat_id: TELEGRAM_CHAT_ID,
+              text: telegramText,
+              disable_web_page_preview: true,
+            }),
+          },
+        );
+
+        const telegramResponseText =
+          await telegramRes.text();
+
+        if (!telegramRes.ok) {
+          console.error(
+            "Telegram notify failed:",
+            telegramRes.status,
+            telegramResponseText,
+          );
+        } else {
+          telegramNotifiedAt = new Date().toISOString();
+
+          const { error: telegramStampError } =
+            await supabase
+              .from("orders")
+              .update({
+                telegram_notified_at:
+                  telegramNotifiedAt,
+              })
+              .eq("id", order_id)
+              .is("telegram_notified_at", null);
+
+          if (telegramStampError) {
+            console.warn(
+              "Telegram sent but telegram_notified_at update failed:",
+              telegramStampError,
+            );
+          }
+        }
+      }
     }
 
     return jsonResponse({
       success: true,
-      message: "ส่ง Flex Message ให้ลูกค้าแล้ว",
+      message:
+        "แจ้งลูกค้าและ Admin สำหรับคำสั่งซื้อสำเร็จแล้ว",
       order_id,
       order_no: orderNo,
       language: currentLang,
-      line_notified_at: notifiedAt,
+      line_notified_at: lineNotifiedAt,
+      telegram_notified_at: telegramNotifiedAt,
     });
   } catch (err) {
     console.error("send-order-approved error:", err);
