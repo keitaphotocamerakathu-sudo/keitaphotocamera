@@ -241,7 +241,7 @@ Deno.serve(async (req) => {
 
         let lineNotified = false;
 
-        if (!order.line_notified_at) {
+        if (!order.line_notified_at || !order.telegram_notified_at) {
           const notifyRes = await fetch(
             `${SUPABASE_URL}/functions/v1/send-order-approved`,
             {
