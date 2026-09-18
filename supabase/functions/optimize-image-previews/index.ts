@@ -171,7 +171,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const photoId = clean(body.photo_id);
     const requestedLimit = Number(body.limit || 5);
-    const limit = Math.max(1, Math.min(10, Math.round(requestedLimit)));
+    const limit = Math.max(1, Math.min(15, Math.round(requestedLimit)));
 
     let query = supabase
       .from("photos")
