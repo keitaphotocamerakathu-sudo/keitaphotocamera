@@ -90,14 +90,8 @@ async function verifyToken(token: string) {
 
   const orderId = clean(payload?.o);
   const itemId = clean(payload?.i);
-  const expiresAt = Number(payload?.e || 0);
-
-  if (!orderId || !itemId || !Number.isFinite(expiresAt)) {
+  if (!orderId || !itemId) {
     throw new Error("Invalid download token payload");
-  }
-
-  if (Math.floor(Date.now() / 1000) > expiresAt) {
-    throw new Error("Download link expired");
   }
 
   return { orderId, itemId };
@@ -378,11 +372,9 @@ Deno.serve(async (req) => {
         : "Download failed";
 
     const status =
-      message === "Download link expired"
-        ? 410
-        : message.startsWith("Invalid download token")
-          ? 403
-          : 500;
+      message.startsWith("Invalid download token")
+        ? 403
+        : 500;
 
     return errorResponse(message, status);
   }
