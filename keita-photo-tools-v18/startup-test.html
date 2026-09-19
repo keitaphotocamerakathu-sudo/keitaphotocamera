@@ -132,12 +132,12 @@ button,input,select,label{touch-action:manipulation}
 
   <section class="panel" id="aiModelPanel">
     <div class="section-head">
-      <div class="section-title"><span class="section-icon">AI</span><div><h2>KEITA AI — โมเดลที่เอสสอนไว้</h2><p>Reference จากหน้า Teach KEITA สำหรับดูคะแนน/ความมั่นใจประกอบการคัด · ไม่ override Production · ฟรี 100% · เก็บในเครื่อง</p></div></div>
-      <a class="btn primary navlink" href="teach.html">เปิดหน้าสอน KEITA AI</a>
+      <div class="section-title"><span class="section-icon">AI</span><div><h2>KEITA Reference — โมเดลที่เอสสอนไว้</h2><p>Reference จากหน้า Teach KEITA สำหรับดูคะแนน/ความมั่นใจประกอบการคัด · ไม่ override Production · ฟรี 100% · เก็บในเครื่อง</p></div></div>
+      <a class="btn primary navlink" href="teach.html">เปิดหน้าสอน KEITA</a>
     </div>
     <div class="ai-model-grid">
-      <div><div class="ai-model-stats" id="aiProductionStats"><span class="ai-learning">กำลังโหลดโปรไฟล์…</span></div><div class="ai-model-note" id="aiProductionNote">เมื่อมีตัวอย่าง KEEP และ REJECT เพียงพอ Smart Culling จะใช้ความรู้ที่สอนไว้ตัดสินภาพคล้ายกันอัตโนมัติ ไม่ต้องกลับมาสอนหลังคัดงานแต่ละอัลบั้ม</div></div>
-      <label class="switch"><input id="keitaLearnedEnabled" type="checkbox" checked> แสดง KEITA AI Reference</label>
+      <div><div class="ai-model-stats" id="aiProductionStats"><span class="ai-learning">กำลังโหลดโปรไฟล์…</span></div><div class="ai-model-note" id="aiProductionNote">เมื่อมีตัวอย่าง KEEP และ REJECT เพียงพอ KEITA Reference จะแสดงคะแนน ความมั่นใจ และความคล้ายสำหรับภาพใกล้เคียง โดยไม่เปลี่ยนผล Production</div></div>
+      <label class="switch"><input id="keitaLearnedEnabled" type="checkbox" checked> แสดง KEITA Reference</label>
     </div>
   </section>
   <div hidden aria-hidden="true">
@@ -453,7 +453,7 @@ function teachProductionReady(target='sellable'){
 }
 function renderAiProductionStats(){
   if(!els.aiProductionStats)return;const s=teachProductionReady('sellable'),h=teachProductionReady('hl');
-  const z=teachStatsData();els.aiProductionStats.innerHTML=`<span class="${s.ready?'ai-ready':'ai-learning'}">Culling AI: ${s.ready?'พร้อมใช้':'กำลังเรียน'}</span><span class="teach-stat keep">KEEP ${z.keep}</span><span class="teach-stat reject">REJECT ${z.reject}</span><span class="${h.ready?'ai-ready':'ai-learning'}">HL AI: ${h.ready?'พร้อมใช้':'กำลังเรียน'}</span>`;
+  const z=teachStatsData();els.aiProductionStats.innerHTML=`<span class="${s.ready?'ai-ready':'ai-learning'}">Culling Reference: ${s.ready?'พร้อมใช้':'กำลังเรียน'}</span><span class="teach-stat keep">KEEP ${z.keep}</span><span class="teach-stat reject">REJECT ${z.reject}</span><span class="${h.ready?'ai-ready':'ai-learning'}">HL Reference: ${h.ready?'พร้อมใช้':'กำลังเรียน'}</span>`;
   if(els.aiProductionNote)els.aiProductionNote.textContent=s.ready?'KEITA Reference พร้อมใช้ · แสดงความคล้าย/คะแนน/ความมั่นใจประกอบการตรวจ โดยไม่เปลี่ยนผล PASS / REVIEW / REJECT ของ Production':'สอนอย่างน้อยประมาณ 24 ตัวอย่าง โดยมี KEEP ≥ 8 และ REJECT ≥ 8 เพื่อให้ Reference มีตัวอย่างเพียงพอและอ่านความคล้ายได้มั่นใจขึ้น';
 }
 async function teachApplySellableAdvice(file,r){
@@ -492,7 +492,7 @@ async function buildMasterProfile(){try{const examples=masterUnionExamples();if(
 function teachCurrentFile(){return Number.isInteger(state.teachIndex)?state.files[state.teachIndex]:null}
 function closeTeachUrl(){if(state.teachUrl){try{URL.revokeObjectURL(state.teachUrl)}catch{}state.teachUrl=null}}
 function teachPredictionHtml(file){const ft=teachFeatureFromFile(file),sp=teachPredict(ft,'sellable'),hp=teachPredict(ft,'hl'),mode=teachReferenceMode();const sTxt=sp.ready?`Sellable Reference: <b>${Math.round(sp.prob*100)}% KEEP</b> · มั่นใจ ${Math.round(sp.confidence*100)}%`:`Sellable Reference: กำลังเรียน (${sp.total} ตัวอย่าง)`;const hTxt=hp.ready?`HL Reference: <b>${Math.round(hp.prob*100)}% HL</b> · มั่นใจ ${Math.round(hp.confidence*100)}%`:`HL Reference: กำลังเรียน (${hp.total} ตัวอย่าง)`;const c=state.culling.get(file),hh=state.highlights.get(file);let compare='';if(mode==='test'&&c&&sp.ready){const prod=c.status==='pass'?'KEEP':c.status==='reject'?'REJECT':'REVIEW',ai=sp.prob>=.5?'KEEP':'REJECT';compare=`<br><b>Test Compare:</b> Production ${prod} ↔ Reference ${ai}${prod==='REVIEW'?' · รอตรวจ':prod===ai?' · เห็นตรงกัน':' · เห็นต่างกัน'}`;}const lock=mode==='off'?'Reference OFF — บทเรียนยังถูกเก็บ แต่ไม่แสดงใน Production':'<b>Reference Only:</b> ไม่เปลี่ยนผล Production';return `<b>${file.name}</b><br>${sTxt}<br>${hTxt}${compare}<br>${c?`Production Culling: ${String(c.status||'').toUpperCase()} · Focus ${Math.round(c.focusScore||0)}`:'ยังไม่ได้คัด'}${hh?.portfolioEligible!=null?`<br>Production HL: ${hh.portfolioEligible?'ผ่านเกณฑ์':'ไม่ผ่านเกณฑ์'}`:''}<br><span class="tiny">${lock}</span>`}
-function teachInlineReference(file){if(teachReferenceMode()==='off'||!state.teachLoaded)return '';const p=teachPredict(teachFeatureFromFile(file),'sellable');if(!teachProductionReady('sellable').ready||!p.ready)return '';return `<br><span class="tiny"><b>KEITA AI:</b> KEEP ${Math.round(p.prob*100)}% · ความมั่นใจ ${Math.round(p.confidence*100)}%</span>`}
+function teachInlineReference(file){if(teachReferenceMode()==='off'||!state.teachLoaded)return '';const p=teachPredict(teachFeatureFromFile(file),'sellable');if(!teachProductionReady('sellable').ready||!p.ready)return '';return `<br><span class="tiny"><b>KEITA Reference:</b> KEEP ${Math.round(p.prob*100)}% · ความมั่นใจ ${Math.round(p.confidence*100)}%</span>`}
 
 function teachAlreadyLabeled(file){const key=fileKey(file);return state.teachExamples.some(x=>x.sourceKey===key)}
 function nextTeachIndex(){
