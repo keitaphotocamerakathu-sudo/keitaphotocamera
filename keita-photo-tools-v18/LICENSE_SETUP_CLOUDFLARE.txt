@@ -1,4 +1,4 @@
-KEITA PHOTO TOOLS v17.13 — ตั้งค่า License แบบ 1 Key = 1 เครื่อง
+KEITA PHOTO TOOLS v18.0 — ตั้งค่า License แบบ 1 Key = 1 เครื่อง
 ============================================================
 
 แนวคิด
@@ -8,7 +8,7 @@ KEITA PHOTO TOOLS v17.13 — ตั้งค่า License แบบ 1 Key = 1 �
 - Key เดิมเอาไปกรอกเครื่องอื่นไม่ได้
 - Trial / รายเดือน / รายปี เริ่มนับจากวันที่ Activate ครั้งแรก
 - ถาวรไม่มีวันหมดอายุ
-- หน้า license.html ของเอสใช้สร้าง Key และจัดการ License
+- หน้า license.html ของเอสใช้สร้าง Key และ Revoke License
 - ระบบไม่ใช้ Supabase และไม่ใช้ OpenAI API
 - Backend ใช้ Cloudflare Worker + D1
 
@@ -56,8 +56,8 @@ KEITA PHOTO TOOLS v17.13 — ตั้งค่า License แบบ 1 Key = 1 �
 
 9) เอา keita-license-config.json ที่ดาวน์โหลด ไปวางโฟลเดอร์เดียวกับ user.html บน GitHub Pages
    เช่น
-   /keita-photo-tools-v17-13/user.html
-   /keita-photo-tools-v17-13/keita-license-config.json
+   /keita-photo-tools-v18/user.html
+   /keita-photo-tools-v18/keita-license-config.json
 
 10) ส่งลิงก์ user.html ให้ลูกค้า
 
@@ -95,5 +95,6 @@ KEITA PHOTO TOOLS v17.13 — ตั้งค่า License แบบ 1 Key = 1 �
 
 หมายเหตุ
 - ถ้า User ล้าง Chrome/Site Data จน Device Private Key หาย เครื่องนั้นจะถูกมองว่าเป็นเครื่องใหม่ และ Key เดิมจะ Activate ไม่ได้
-- ถ้าต้องการย้ายเครื่อง ให้เอสเปิด license.html แล้วกด Reset Device ของ License นั้นก่อน
+- License ที่ Activate แล้วผูกกับเครื่องแรกถาวร ไม่มี Reset Device
+- หากต้องการย้ายเครื่อง ให้สร้าง License Key ใหม่สำหรับเครื่องใหม่ และ Revoke Key เดิมเมื่อไม่ต้องการใช้งาน
 - ถ้าต้องการปิดสิทธิ์ทันที ให้กด Revoke
