@@ -8,4 +8,4 @@ ALLOWED_ORIGINS = "https://keitaphotocamerakathu-sudo.github.io"
 [[d1_databases]]
 binding = "DB"
 database_name = "keita-license"
-database_id = "PUT_YOUR_D1_DATABASE_ID_HERE"
+database_id = "a7bb4421-0d73-475c-b657-42e10b3d0665"
