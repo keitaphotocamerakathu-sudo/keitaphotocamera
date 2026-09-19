@@ -10,14 +10,13 @@ export default {
 
     try {
       if (url.pathname === '/api/health' && request.method === 'GET') {
-        return json(request, env, { ok: true, service: 'KEITA License API', version: '17.13', now: new Date().toISOString() });
+        return json(request, env, { ok: true, service: 'KEITA License API', version: '18.0', now: new Date().toISOString() });
       }
       if (url.pathname === '/api/activate' && request.method === 'POST') return activate(request, env);
       if (url.pathname === '/api/status' && request.method === 'POST') return licenseStatus(request, env);
       if (url.pathname === '/api/admin/licenses/create' && request.method === 'POST') return adminCreate(request, env);
       if (url.pathname === '/api/admin/licenses/list' && request.method === 'POST') return adminList(request, env);
       if (url.pathname === '/api/admin/licenses/revoke' && request.method === 'POST') return adminRevoke(request, env);
-      if (url.pathname === '/api/admin/licenses/reset-device' && request.method === 'POST') return adminResetDevice(request, env);
       return json(request, env, { ok: false, error: 'NOT_FOUND' }, 404);
     } catch (err) {
       console.error(err);
@@ -285,13 +284,5 @@ async function adminRevoke(request, env) {
   const body = await readJson(request), id = String(body.license_id || '');
   if (!id) return json(request, env, { ok: false, error: 'INVALID_REQUEST' }, 400);
   await env.DB.prepare("UPDATE licenses SET status='revoked' WHERE id=?").bind(id).run();
-  return json(request, env, { ok: true });
-}
-
-async function adminResetDevice(request, env) {
-  if (!requireAdmin(request, env)) return json(request, env, { ok: false, error: 'UNAUTHORIZED' }, 401);
-  const body = await readJson(request), id = String(body.license_id || '');
-  if (!id) return json(request, env, { ok: false, error: 'INVALID_REQUEST' }, 400);
-  await env.DB.prepare("UPDATE licenses SET device_id=NULL, device_public_jwk=NULL, activated_at=NULL, expires_at=NULL, last_seen_at=NULL, status='unused' WHERE id=? AND status!='revoked'").bind(id).run();
   return json(request, env, { ok: true });
 }
