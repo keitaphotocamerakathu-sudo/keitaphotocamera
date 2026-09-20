@@ -413,8 +413,8 @@ function compactHighlight(h){if(!h)return null;const x={...h};if(x.cleanliness&&
 function fileStateRecord(f){return {key:fileKey(f),meta:state.meta.get(f)||null,culling:state.culling.get(f)||null,analysis:compactAnalysis(state.analysis.get(f)||null),highlight:compactHighlight(state.highlights.get(f)||null)}}
 function serializableFileStates(){const out=[];for(const f of state.files){const row=fileStateRecord(f);if(row.meta||row.culling||row.analysis||row.highlight)out.push(row)}return out}
 function markFileStateDirty(f){if(f)state.dirtyStateFiles.add(f)}
-async function flushDirtyFileStates(limit=0){if(!state.dirtyStateFiles.size)return 0;const files=[];for(const f of state.dirtyStateFiles){files.push(f);if(limit&&files.length>=limit)break}for(const f of files)state.dirtyStateFiles.delete(f);await fileStateDbPutMany(files.map(fileStateRecord));return files.length}
-async function rewriteAllFileStates(){const rows=[];for(const f of state.files){const row=fileStateRecord(f);if(row.meta||row.culling||row.analysis||row.highlight)rows.push(row);if(rows.length>=1000){await fileStateDbPutMany(rows.splice(0));await new Promise(r=>setTimeout(r,0))}}if(rows.length)await fileStateDbPutMany(rows);state.fileStateNeedsRewrite=false}
+async function flushDirtyFileStates(limit=0){if(!state.dirtyStateFiles.size)return 0;const files=[];for(const f of state.dirtyStateFiles){files.push(f);if(limit&&files.length>=limit)break}for(const f of files)state.dirtyStateFiles.delete(f);const rows=files.map(fileStateRecord);await fileStateDbPutMany(rows);for(const row of rows)state.savedFileStates.set(row.key,row);return files.length}
+async function rewriteAllFileStates(){state.savedFileStates.clear();const rows=[];for(const f of state.files){const row=fileStateRecord(f);if(row.meta||row.culling||row.analysis||row.highlight)rows.push(row);if(rows.length>=1000){const batch=rows.splice(0);await fileStateDbPutMany(batch);for(const x of batch)state.savedFileStates.set(x.key,x);await new Promise(r=>setTimeout(r,0))}}if(rows.length){await fileStateDbPutMany(rows);for(const x of rows)state.savedFileStates.set(x.key,x)}state.fileStateNeedsRewrite=false}
 function requestFileStateRewrite(){state.fileStateNeedsRewrite=true;state.dirtyStateFiles.clear()}
 function processingHeavy(){return state.cullingRunning||state.analyzing||state.highlightRunning||state.exporting}
 function storageNoSpaceError(e){const t=String(e?.message||e||'').toUpperCase();return t.includes('NO_SPACE')||t.includes('QUOTA')||t.includes('FILE_ERROR_NO_SPACE')||t.includes('ENOSPC')||t.includes('NOT ENOUGH SPACE')||t.includes('DISK FULL')||e?.name==='QuotaExceededError'}
@@ -1592,14 +1592,9 @@ const exportSubdirCache=new WeakMap();
 async function exportTargetDir(root,file){if(!els.cullFolders.checked)return root;const r=state.culling.get(file),name=r?.status==='reject'?'REJECT':r?.status==='review'?'REVIEW':'PASS';let m=exportSubdirCache.get(root);if(!m){m=new Map();exportSubdirCache.set(root,m)}if(m.has(name))return m.get(name);const h=await root.getDirectoryHandle(name,{create:true});m.set(name,h);return h}
 function exportToken(mode,file){return `${mode}|${fileKey(file)}`}
 async function scanCompletedFiles(dir){
-  const rows=[];if(!dir)return new Set();
-  try{for await(const [name,h] of dir.entries())if(h.kind==='file')rows.push({name,h})}catch{return new Set()}
-  const good=new Set(),batch=64;
-  for(let s=0;s<rows.length;s+=batch){
-    const part=rows.slice(s,s+batch),files=await Promise.all(part.map(x=>x.h.getFile().catch(()=>null)));
-    for(let i=0;i<part.length;i++)if(files[i]&&files[i].size>1024)good.add(part[i].name);
-    if(s%512===0)await new Promise(r=>setTimeout(r,0));
-  }
+  const good=new Set();if(!dir)return good;let batch=[],seen=0;
+  const flush=async()=>{if(!batch.length)return;const part=batch;batch=[];const files=await Promise.all(part.map(x=>x.h.getFile().catch(()=>null)));for(let i=0;i<part.length;i++)if(files[i]&&files[i].size>1024)good.add(part[i].name);seen+=part.length;if(seen%512===0)await new Promise(r=>setTimeout(r,0))};
+  try{for await(const [name,h] of dir.entries()){if(h.kind!=='file')continue;batch.push({name,h});if(batch.length>=64)await flush()}await flush()}catch(e){console.warn('scan export folder',e)}
   return good
 }
 async function trySubdir(root,name){try{return await root.getDirectoryHandle(name)}catch{return null}}
