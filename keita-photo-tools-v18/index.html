@@ -1460,8 +1460,9 @@ async function runHighlightSelection(){
     if(n%4===0)await new Promise(r=>setTimeout(r,0));
   }
 
+  let previouslySelected=[];
   if(!state.cancelHighlight){
-    const previouslySelected=pass.filter(f=>state.highlights.get(f)?.selected&&!state.highlights.get(f)?.pinned);
+    previouslySelected=pass.filter(f=>state.highlights.get(f)?.selected&&!state.highlights.get(f)?.pinned);
     for(const f of pass){const h=state.highlights.get(f);if(h&&!h.pinned)h.selected=false}
     const chosen=[...pinned],eligible=candidates.filter(f=>!state.highlights.get(f)?.pinned&&state.highlights.get(f)?.portfolioEligible).sort((a,b)=>state.highlights.get(b).score-state.highlights.get(a).score);
     if(els.highlightStyle.value==='portfolio'){
