@@ -136,29 +136,32 @@
               </div>
               <div class="light-dock-actions">
                 <span id="lightQualityChip" class="quality-chip">OFF = LOSSLESS</span>
+                <button id="lightCollapseBtn" class="btn ghost compact light-collapse-btn" type="button" aria-expanded="true" title="ซ่อน/แสดงตัวปรับแสง">⌃ ซ่อน</button>
                 <button id="resetLightBtn" class="btn ghost compact light-reset-btn" type="button">Reset</button>
                 <label class="switch-row light-master-switch"><input id="lightAdjustEnabled" type="checkbox" /><span>เปิดใช้</span></label>
               </div>
             </div>
 
-            <div class="light-control-grid">
-              <label class="light-control">
-                <span><em>Brightness</em><b id="videoBrightnessText">0%</b></span>
-                <input id="videoBrightness" type="range" min="-50" max="50" step="1" value="0" />
-              </label>
-              <label class="light-control">
-                <span><em>Contrast</em><b id="videoContrastText">0%</b></span>
-                <input id="videoContrast" type="range" min="-50" max="50" step="1" value="0" />
-              </label>
-              <label class="light-control">
-                <span><em>Saturation</em><b id="videoSaturationText">0%</b></span>
-                <input id="videoSaturation" type="range" min="-100" max="100" step="1" value="0" />
-              </label>
-            </div>
+            <div id="lightAdjustBody" class="light-adjust-body">
+              <div class="light-control-grid">
+                <label class="light-control">
+                  <span><em>Brightness</em><b id="videoBrightnessText">0%</b></span>
+                  <input id="videoBrightness" type="range" min="-50" max="50" step="1" value="0" />
+                </label>
+                <label class="light-control">
+                  <span><em>Contrast</em><b id="videoContrastText">0%</b></span>
+                  <input id="videoContrast" type="range" min="-50" max="50" step="1" value="0" />
+                </label>
+                <label class="light-control">
+                  <span><em>Saturation</em><b id="videoSaturationText">0%</b></span>
+                  <input id="videoSaturation" type="range" min="-100" max="100" step="1" value="0" />
+                </label>
+              </div>
 
-            <div class="light-dock-note">
-              <span>ⓘ</span>
-              <span><b>หมายเหตุคุณภาพ:</b> ปิดไว้จะไม่ Encode เพิ่มจากการปรับแสง · เปิดแล้ว Encode H.264 คุณภาพสูง 1 รอบ · ถ้าใช้ลายน้ำด้วยจะรวมทุกอย่างในรอบเดียว</span>
+              <div class="light-dock-note">
+                <span>ⓘ</span>
+                <span><b>หมายเหตุคุณภาพ:</b> ปิดไว้จะไม่ Encode เพิ่มจากการปรับแสง · เปิดแล้ว Encode H.264 คุณภาพสูง 1 รอบ · ถ้าใช้ลายน้ำด้วยจะรวมทุกอย่างในรอบเดียว</span>
+              </div>
             </div>
           </div>
 
@@ -390,6 +393,6 @@
     </footer>
   </main>
 
-  <script type="module" src="app.js?v=20260920-light-dock-v2"></script>
+  <script type="module" src="app.js?v=20260920-light-collapse-v3"></script>
 </body>
 </html>
