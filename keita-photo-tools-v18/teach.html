@@ -401,8 +401,30 @@ function fileKey(file){const rel=state.filePaths.get(file)||file.webkitRelativeP
 function resetExportSession(){state.exported.clear();state.exportRoot=null;state.exportSessionName=null;els.exportBar.style.width='0%';scheduleSaveSession()}
 
 // ---- Resume session (IndexedDB + File System Access handle when available) ----
-const DB_NAME='keita-photo-tools',DB_VER=3,STORE='sessions',TEACH_STORE='teach',FILE_STATE_STORE='file_states',SESSION_ID='current';
-function openDb(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,DB_VER);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE,{keyPath:'id'});if(!db.objectStoreNames.contains(TEACH_STORE))db.createObjectStore(TEACH_STORE,{keyPath:'id'});if(!db.objectStoreNames.contains(FILE_STATE_STORE))db.createObjectStore(FILE_STATE_STORE,{keyPath:'key'})};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
+const DB_NAME='keita-photo-tools',STORE='sessions',TEACH_STORE='teach',FILE_STATE_STORE='file_states',SESSION_ID='current';
+function ensureKeitaStores(db){
+  if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE,{keyPath:'id'});
+  if(!db.objectStoreNames.contains(TEACH_STORE))db.createObjectStore(TEACH_STORE,{keyPath:'id'});
+  if(!db.objectStoreNames.contains(FILE_STATE_STORE))db.createObjectStore(FILE_STATE_STORE,{keyPath:'key'});
+}
+function openDb(){
+  return new Promise((resolve,reject)=>{
+    const first=indexedDB.open(DB_NAME);
+    first.onupgradeneeded=()=>ensureKeitaStores(first.result);
+    first.onerror=()=>reject(first.error);
+    first.onblocked=()=>reject(new Error('IndexedDB ถูกแท็บอื่นล็อกอยู่ — ปิดแท็บ KEITA เก่าแล้วลองใหม่'));
+    first.onsuccess=()=>{
+      const db=first.result,missing=[STORE,TEACH_STORE,FILE_STATE_STORE].filter(n=>!db.objectStoreNames.contains(n));
+      if(!missing.length){db.onversionchange=()=>db.close();resolve(db);return}
+      const next=Math.max(2,Number(db.version||1)+1);db.close();
+      const up=indexedDB.open(DB_NAME,next);
+      up.onupgradeneeded=()=>ensureKeitaStores(up.result);
+      up.onerror=()=>reject(up.error);
+      up.onblocked=()=>reject(new Error('IndexedDB upgrade ถูกแท็บอื่นล็อกอยู่ — ปิดแท็บ KEITA เก่าแล้วลองใหม่'));
+      up.onsuccess=()=>{up.result.onversionchange=()=>up.result.close();resolve(up.result)}
+    }
+  })
+}
 async function dbGet(){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readonly'),req=tx.objectStore(STORE).get(SESSION_ID);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error);tx.oncomplete=()=>db.close()})}
 async function dbPut(rec){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(rec);tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>{db.close();reject(tx.error)}})}
 async function dbDelete(){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).delete(SESSION_ID);tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>{db.close();reject(tx.error)}})}
@@ -413,7 +435,7 @@ async function teachDbGetAll(){const db=await openDb();return new Promise((resol
 async function teachDbPut(rec){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(TEACH_STORE,'readwrite');tx.objectStore(TEACH_STORE).put(rec);tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>{db.close();reject(tx.error)}})}
 async function teachDbPutMany(rows){if(!rows?.length)return 0;const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(TEACH_STORE,'readwrite'),s=tx.objectStore(TEACH_STORE);for(const row of rows)s.put(row);tx.oncomplete=()=>{db.close();resolve(rows.length)};tx.onerror=()=>{db.close();reject(tx.error)};tx.onabort=()=>{db.close();reject(tx.error||new Error('IndexedDB transaction aborted'))}})}
 async function teachDbClear(){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(TEACH_STORE,'readwrite');tx.objectStore(TEACH_STORE).clear();tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>{db.close();reject(tx.error)}})}
-const TEACH_META_ID='teach:meta:v17',TEACH_MASTER_CACHE_ID='teach:master:cache:v1',MASTER_PROFILE_URLS=['https://raw.githubusercontent.com/keitaphotocamerakathu-sudo/keitaphotocamera/main/keita-master-profile.json','../keita-master-profile.json','./keita-master-profile.json'];
+const TEACH_META_ID='teach:meta:v17',TEACH_MASTER_CACHE_ID='teach:master:cache:v1',MASTER_PROFILE_URLS=['https://raw.githubusercontent.com/keitaphotocamerakathu-sudo/keitaphotocamera/main/keita-master-profile.json','../keita-master-profile.json'];
 const CURRENT_WM_ID='watermark_current_v16',WM_PRESET_PREFIX='watermark_preset_v16:';
 
 const SETTING_IDS=['cullEnabled','cullSensitivity','burstGap','personConfidence','focusPriority','autoEnabled','autoStrength','subjectWeight','deadband','sceneMode','toneAuto','wbAuto','skinProtect','vibranceAuto','clarityAuto','detailAuto','depthProtect','hlSafeAuto','highlightCount','highlightStyle','highlightGrade','highlightDiversity','highlightCleanliness','renameEnabled','renameMode','photographer','startNo','digits','resizeEnabled','longEdge','fileLimit','minQuality','sharpen','noUpscale','dateEnabled','dateMode','newDate','newTime','offDays','offHours','offMinutes','offSeconds','tzEnabled','timezone','exportReview','exportReject','cullFolders','highlightFolder','teachReferenceMode'];
