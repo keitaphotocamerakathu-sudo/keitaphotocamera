@@ -1,7 +1,7 @@
 # KEITA PHOTO TOOLS v18 — Production Notes
 
-Current production build: **18.5.1-20260920**  
-UI badge: **Build 18.5.1 · 20260920.6**
+Current production build: **18.6.0-20260920**  
+UI badge: **Build 18.6.0 · 20260920.8**
 
 ## Production goal
 
@@ -82,3 +82,12 @@ The built-in 50,000 test validates data-structure and workflow pressure, but it 
 ## Cache / stale page
 
 The v18 internal navigation uses `?v=20260920.6`. If a browser tab was already open before deployment, refresh the tab before starting a new event job and verify the visible Build badge.
+
+
+## Manual Edit + KEITA Edit Memory
+- Build 18.6 adds per-photo Manual Edit directly from the Highlight Grid / large preview.
+- Manual adjustments are stored per source file in Resume state and are applied to Preview and final Export.
+- Current controls: Exposure, Highlights, Shadows, Contrast, Temperature, Tint and Vibrance.
+- “บันทึก + สอน KEITA” stores a separate `edit_learning` record using scene / ISO / histogram / focus / person-face context plus the user's adjustment delta.
+- Edit Memory is advisory only: similar-photo corrections are suggested via “ใช้ค่าที่เรียนรู้” and do not silently override Production Auto Tune.
+- Edit Memory is included in KEITA AI Profile backup/restore and remains separate from Culling / Highlight teaching labels.
