@@ -956,10 +956,6 @@ body.review-mode .editor-layout { grid-template-columns:minmax(0,2.4fr) minmax(2
   background: rgba(251,191,36,.075);
   color: #fcd34d;
 }
-.light-adjust-dock:not(.controls-disabled) .quality-chip::before {
-  content: "ON = ENCODE 1×";
-  font-size: 0;
-}
 .encode-note { display:none; }
 .export-note strong { color:#fbbf24; }
 
