@@ -65,8 +65,8 @@ button,input,select,label{touch-action:manipulation}
 <main class="app" id="app">
   <header class="topbar">
     <div class="brand"><div class="brandmark">K</div><div class="brandtext"><b>KEITA PHOTO CAMERA</b><span>Batch Photo Workflow</span></div></div>
-    <div class="top-pills"><a class="btn navlink" href="teach.html?v=20260920.6">สอน KEITA AI</a><a class="btn navlink" href="license.html?v=20260920.6">License</a><a class="btn navlink" href="user.html?v=20260920.6">หน้า User</a><span class="pill"><span class="dot"></span> Local processing</span><span class="pill">JPEG</span><span class="pill">Original safe</span></div>
-  <span class="pill" id="buildVersionBadge">Build 18.5.1 · 20260920.6</span></header>
+    <div class="top-pills"><a class="btn navlink" href="teach.html?v=20260920.7">สอน KEITA AI</a><a class="btn navlink" href="license.html?v=20260920.7">License</a><a class="btn navlink" href="user.html?v=20260920.7">หน้า User</a><span class="pill"><span class="dot"></span> Local processing</span><span class="pill">JPEG</span><span class="pill">Original safe</span></div>
+  <span class="pill" id="buildVersionBadge">Build 18.5.2 · 20260920.7</span></header>
 
   <section class="intro">
     <div><h1>จัดการรูปทั้งอัลบั้ม<br>ให้จบในหน้าเดียว</h1><p>เลือกภาพ → Smart Culling → Auto Fine Tune → เลือก Highlight → Rename / Resize / EXIF → Watermark → Export โดยไฟล์ต้นฉบับไม่ถูกเขียนทับ</p></div>
@@ -101,7 +101,7 @@ button,input,select,label{touch-action:manipulation}
     <div class="session-note" id="sessionNote">ระบบจะบันทึก Culling / Auto / Export progress ลงในเครื่องอัตโนมัติเมื่อใช้โหมด Resume</div>
     <div class="setting-card" style="margin-top:10px;padding:11px;background:var(--surface-2)">
       <div class="section-head" style="margin-bottom:7px"><div><b>Production Check</b><div class="tiny">ตรวจ Browser / IndexedDB / Decoder / WebGL / Resume / Filename / Export permission ก่อนเริ่มงานใหญ่</div></div><div class="actions"><button class="btn" id="productionSelfTest" type="button">ตรวจระบบก่อนเริ่มงาน</button><button class="btn" id="stressTest50000" type="button">Stress Test 50,000</button></div></div>
-      <div class="status" id="productionStatus">ยังไม่ได้ตรวจ · Build 18.5.1-20260920.6</div>
+      <div class="status" id="productionStatus">ยังไม่ได้ตรวจ · Build 18.5.2-20260920.6</div>
     </div>
   </section>
 
@@ -139,7 +139,7 @@ button,input,select,label{touch-action:manipulation}
   <section class="panel" id="aiModelPanel">
     <div class="section-head">
       <div class="section-title"><span class="section-icon">AI</span><div><h2>KEITA Reference — โมเดลที่เอสสอนไว้</h2><p>Reference จากหน้า Teach KEITA สำหรับดูคะแนน/ความมั่นใจประกอบการคัด · ไม่ override Production · ฟรี 100% · เก็บในเครื่อง</p></div></div>
-      <a class="btn primary navlink" href="teach.html?v=20260920.6">เปิดหน้าสอน KEITA</a>
+      <a class="btn primary navlink" href="teach.html?v=20260920.7">เปิดหน้าสอน KEITA</a>
     </div>
     <div class="ai-model-grid">
       <div><div class="ai-model-stats" id="aiProductionStats"><span class="ai-learning">กำลังโหลดโปรไฟล์…</span></div><div class="ai-model-note" id="aiProductionNote">กำลังโหลด KEITA Master AI และบทเรียนในเครื่อง…</div><div class="ai-model-note"><b id="aiMasterStatus">Master AI: กำลังตรวจอัปเดต…</b></div></div>
@@ -1587,7 +1587,7 @@ async function runHighlightSelection(){
   for(let i=0;i<candidates.length;i++){
     if(state.cancelHighlight)break;const f=candidates[i],old=state.highlights.get(f);if(old?.category&&old?.breakdown&&Number.isFinite(old?.score)){const n=i+1;els.highlightBar.style.width=(55+n/Math.max(1,candidates.length)*45)+'%';continue}
     try{const scored=await withTimeout(scoreHighlightOne(f,{advanced:true}),120000,`Portfolio AI ${f.name}`);if(scored){if(old?.pinned){scored.pinned=true;scored.selected=true}state.highlights.set(f,scored);markFileStateDirty(f)}}catch(e){if(e?.code==='KEITA_TIMEOUT')recoverAiAfterTimeout('highlight');console.warn('highlight portfolio score',f.name,e)}
-    const n=i+1,now=performance.now();if(now-lastUi>200||n===candidates.length){lastUi=now;els.highlightBar.style.width=(55+n/Math.max(1,candidates.length)*45)+'%';setStatus(els.highlightStatus,`รอบ 2/2 · Portfolio AI ${n.toLocaleString()}/${candidates.length.toLocaleString()} · RUNNING POSE / ACTION / STORY / SCENIC / CHARACTER`,'warn')}
+    const n=i+1,now=performance.now();if(now-lastUi>200||n===candidates.length){lastUi=now;els.highlightBar.style.width=(55+n/Math.max(1,candidates.length)*45)+'%';setStatus(els.highlightStatus,`รอบ 2/2 · Portfolio AI ${n.toLocaleString()}/${candidates.length.toLocaleString()} · กำลังวิเคราะห์ ยังไม่สรุป HL — จะเลือกเมื่อครบทุก Candidate · RUNNING POSE / ACTION / STORY / SCENIC / CHARACTER`,'warn')}
     if(n-lastCheckpoint>=100){await flushDirtyFileStates();lastCheckpoint=n;updateHighlightCounts();els.sessionNote.textContent=`Highlight Portfolio checkpoint ${n.toLocaleString()}/${candidates.length.toLocaleString()}`}
     if(n%4===0)await new Promise(r=>setTimeout(r,0));
   }
@@ -1602,8 +1602,8 @@ async function runHighlightSelection(){
       let progress=true;while(chosen.length<target&&progress){progress=false;for(const k of HL_CATEGORIES){while(pools[k].length){const f=pools[k].shift();if(chosen.includes(f)||highlightTooSimilar(f,chosen,els.highlightDiversity.value))continue;state.highlights.get(f).selected=true;chosen.push(f);progress=true;break}if(chosen.length>=target)break}}
       for(const f of eligible){if(chosen.length>=target)break;if(chosen.includes(f)||highlightTooSimilar(f,chosen,els.highlightDiversity.value))continue;state.highlights.get(f).selected=true;chosen.push(f)}
     }else for(const f of eligible){if(chosen.length>=target)break;if(chosen.includes(f)||highlightTooSimilar(f,chosen,els.highlightDiversity.value))continue;state.highlights.get(f).selected=true;chosen.push(f)}
-    const selectedAuto=Math.max(0,chosen.length-pinned.length),short=chosen.length<target?` · ผ่าน Portfolio Grade ${chosen.length}/${target} (ไม่ฝืนเติมภาพอ่อน)`:' ',guardAdjusted=pass.filter(f=>state.analysis.get(f)?.hlGuard?.adjusted).length;
-    els.highlightBar.style.width='100%';setStatus(els.highlightStatus,`เลือก Highlight ${chosen.length.toLocaleString()} รูป · Auto ${selectedAuto} · PINNED ${pinned.length}${guardAdjusted?` · HL-Safe ปรับ ${guardAdjusted}`:''}${short}`,'good')
+    const selectedAuto=Math.max(0,chosen.length-pinned.length),eligibleCount=eligible.length,short=chosen.length<target?` · ผ่าน Portfolio Grade ${chosen.length}/${target} (ไม่ฝืนเติมภาพอ่อน)`:' ',guardAdjusted=pass.filter(f=>state.analysis.get(f)?.hlGuard?.adjusted).length;
+    els.highlightBar.style.width='100%';const noAuto=selectedAuto===0&&pinned.length===0;setStatus(els.highlightStatus,noAuto?`วิเคราะห์ครบแล้ว แต่ยังไม่มีภาพผ่านเกณฑ์ HL อัตโนมัติ · ผ่าน Portfolio ${eligibleCount}/${candidates.length} Candidate · ลองดูเหตุผลในคิว HL/คะแนน หรือเปลี่ยนมาตรฐาน HL หากต้องการผ่อนเกณฑ์`:`เลือก Highlight ${chosen.length.toLocaleString()} รูป · Auto ${selectedAuto} · PINNED ${pinned.length} · ผ่าน Portfolio ${eligibleCount}/${candidates.length}${guardAdjusted?` · HL-Safe ปรับ ${guardAdjusted}`:''}${short}`,noAuto?'warn':'good')
   }else setStatus(els.highlightStatus,'หยุดการคัด Highlight แล้ว — ผลที่วิเคราะห์ไว้ยังเก็บอยู่','warn');
 
   if(!state.cancelHighlight){for(const f of previouslySelected||[])markFileStateDirty(f);for(const f of pass)if(state.highlights.get(f)?.selected)markFileStateDirty(f)}
@@ -1729,7 +1729,7 @@ function shouldExport(file){if(!els.cullEnabled.checked)return true;const r=stat
 const exportSubdirCache=new WeakMap();
 async function exportTargetDir(root,file){if(!els.cullFolders.checked)return root;const r=state.culling.get(file),name=r?.status==='reject'?'REJECT':r?.status==='review'?'REVIEW':'PASS';let m=exportSubdirCache.get(root);if(!m){m=new Map();exportSubdirCache.set(root,m)}if(m.has(name))return m.get(name);const h=await root.getDirectoryHandle(name,{create:true});m.set(name,h);return h}
 function exportToken(mode,file){return `${mode}|${fileKey(file)}`}
-const KEITA_MANIFEST_FILE='KEITA_EXPORT_MANIFEST.json',KEITA_ERRORS_FILE='KEITA_ERRORS.csv',KEITA_BUILD='18.5.1-20260920';
+const KEITA_MANIFEST_FILE='KEITA_EXPORT_MANIFEST.json',KEITA_ERRORS_FILE='KEITA_ERRORS.csv',KEITA_BUILD='18.5.2-20260920';
 function manifestEntryKey(mode,file){return exportToken(mode,file)}
 function manifestRecord(mode,file,name,size){return {sourceKey:fileKey(file),sourcePath:state.filePaths.get(file)||file.name,sourceName:file.name,mode,outputName:name,size:Number(size||0),completedAt:new Date().toISOString()}}
 function exportConfigSignature(){
