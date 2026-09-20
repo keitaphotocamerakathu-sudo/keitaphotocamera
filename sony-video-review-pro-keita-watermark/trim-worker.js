@@ -178,7 +178,11 @@ function rotationFilter(rotation) {
 
 function watermarkInputFilter(wm, inputIndex, label) {
   const width = Math.max(2, Math.round(Number(wm.width) || 100));
+  const height = Math.max(2, Math.round(Number(wm.height) || 100));
   const opacity = Math.min(1, Math.max(0.01, Number(wm.opacity) || 1));
+  if (wm.fullFrame) {
+    return `[${inputIndex}:v]scale=${width}:${height},format=rgba,colorchannelmixer=aa=${opacity.toFixed(4)},setpts=PTS-STARTPTS[${label}]`;
+  }
   const angle = ((Number(wm.angle) || 0) % 360 + 360) % 360;
   let scale;
   let rotate = '';
