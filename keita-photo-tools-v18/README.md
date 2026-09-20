@@ -1,7 +1,7 @@
 # KEITA PHOTO TOOLS v18 — Production Notes
 
-Current production build: **18.6.0-20260920**  
-UI badge: **Build 18.6.0 · 20260920.8**
+Current production build: **18.6.1-20260920**  
+UI badge: **Build 18.6.1 · 20260920.9**
 
 ## Production goal
 
@@ -91,3 +91,12 @@ The v18 internal navigation uses `?v=20260920.6`. If a browser tab was already o
 - “บันทึก + สอน KEITA” stores a separate `edit_learning` record using scene / ISO / histogram / focus / person-face context plus the user's adjustment delta.
 - Edit Memory is advisory only: similar-photo corrections are suggested via “ใช้ค่าที่เรียนรู้” and do not silently override Production Auto Tune.
 - Edit Memory is included in KEITA AI Profile backup/restore and remains separate from Culling / Highlight teaching labels.
+
+
+## Auto Edit Recovery 18.6.1
+- Auto Edit reuses Face/Person boxes from Smart Culling instead of invoking Person/Face AI again when Culling is enabled.
+- JPEG decoding now falls back from createImageBitmap to an HTMLImage + Canvas decoder for files Chrome rejects on the fast path.
+- Failed normal Auto analysis retries with a smaller Histogram Safe fallback where appropriate.
+- Whole-function watchdog timeouts are not immediately re-run with another AI job, reducing cascading background work after a hang.
+- Auto status now reports Safe Fallback recoveries and separates remaining JPEG / Timeout / Other errors.
+- Re-running Auto resumes from existing per-file analysis; completed files are reused while missing results are retried.
