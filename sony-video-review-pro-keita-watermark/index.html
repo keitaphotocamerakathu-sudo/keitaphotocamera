@@ -227,6 +227,21 @@
             <div class="summary-line"><span>หลัง</span><b id="autoAfterLabel">4.0s</b></div>
           </div>
 
+          <div id="lightAdjustPanel" class="clip-summary-card light-adjust-card controls-disabled">
+            <div class="watermark-card-head">
+              <div>
+                <span class="preview-control-label">LIGHT / COLOR</span>
+                <p>ปรับความสว่าง คอนทราสต์ และความอิ่มสีของ VDO ก่อน Export</p>
+              </div>
+              <label class="switch-row"><input id="lightAdjustEnabled" type="checkbox" /><span>เปิดใช้</span></label>
+            </div>
+            <label class="wm-slider"><span>ความสว่าง <b id="videoBrightnessText">0%</b></span><input id="videoBrightness" type="range" min="-50" max="50" step="1" value="0" /></label>
+            <label class="wm-slider"><span>Contrast <b id="videoContrastText">0%</b></span><input id="videoContrast" type="range" min="-50" max="50" step="1" value="0" /></label>
+            <label class="wm-slider"><span>Saturation <b id="videoSaturationText">0%</b></span><input id="videoSaturation" type="range" min="-100" max="100" step="1" value="0" /></label>
+            <div class="light-adjust-actions"><button id="resetLightBtn" class="btn ghost compact" type="button">↺ Reset 0</button></div>
+            <div class="encode-note"><strong>หมายเหตุ:</strong> ค่าเริ่มต้น OFF · ถ้าไม่เปิดฟังก์ชันนี้ ระบบจะไม่ Encode เพิ่มเพราะการปรับแสง และถ้าไม่ใส่ลายน้ำด้วยจะคงโหมด Video Lossless เดิม · เมื่อเปิดปรับแสง ระบบต้อง Encode H.264 ใหม่ 1 ครั้ง หากใส่ลายน้ำพร้อมกันจะรวมปรับแสง + ลายน้ำในรอบเดียวเพื่อลดการสูญเสียคุณภาพ</div>
+          </div>
+
           <div class="clip-summary-card watermark-card">
             <div class="watermark-card-head">
               <div>
@@ -323,7 +338,7 @@
         <div><span>ลายน้ำ</span><strong id="queueWatermarks">0</strong></div>
       </div>
 
-      <div class="export-note">ถ้าไม่ใช้ลายน้ำ: ตัด Video Stream + Rotation แบบไม่ Encode ภาพใหม่ · ถ้าเปิดลายน้ำ: ระบบจะ Rotate จริง + ใส่ลายน้ำทุกชิ้น + Encode H.264 คุณภาพสูงก่อนบันทึก</div>
+      <div class="export-note"><strong>หมายเหตุคุณภาพ:</strong> ถ้า “ปรับแสง = OFF” และ “ลายน้ำ = OFF” ระบบใช้ Video Stream + Rotation แบบไม่ Encode ภาพใหม่ (Lossless) · ถ้าเปิดปรับแสงหรือลายน้ำ ระบบจะ Encode H.264 คุณภาพสูง · ถ้าเปิดทั้งสองอย่าง ระบบรวมทุกอย่างแล้ว Encode เพียง 1 รอบ</div>
 
       <div class="progress-wrap">
         <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
@@ -353,6 +368,6 @@
     </footer>
   </main>
 
-  <script type="module" src="app.js?v=20260920-frame-fit"></script>
+  <script type="module" src="app.js?v=20260920-light-adjust-v1"></script>
 </body>
 </html>
