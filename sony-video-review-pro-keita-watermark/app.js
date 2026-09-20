@@ -52,6 +52,7 @@ const els = {
   photographerCode: $('#photographerCode'), sequenceStart: $('#sequenceStart'), sequenceDigits: $('#sequenceDigits'), filenamePreview: $('#filenamePreview'), outputDestinationText: $('#outputDestinationText'),
   queueSelected: $('#queueSelected'), queueFavorite: $('#queueFavorite'), queueReject: $('#queueReject'), queueErrors: $('#queueErrors'), queueWatermarks: $('#queueWatermarks'),
   watermarkLayer: $('#watermarkLayer'), watermarkEnabled: $('#watermarkEnabled'), addWatermarkBtn: $('#addWatermarkBtn'), addKeitaWatermarkBtn: $('#addKeitaWatermarkBtn'), watermarkFileInput: $('#watermarkFileInput'), watermarkEmpty: $('#watermarkEmpty'), watermarkList: $('#watermarkList'), watermarkEditor: $('#watermarkEditor'), selectedWatermarkName: $('#selectedWatermarkName'), selectedWatermarkIndex: $('#selectedWatermarkIndex'), wmSize: $('#wmSize'), wmOpacity: $('#wmOpacity'), wmX: $('#wmX'), wmY: $('#wmY'), wmSizeText: $('#wmSizeText'), wmOpacityText: $('#wmOpacityText'), wmXText: $('#wmXText'), wmYText: $('#wmYText'), duplicateWatermarkBtn: $('#duplicateWatermarkBtn'), deleteWatermarkBtn: $('#deleteWatermarkBtn'),
+  lightAdjustEnabled: $('#lightAdjustEnabled'), lightAdjustPanel: $('#lightAdjustPanel'), videoBrightness: $('#videoBrightness'), videoContrast: $('#videoContrast'), videoSaturation: $('#videoSaturation'), videoBrightnessText: $('#videoBrightnessText'), videoContrastText: $('#videoContrastText'), videoSaturationText: $('#videoSaturationText'), resetLightBtn: $('#resetLightBtn'),
   startBtn: $('#startBtn'), retryFailedBtn: $('#retryFailedBtn'), cancelBtn: $('#cancelBtn'), openOutputBtn: $('#openOutputBtn'), processMessage: $('#processMessage'),
   progressBar: $('#progressBar'), progressText: $('#progressText'), progressCount: $('#progressCount'),
 };
@@ -84,6 +85,7 @@ const state = {
   watermarkEnabled: false,
   selectedWatermarkId: null,
   watermarkSeq: 0,
+  lightAdjustEnabled: false,
 };
 
 const supported = 'showDirectoryPicker' in window && window.isSecureContext;
@@ -305,11 +307,44 @@ function applyPreviewRotation(){
   els.previewVideo.style.transform=`rotate(${css}deg)`; els.previewVideo.classList.toggle('sideways',r===90||r===270); els.previewRotationText.textContent=r===0?'ยังไม่หมุน':rotationLabel(r);
   const map={270:els.rotateLeftBtn,0:els.rotateResetBtn,90:els.rotateRightBtn,180:els.rotate180Btn}; document.querySelectorAll('.rotate-btn').forEach(b=>b.classList.remove('active')); map[r]?.classList.add('active');
   els.clipRotationSummary.textContent=item?rotationLabel(r):'—';
+  applyPreviewLightAdjustments();
   requestAnimationFrame(()=>{syncWatermarkLayerBounds();renderWatermarks();});
 }
 function setRotation(r){ const item=currentItem(); if(!item||state.processing)return; item.rotation=r; applyPreviewRotation(); renderFiles(); }
 
-
+function readLightAdjustments(){
+  return {
+    enabled:Boolean(state.lightAdjustEnabled),
+    brightness:clamp(Number(els.videoBrightness?.value)||0,-50,50),
+    contrast:clamp(Number(els.videoContrast?.value)||0,-50,50),
+    saturation:clamp(Number(els.videoSaturation?.value)||0,-100,100),
+  };
+}
+function applyPreviewLightAdjustments(){
+  if(!els.previewVideo)return;
+  const a=readLightAdjustments();
+  if(!a.enabled){els.previewVideo.style.filter='none';return;}
+  const brightness=clamp(1+a.brightness/100,.5,1.5);
+  const contrast=clamp(1+a.contrast/100,.5,1.5);
+  const saturation=clamp(1+a.saturation/100,0,2);
+  els.previewVideo.style.filter=`brightness(${brightness}) contrast(${contrast}) saturate(${saturation})`;
+}
+function updateLightAdjustmentUI(){
+  state.lightAdjustEnabled=Boolean(els.lightAdjustEnabled?.checked);
+  const a=readLightAdjustments();
+  if(els.videoBrightnessText)els.videoBrightnessText.textContent=`${a.brightness>0?'+':''}${a.brightness}%`;
+  if(els.videoContrastText)els.videoContrastText.textContent=`${a.contrast>0?'+':''}${a.contrast}%`;
+  if(els.videoSaturationText)els.videoSaturationText.textContent=`${a.saturation>0?'+':''}${a.saturation}%`;
+  els.lightAdjustPanel?.classList.toggle('controls-disabled',!state.lightAdjustEnabled);
+  applyPreviewLightAdjustments();
+  updateSelectionUI();
+}
+function resetLightAdjustments(){
+  if(els.videoBrightness)els.videoBrightness.value='0';
+  if(els.videoContrast)els.videoContrast.value='0';
+  if(els.videoSaturation)els.videoSaturation.value='0';
+  updateLightAdjustmentUI();
+}
 function selectedWatermark(){return state.watermarks.find(w=>w.id===state.selectedWatermarkId)||null;}
 function watermarkPreviewWidth(wm){const side=wm?.angle===90||wm?.angle===270;if(!side)return wm?.width||.22;return clamp((wm?.width||.22)*(Math.max(1,wm?.naturalWidth||1)/Math.max(1,wm?.naturalHeight||1)),.01,2);}
 function watermarkOrientationLabel(angle){angle=((Number(angle)||0)%360+360)%360;return angle===0?'แนวนอน':angle===90?'แนวตั้ง 90°':angle===270?'แนวตั้ง -90°':'180°';}
@@ -436,7 +471,9 @@ function applyPresetSelection(){
 function updateSelectionUI(){
   const selected=selectedFiles().length,total=state.files.length,fav=state.files.filter(f=>f.review==='favorite').length,reject=state.files.filter(f=>f.review==='reject').length,errors=state.files.filter(f=>f.status==='error').length;
   els.selectedCount.textContent=`${selected} / ${total} ไฟล์`; els.selectedStat.textContent=`${selected} ไฟล์`; els.queueSelected.textContent=selected; els.queueFavorite.textContent=fav; els.queueReject.textContent=reject; els.queueErrors.textContent=errors;if(els.queueWatermarks)els.queueWatermarks.textContent=state.watermarkEnabled?state.watermarks.length:0;
-  els.selectAllBtn.disabled=!total||state.processing||selected===total; els.selectNoneBtn.disabled=!total||state.processing||selected===0; els.startBtn.disabled=selected===0||state.processing; els.startBtn.textContent=selected?(state.watermarkEnabled&&state.watermarks.length?`Export + ลายน้ำ (${selected})`:`Export ที่เลือก (${selected})`):'เลือกไฟล์ก่อน Export';
+  els.selectAllBtn.disabled=!total||state.processing||selected===total; els.selectNoneBtn.disabled=!total||state.processing||selected===0; els.startBtn.disabled=selected===0||state.processing;
+  const hasWm=state.watermarkEnabled&&state.watermarks.length>0,hasLight=state.lightAdjustEnabled;
+  els.startBtn.textContent=!selected?'เลือกไฟล์ก่อน Export':hasLight&&hasWm?`Export + ปรับแสง + ลายน้ำ (${selected})`:hasLight?`Export + ปรับแสง (${selected})`:hasWm?`Export + ลายน้ำ (${selected})`:`Export ที่เลือก (${selected})`;
   els.retryFailedBtn.classList.toggle('hidden', state.lastFailures.length===0 || state.processing); els.retryFailedBtn.textContent=`↻ Retry ที่ผิดพลาด (${state.lastFailures.length})`;
 }
 function trimText(item){ return item.duration?`${formatTime(item.trimStart)}–${formatTime(item.trimEnd)}`:'กำลังอ่าน…'; }
@@ -631,10 +668,11 @@ function getTrimWorker(){
 function workerRequest(type,payload={},onProgress=null){const worker=getTrimWorker(),id=++state.trimWorkerSeq;return new Promise((resolve,reject)=>{state.trimWorkerRequests.set(id,{resolve,reject,onProgress});worker.postMessage({id,type,...payload});});}
 async function trimLossless(file,start,end){const result=await workerRequest('trim',{file,start,end});const ext=result.extension||'.mp4';return{blob:new Blob([result.buffer],{type:ext==='.mov'?'video/quicktime':'video/mp4'}),extension:ext};}
 
-async function renderWatermarked(file,start,end,item,onProgress){
+async function renderProcessedVideo(file,start,end,item,onProgress){
   const specs=buildWatermarkExportSpecs(item);
-  if(!specs.length) return null;
-  const payload={file,start,end,rotation:item.rotation||0,sourceWidth:item.videoWidth||1920,sourceHeight:item.videoHeight||1080,watermarks:specs.map(w=>({file:w.file,name:w.name,x:w.x,y:w.y,width:w.width,height:w.height,angle:w.angle,opacity:w.opacity,fullFrame:w.fullFrame}))};
+  const adjustments=readLightAdjustments();
+  if(!specs.length&&!adjustments.enabled)return null;
+  const payload={file,start,end,rotation:item.rotation||0,sourceWidth:item.videoWidth||1920,sourceHeight:item.videoHeight||1080,adjustments,watermarks:specs.map(w=>({file:w.file,name:w.name,x:w.x,y:w.y,width:w.width,height:w.height,angle:w.angle,opacity:w.opacity,fullFrame:w.fullFrame}))};
   const result=await workerRequest('watermark',payload,onProgress);
   return {blob:new Blob([result.buffer],{type:'video/mp4'}),extension:'.mp4'};
 }
@@ -692,7 +730,7 @@ async function resolveOutputHandle(){
 }
 
 async function processQueue(queue,{retry=false}={}){
-  if(!queue.length||state.processing)return;state.processing=true;state.cancelRequested=false;state.previewingSelection=false;state.lastFailures=[];els.previewVideo.pause();els.cancelBtn.disabled=false;els.cancelBtn.textContent='ยกเลิกหลังจบไฟล์ปัจจุบัน';els.cancelBtn.classList.remove('hidden');els.startBtn.disabled=true;els.chooseFolderBtn.disabled=true;[els.watermarkEnabled,els.addWatermarkBtn,els.addKeitaWatermarkBtn,els.watermarkFileInput,els.duplicateWatermarkBtn,els.deleteWatermarkBtn].forEach(el=>{if(el)el.disabled=true;});setTrimControlsEnabled(false);planOutputNames(queue,retry);
+  if(!queue.length||state.processing)return;state.processing=true;state.cancelRequested=false;state.previewingSelection=false;state.lastFailures=[];els.previewVideo.pause();els.cancelBtn.disabled=false;els.cancelBtn.textContent='ยกเลิกหลังจบไฟล์ปัจจุบัน';els.cancelBtn.classList.remove('hidden');els.startBtn.disabled=true;els.chooseFolderBtn.disabled=true;[els.watermarkEnabled,els.addWatermarkBtn,els.addKeitaWatermarkBtn,els.watermarkFileInput,els.duplicateWatermarkBtn,els.deleteWatermarkBtn,els.lightAdjustEnabled,els.videoBrightness,els.videoContrast,els.videoSaturation,els.resetLightBtn].forEach(el=>{if(el)el.disabled=true;});setTrimControlsEnabled(false);planOutputNames(queue,retry);
   try{
     const outDir=await resolveOutputHandle();let completed=0;const failures=[];
     for(let i=0;i<queue.length;i++){
@@ -701,9 +739,13 @@ async function processQueue(queue,{retry=false}={}){
         const file=await item.handle.getFile();if(!item.duration)await readMediaDuration(item);const start=clamp(item.trimStart,0,item.duration),end=clamp(item.trimEnd,start+.05,item.duration);if(end-start<.05)throw new Error('ช่วงตัดสั้นเกินไป');
         let finalName=item.plannedOutputName;
         const itemWatermarks=buildWatermarkExportSpecs(item);
-        if(state.watermarkEnabled&&itemWatermarks.length){
-          finalName=finalName.replace(/\.[^.]+$/,'.mp4');item.plannedOutputName=finalName;els.processMessage.textContent=`กำลัง Encode ${item.name} + ลายน้ำ ${itemWatermarks.length} ชิ้น…`;
-          const rendered=await renderWatermarked(file,start,end,item,p=>setOverallProgress(i,p*.94,queue.length));const outHandle=await outDir.getFileHandle(finalName,{create:true});els.processMessage.textContent=`กำลังบันทึก ${finalName} · Watermark H.264`;
+        const needsLight=state.lightAdjustEnabled;
+        const needsWatermark=state.watermarkEnabled&&itemWatermarks.length>0;
+        if(needsLight||needsWatermark){
+          finalName=finalName.replace(/\.[^.]+$/,'.mp4');item.plannedOutputName=finalName;
+          const encodeLabel=needsLight&&needsWatermark?`ปรับแสง + ลายน้ำ ${itemWatermarks.length} ชิ้น`:needsLight?'ปรับแสง':`ลายน้ำ ${itemWatermarks.length} ชิ้น`;
+          els.processMessage.textContent=`กำลัง Encode ${item.name} + ${encodeLabel}…`;
+          const rendered=await renderProcessedVideo(file,start,end,item,p=>setOverallProgress(i,p*.94,queue.length));const outHandle=await outDir.getFileHandle(finalName,{create:true});els.processMessage.textContent=`กำลังบันทึก ${finalName} · H.264 คุณภาพสูง · Encode 1 รอบ`;
           await writeBlobToHandle(rendered.blob,outHandle,p=>setOverallProgress(i,.94+p*.06,queue.length));
         }else{
           const trimmed=await trimLossless(file,start,end);if(trimmed.extension&& !finalName.toLowerCase().endsWith(trimmed.extension)) finalName=finalName.replace(/\.[^.]+$/,trimmed.extension);item.plannedOutputName=finalName;
@@ -720,7 +762,7 @@ async function processQueue(queue,{retry=false}={}){
     else els.processMessage.textContent=`เสร็จแล้ว · Export ${completed} ไฟล์ ไปที่ ${state.outputExplicit?state.outputDirHandle.name:`${state.dirHandle.name}/Output`}`;
     els.openOutputBtn.classList.remove('hidden');
   }catch(e){console.error(e);els.processMessage.textContent=`เกิดข้อผิดพลาด: ${e.message||e}`;}
-  finally{state.processing=false;els.chooseFolderBtn.disabled=false;[els.watermarkEnabled,els.addWatermarkBtn,els.addKeitaWatermarkBtn,els.watermarkFileInput,els.duplicateWatermarkBtn,els.deleteWatermarkBtn].forEach(el=>{if(el)el.disabled=false;});els.cancelBtn.classList.add('hidden');setTrimControlsEnabled(!!currentItem()?.duration);updateTrimUI();renderFiles();updateSummary();renderWatermarkPanel();}
+  finally{state.processing=false;els.chooseFolderBtn.disabled=false;[els.watermarkEnabled,els.addWatermarkBtn,els.addKeitaWatermarkBtn,els.watermarkFileInput,els.duplicateWatermarkBtn,els.deleteWatermarkBtn,els.lightAdjustEnabled,els.videoBrightness,els.videoContrast,els.videoSaturation,els.resetLightBtn].forEach(el=>{if(el)el.disabled=false;});els.cancelBtn.classList.add('hidden');setTrimControlsEnabled(!!currentItem()?.duration);updateTrimUI();renderFiles();updateSummary();renderWatermarkPanel();updateLightAdjustmentUI();}
 }
 function processAll(){processQueue(selectedFiles(),{retry:false});}
 function retryFailed(){const q=state.lastFailures.filter(item=>item.status==='error');processQueue(q,{retry:true});}
@@ -769,6 +811,11 @@ els.previewVideo.addEventListener('pause',()=>{if(!state.previewingSelection)ret
 els.clipSelected.addEventListener('change',()=>{const i=currentItem();if(!i||state.processing)return;i.selected=els.clipSelected.checked;renderFiles();updateSummary();resetProgress();});
 els.selectAllBtn.addEventListener('click',()=>{state.files.forEach(i=>i.selected=true);renderFiles();updateSummary();});els.selectNoneBtn.addEventListener('click',()=>{state.files.forEach(i=>i.selected=false);renderFiles();updateSummary();});
 els.filterSelect.addEventListener('change',()=>{renderFiles();updateSummary();});els.searchInput.addEventListener('input',()=>{renderFiles();updateSummary();});
+// Light / Color adjustment
+els.lightAdjustEnabled?.addEventListener('change',updateLightAdjustmentUI);
+[els.videoBrightness,els.videoContrast,els.videoSaturation].forEach(el=>el?.addEventListener('input',updateLightAdjustmentUI));
+els.resetLightBtn?.addEventListener('click',resetLightAdjustments);
+
 // Watermarks
 els.addWatermarkBtn?.addEventListener('click',()=>els.watermarkFileInput?.click());
 els.addKeitaWatermarkBtn?.addEventListener('click',addKeitaWatermark);
@@ -797,4 +844,4 @@ window.addEventListener('keydown',e=>{
 
 window.addEventListener('beforeunload',()=>{if(state.previewUrl)URL.revokeObjectURL(state.previewUrl);for(const w of state.watermarks)try{URL.revokeObjectURL(w.url);}catch{}state.trimWorker?.terminate();});
 
-resetFilmstrip();updatePresetLabels();renderWatermarkPanel();updateSummary();updateSelectionUI();
+resetFilmstrip();updatePresetLabels();renderWatermarkPanel();updateLightAdjustmentUI();updateSummary();updateSelectionUI();
