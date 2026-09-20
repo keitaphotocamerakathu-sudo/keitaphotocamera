@@ -1332,6 +1332,67 @@ async function addFiles(list,{pathMap=null,restoreSaved=true,preserveSource=fals
 function updateFileSummary(){const n=state.files.length;els.fileSummary.innerHTML=n?`<span class="chip">${n.toLocaleString()} รูป</span><span class="chip">${fmtStorage(state.fileTotalBytes||0)}</span>${state.isoMin!=null?`<span class="chip">ISO ${state.isoMin}–${state.isoMax}</span>`:''}${state.largeAlbum?'<span class="chip">Large Album · bounded memory</span>':''}`:'<span class="chip">ยังไม่มีไฟล์</span>'}
 function analysisText(a){if(!a)return 'ยังไม่วิเคราะห์';const dir=a.ev>.045?`สว่าง +${a.ev.toFixed(2)} EV`:a.ev<-.045?`มืด ${a.ev.toFixed(2)} EV`:'Exposure คงเดิม';const wb=Math.max(Math.abs((a.gains?.r??1)-1),Math.abs((a.gains?.b??1)-1))>.012?'WB Auto':'WB เดิม';const scene=(a.scene||'day').toUpperCase();const dr=a.scene==='forest'?` · DR ${(a.forestRange||0).toFixed(2)}`:'';const dep=(a.depth||0)>0?' · Depth':'';const g=a.hlGuard;const guard=g?.checked?(g.adjusted?` · HL-Safe ${Math.round((1-(g.scale??1))*100)}% ลด Auto (${Math.round(g.beforeScore||0)}→${Math.round(g.afterScore||0)})`:` · HL-Safe ✓ ${Math.round(g.afterScore||0)}`):(els.hlSafeAuto?.checked?' · HL-Safe รอตรวจตอนคัด HL':'');return `${scene}${dr}${dep} · ${dir} · H ${Math.round(a.highlights||0)} · S +${Math.round(a.shadows||0)} · ${wb} · Vib ${Number(a.vibrance||0).toFixed(1)} · ${a.source||'Auto'}${guard}`}
 
+const MANUAL_EDIT_INPUTS=['manualExposure','manualHighlights','manualShadows','manualContrast','manualTemperature','manualTint','manualVibrance'];
+function manualEditDefaults(){return {exposure:0,highlights:0,shadows:0,contrast:0,temperature:0,tint:0,vibrance:0}}
+function normalizeManualEdit(v){v=v||{};return {exposure:clamp(Number(v.exposure)||0,-1,1),highlights:clamp(Number(v.highlights)||0,-60,0),shadows:clamp(Number(v.shadows)||0,0,60),contrast:clamp(Number(v.contrast)||0,-25,25),temperature:clamp(Number(v.temperature)||0,-30,30),tint:clamp(Number(v.tint)||0,-30,30),vibrance:clamp(Number(v.vibrance)||0,-30,30)}}
+function manualEditActiveValue(v){v=normalizeManualEdit(v);return Math.abs(v.exposure)>.001||Math.abs(v.highlights)>.001||Math.abs(v.shadows)>.001||Math.abs(v.contrast)>.001||Math.abs(v.temperature)>.001||Math.abs(v.tint)>.001||Math.abs(v.vibrance)>.001}
+function hasManualEdit(file){return manualEditActiveValue(state.manualEdits.get(file))}
+function effectiveToneForFile(file,a){
+  const edit=normalizeManualEdit(state.manualEdits.get(file)),manual=manualEditActiveValue(edit);
+  if(!els.autoEnabled.checked&&!manual)return null;
+  const scene=(a&&a.scene)||'day',base=els.autoEnabled.checked&&a?{...a,gains:{...(a.gains||{r:1,g:1,b:1})}}:{scene:scene,ev:0,highlights:0,shadows:0,depth:0,gains:{r:1,g:1,b:1},vibrance:0,green:0,clarity:0,nr:0,sharp:0,source:'Manual'};
+  if(!manual)return base;
+  const t=edit.temperature*.001,ti=edit.tint*.001,g=base.gains||{r:1,g:1,b:1};
+  base.ev=clamp((Number(base.ev)||0)+edit.exposure,-1.35,1.35);
+  base.highlights=clamp((Number(base.highlights)||0)+edit.highlights,-100,0);
+  base.shadows=clamp((Number(base.shadows)||0)+edit.shadows,0,100);
+  base.clarity=clamp((Number(base.clarity)||0)+edit.contrast,-35,35);
+  base.vibrance=clamp((Number(base.vibrance)||0)+edit.vibrance,-40,50);
+  base.gains={r:clamp((Number(g.r)||1)*(1+t+ti*.35),.88,1.12),g:clamp((Number(g.g)||1)*(1-ti*.55),.88,1.12),b:clamp((Number(g.b)||1)*(1-t+ti*.35),.88,1.12)};
+  base.source=els.autoEnabled.checked?'Auto + Manual':'Manual';
+  return base
+}
+function manualLearningFeature(file){
+  const a=state.analysis.get(file)||{},st=a.full||{},m=state.meta.get(file)||{},cr=state.culling.get(file)||{},iso=Math.max(50,Number(m.iso)||100);
+  return {scene:a.scene||'day',isoLog:Math.log2(iso),mean:Number(st.mean)||0,p10:Number(st.p10)||0,p90:Number(st.p90)||0,sat:Number(st.sat)||0,focus:clamp((Number(cr.focusScore)||0)/100,0,1),persons:Number(cr.personCount)||0,faces:Number(cr.faceCount)||0,source:a.source||'Histogram'}
+}
+function manualLearningDistance(a,b){
+  if(!a||!b)return 999;let d=0;if(a.scene!==b.scene)d+=.95;if(a.source!==b.source)d+=.18;d+=Math.abs((a.isoLog||0)-(b.isoLog||0))*.22;d+=Math.abs((a.mean||0)-(b.mean||0))*3.4;d+=Math.abs((a.p10||0)-(b.p10||0))*1.8;d+=Math.abs((a.p90||0)-(b.p90||0))*1.8;d+=Math.abs((a.sat||0)-(b.sat||0))*1.6;d+=Math.abs((a.focus||0)-(b.focus||0))*.45;d+=Math.min(3,Math.abs((a.persons||0)-(b.persons||0)))*.10;d+=Math.min(2,Math.abs((a.faces||0)-(b.faces||0)))*.08;return d
+}
+function manualSuggestionFor(file){
+  const all=(state.editLearningExamples||[]).filter(x=>x&&x.type==='edit_learning'&&x.featureVersion===1&&x.feature&&x.edit);if(!all.length)return null;
+  const ft=manualLearningFeature(file),rank=all.map(x=>({x:x,d:manualLearningDistance(ft,x.feature)})).filter(z=>z.d<=2.25).sort((a,b)=>a.d-b.d).slice(0,5);if(!rank.length)return null;
+  const out=manualEditDefaults(),keys=Object.keys(out);let sw=0,sd=0;for(const z of rank){const w=1/Math.max(.18,z.d+.12);sw+=w;sd+=z.d;for(const k of keys)out[k]+=(Number(z.x.edit[k])||0)*w}for(const k of keys)out[k]/=sw;const avg=sd/rank.length,confidence=clamp((1-avg/2.25)*Math.min(1,rank.length/3),0,1);return {edit:normalizeManualEdit(out),count:rank.length,confidence:confidence,distance:avg}
+}
+function manualUpdateValueLabels(){
+  if(!els.manualExposure)return;els.manualExposureValue.textContent=Number(els.manualExposure.value).toFixed(2)+' EV';els.manualHighlightsValue.textContent=String(Math.round(Number(els.manualHighlights.value)||0));els.manualShadowsValue.textContent=(Number(els.manualShadows.value)>0?'+':'')+String(Math.round(Number(els.manualShadows.value)||0));els.manualContrastValue.textContent=(Number(els.manualContrast.value)>0?'+':'')+String(Math.round(Number(els.manualContrast.value)||0));els.manualTemperatureValue.textContent=(Number(els.manualTemperature.value)>0?'+':'')+String(Math.round(Number(els.manualTemperature.value)||0));els.manualTintValue.textContent=(Number(els.manualTint.value)>0?'+':'')+String(Math.round(Number(els.manualTint.value)||0));els.manualVibranceValue.textContent=(Number(els.manualVibrance.value)>0?'+':'')+String(Math.round(Number(els.manualVibrance.value)||0))
+}
+function manualReadInputs(){return normalizeManualEdit({exposure:els.manualExposure?.value,highlights:els.manualHighlights?.value,shadows:els.manualShadows?.value,contrast:els.manualContrast?.value,temperature:els.manualTemperature?.value,tint:els.manualTint?.value,vibrance:els.manualVibrance?.value})}
+function manualSetInputs(v){v=normalizeManualEdit(v);if(!els.manualExposure)return;els.manualExposure.value=v.exposure;els.manualHighlights.value=v.highlights;els.manualShadows.value=v.shadows;els.manualContrast.value=v.contrast;els.manualTemperature.value=v.temperature;els.manualTint.value=v.tint;els.manualVibrance.value=v.vibrance;manualUpdateValueLabels()}
+function syncManualEditPanel(file){
+  if(!file||!els.manualEditPanel)return;const edit=normalizeManualEdit(state.manualEdits.get(file));manualSetInputs(edit);const active=manualEditActiveValue(edit);if(els.dialogAfterLabel)els.dialogAfterLabel.textContent=active?(els.autoEnabled.checked?'AFTER · Auto + Manual':'AFTER · Manual'):(els.autoEnabled.checked?'AFTER · Auto Fine Tune':'AFTER · Original');
+  const s=manualSuggestionFor(file);state.manualSuggestion=s;if(els.manualApplyLearned)els.manualApplyLearned.disabled=!s;
+  if(els.manualEditStatus){if(s){els.manualEditStatus.textContent=(active?'Manual Edit ภาพนี้บันทึกอยู่ · ':'')+'KEITA Edit Memory พบ '+s.count+' เคสคล้ายกัน · ความมั่นใจ '+Math.round(s.confidence*100)+'% · กด “ใช้ค่าที่เรียนรู้” เพื่อทดลอง';els.manualEditStatus.className='manual-edit-status '+(s.confidence>=.55?'good':'warn')}else{els.manualEditStatus.textContent=(active?'Manual Edit ภาพนี้บันทึกอยู่ · ':'')+'Edit Memory ยังไม่มีเคสคล้ายกันพอ — ปรับภาพแล้วกด “บันทึก + สอน KEITA”';els.manualEditStatus.className='manual-edit-status'}}
+}
+async function refreshManualAfterPreview(){
+  const idx=state.dialogIndex,f=state.files[idx];if(!f||!els.photoDialog?.open)return;const token=++state.manualPreviewToken;els.dialogAfterLoading?.classList.remove('hidden');if(els.dialogAfterLoading)els.dialogAfterLoading.textContent='กำลังอัปเดต Manual Edit…';
+  try{const u=await makeAfterPreviewUrl(f);if(token!==state.manualPreviewToken||state.dialogIndex!==idx){URL.revokeObjectURL(u);return}if(state.dialogAfterUrl)URL.revokeObjectURL(state.dialogAfterUrl);state.dialogAfterUrl=u;els.dialogAfter.src=u;els.dialogAfterLoading?.classList.add('hidden');syncManualEditPanel(f)}catch(e){console.warn('manual preview',e);if(token===state.manualPreviewToken&&els.dialogAfterLoading)els.dialogAfterLoading.textContent='สร้าง Manual Preview ไม่สำเร็จ'}
+}
+function manualInputChanged(){
+  const idx=state.dialogIndex,f=state.files[idx];if(!f)return;const edit=manualReadInputs();if(manualEditActiveValue(edit))state.manualEdits.set(f,edit);else state.manualEdits.delete(f);markFileStateDirty(f);resetExportSession();manualUpdateValueLabels();if(els.dialogAfterLabel)els.dialogAfterLabel.textContent=manualEditActiveValue(edit)?(els.autoEnabled.checked?'AFTER · Auto + Manual':'AFTER · Manual'):(els.autoEnabled.checked?'AFTER · Auto Fine Tune':'AFTER · Original');clearTimeout(state.manualEditTimer);state.manualEditTimer=setTimeout(()=>{scheduleSaveSession();refreshManualAfterPreview()},140)
+}
+async function saveManualLearning(){
+  const idx=state.dialogIndex,f=state.files[idx];if(!f)return;const edit=normalizeManualEdit(state.manualEdits.get(f));if(!manualEditActiveValue(edit)){if(els.manualEditStatus){els.manualEditStatus.textContent='ยังไม่ได้ปรับภาพนี้ จึงไม่มีค่าที่จะสอน';els.manualEditStatus.className='manual-edit-status warn'}return}
+  try{if(els.autoEnabled.checked&&!state.analysis.get(f)){const a=await analyzeOne(f);state.analysis.set(f,a);markFileStateDirty(f)}const rec={id:'edit-learn:v1:'+shortHash(fileKey(f)),type:'edit_learning',featureVersion:1,sourceKey:fileKey(f),savedAt:Date.now(),feature:manualLearningFeature(f),edit:edit};await teachDbPut(rec);const i=state.editLearningExamples.findIndex(x=>x.id===rec.id);if(i>=0)state.editLearningExamples[i]=rec;else state.editLearningExamples.push(rec);markFileStateDirty(f);await flushDirtyFileStates();scheduleSaveSession();syncManualEditPanel(f);if(els.manualEditStatus){els.manualEditStatus.textContent='บันทึกการแต่งภาพแล้ว · Edit Memory ทั้งหมด '+state.editLearningExamples.length+' เคส · จะใช้เป็นคำแนะนำกับภาพลักษณะคล้ายกัน';els.manualEditStatus.className='manual-edit-status good'}}catch(e){console.warn('save edit learning',e);if(els.manualEditStatus){els.manualEditStatus.textContent='บันทึก Edit Memory ไม่สำเร็จ: '+(e.message||e);els.manualEditStatus.className='manual-edit-status warn'}}
+}
+function applyManualSuggestion(){
+  const idx=state.dialogIndex,f=state.files[idx],s=state.manualSuggestion;if(!f||!s)return;const edit=normalizeManualEdit(s.edit);state.manualEdits.set(f,edit);manualSetInputs(edit);markFileStateDirty(f);resetExportSession();scheduleSaveSession();syncManualEditPanel(f);refreshManualAfterPreview()
+}
+function resetManualEdit(){
+  const idx=state.dialogIndex,f=state.files[idx];if(!f)return;state.manualEdits.delete(f);manualSetInputs(manualEditDefaults());markFileStateDirty(f);resetExportSession();scheduleSaveSession();syncManualEditPanel(f);refreshManualAfterPreview()
+}
+
+
 function isHighlight(file){return !!state.highlights.get(file)?.selected}
 function highlightInfo(file){return state.highlights.get(file)||null}
 function calculateHighlightStats(){let selected=0,pinned=0,scored=0;const cats={running:0,action:0,story:0,scenic:0,character:0};for(const h of state.highlights.values()){if(!h)continue;if(Number.isFinite(h.score))scored++;if(h.selected){selected++;if(h.category&&cats[h.category]!=null)cats[h.category]++}if(h.pinned)pinned++}return {selected,pinned,scored,cats}}
