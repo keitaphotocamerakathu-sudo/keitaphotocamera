@@ -910,7 +910,7 @@ async function cullAlbum(){
   const total=state.files.length;let cc=cullCounts(),done=total-cc.unculled,lastUi=0,lastCheckpoint=done;els.cullBar.style.width=(done/Math.max(1,total)*100)+'%';
   for(let i=0;i<total;i++){
     if(state.cancelCull)break;const f=state.files[i];if(state.culling.has(f))continue;
-    let r;try{r=await cullOne(f);r=await teachApplySellableAdvice(f,r)}catch(e){console.warn(f.name,e);r={status:'review',reason:'วิเคราะห์ไม่สำเร็จ — ควรตรวจ',focusScore:0,error:true}}
+    let r;try{r=await withTimeout(cullOne(f),90000,`Culling ${f.name}`);r=await withTimeout(teachApplySellableAdvice(f,r),30000,`Reference ${f.name}`)}catch(e){console.warn(f.name,e);if(e?.code==='KEITA_TIMEOUT')recoverAiAfterTimeout('cull');r={status:'review',reason:e?.code==='KEITA_TIMEOUT'?'Watchdog: วิเคราะห์เกินเวลา — ส่ง REVIEW อัตโนมัติ':'วิเคราะห์ไม่สำเร็จ — ควรตรวจ',focusScore:0,error:true,watchdog:e?.code==='KEITA_TIMEOUT'}}
     state.culling.set(f,r);markFileStateDirty(f);done++;cc.unculled=Math.max(0,cc.unculled-1);if(r.status==='pass')cc.pass++;else if(r.status==='review')cc.review++;else cc.reject++;
     const now=performance.now();if(now-lastUi>250||done===total){lastUi=now;els.cullBar.style.width=(done/Math.max(1,total)*100)+'%';setStatus(els.cullStatus,`คัด ${done.toLocaleString()}/${total.toLocaleString()} · PASS ${cc.pass.toLocaleString()} · REVIEW ${cc.review.toLocaleString()} · REJECT ${cc.reject.toLocaleString()}`,'warn')}
     if(done-lastCheckpoint>=500){await flushDirtyFileStates();lastCheckpoint=done;els.sessionNote.textContent=`Culling checkpoint ${done.toLocaleString()}/${total.toLocaleString()} · บันทึกผลรายไฟล์แล้ว`}
@@ -1112,6 +1112,13 @@ function fastGpuTone(source,a,sharpAmount,slot=0){
 function releaseFastGpuPool(){for(const g of fastGpuPool){if(!g)continue;try{if(g.canvas){g.canvas.width=1;g.canvas.height=1}const ext=g.gl?.getExtension?.('WEBGL_lose_context');ext?.loseContext?.()}catch{}}fastGpuPool.length=0}
 function timeoutError(label,ms){const e=new Error(`${label} เกิน ${Math.round(ms/1000)} วินาที`);e.code='KEITA_TIMEOUT';return e}
 async function withTimeout(promise,ms,label){let timer;try{return await Promise.race([promise,new Promise((_,rej)=>{timer=setTimeout(()=>rej(timeoutError(label,ms)),ms)})])}finally{clearTimeout(timer)}}
+function recoverAiAfterTimeout(stage){
+  console.warn('KEITA watchdog recovery',stage);
+  try{state.personModel?.dispose?.()}catch{}try{state.faceModel?.dispose?.()}catch{}try{state.poseDetector?.dispose?.()}catch{}try{state.faceMeshDetector?.dispose?.()}catch{}
+  if(stage==='cull'||stage==='auto'){state.personModel=null;state.faceModel=null;state.modelsTried=false}
+  if(stage==='highlight'){state.poseDetector=null;state.faceMeshDetector=null;state.highlightModelsTried=false}
+}
+
 
 function watermarkLayerPublic(w){return {id:w.id,name:w.name,blob:w.blob,x:w.x,y:w.y,w:w.w,visible:w.visible!==false,ratio:w.ratio||1,orientation:w.orientation||'portrait'}}
 function serializeWatermarks(){return state.watermarks.map(watermarkLayerPublic)}
@@ -1541,7 +1548,7 @@ async function runHighlightSelection(){
   // Stage 1: compact base score for every PASS. Keep memory bounded and persist in chunks.
   for(const f of pass){
     if(state.cancelHighlight)break;const old=state.highlights.get(f);if(Number.isFinite(old?.score))continue;
-    try{const scored=await scoreHighlightOne(f,{advanced:false});if(scored){if(old?.pinned){scored.pinned=true;scored.selected=true}state.highlights.set(f,scored);markFileStateDirty(f)}}catch(e){console.warn('highlight base score',f.name,e)}
+    try{const scored=await withTimeout(scoreHighlightOne(f,{advanced:false}),90000,`Highlight base ${f.name}`);if(scored){if(old?.pinned){scored.pinned=true;scored.selected=true}state.highlights.set(f,scored);markFileStateDirty(f)}}catch(e){if(e?.code==='KEITA_TIMEOUT')recoverAiAfterTimeout('highlight');console.warn('highlight base score',f.name,e)}
     done++;const now=performance.now();
     if(now-lastUi>250||done===pass.length){lastUi=now;els.highlightBar.style.width=(done/pass.length*55)+'%';setStatus(els.highlightStatus,`รอบ 1/2 · ${els.autoEnabled.checked?'ดูภาพหลังแต่ง':'วิเคราะห์ภาพต้นฉบับ'} ${done.toLocaleString()}/${pass.length.toLocaleString()} · คัด Candidate สำหรับ Portfolio`,'warn')}
     if(done-lastCheckpoint>=500){await flushDirtyFileStates();lastCheckpoint=done;els.sessionNote.textContent=`Highlight รอบ 1 checkpoint ${done.toLocaleString()}/${pass.length.toLocaleString()}`}
@@ -1560,7 +1567,7 @@ async function runHighlightSelection(){
   lastUi=0;lastCheckpoint=0;
   for(let i=0;i<candidates.length;i++){
     if(state.cancelHighlight)break;const f=candidates[i],old=state.highlights.get(f);if(old?.category&&old?.breakdown&&Number.isFinite(old?.score)){const n=i+1;els.highlightBar.style.width=(55+n/Math.max(1,candidates.length)*45)+'%';continue}
-    try{const scored=await scoreHighlightOne(f,{advanced:true});if(scored){if(old?.pinned){scored.pinned=true;scored.selected=true}state.highlights.set(f,scored);markFileStateDirty(f)}}catch(e){console.warn('highlight portfolio score',f.name,e)}
+    try{const scored=await withTimeout(scoreHighlightOne(f,{advanced:true}),120000,`Portfolio AI ${f.name}`);if(scored){if(old?.pinned){scored.pinned=true;scored.selected=true}state.highlights.set(f,scored);markFileStateDirty(f)}}catch(e){if(e?.code==='KEITA_TIMEOUT')recoverAiAfterTimeout('highlight');console.warn('highlight portfolio score',f.name,e)}
     const n=i+1,now=performance.now();if(now-lastUi>200||n===candidates.length){lastUi=now;els.highlightBar.style.width=(55+n/Math.max(1,candidates.length)*45)+'%';setStatus(els.highlightStatus,`รอบ 2/2 · Portfolio AI ${n.toLocaleString()}/${candidates.length.toLocaleString()} · RUNNING POSE / ACTION / STORY / SCENIC / CHARACTER`,'warn')}
     if(n-lastCheckpoint>=100){await flushDirtyFileStates();lastCheckpoint=n;updateHighlightCounts();els.sessionNote.textContent=`Highlight Portfolio checkpoint ${n.toLocaleString()}/${candidates.length.toLocaleString()}`}
     if(n%4===0)await new Promise(r=>setTimeout(r,0));
@@ -1675,7 +1682,7 @@ async function analyzeAlbum(){
   setStatus(els.autoStatus,`Auto Tune ${total.toLocaleString()} รูป${skippedReject?` · ข้าม REJECT ${skippedReject.toLocaleString()}`:''}${skippedReview?` · ข้าม REVIEW ${skippedReview.toLocaleString()}`:''}`,'warn');
   for(let i=0;i<eligible.length;i++){
     if(state.cancelAnalyze)break;const f=eligible[i];
-    try{let a=state.analysis.get(f);if(!a){a=await analyzeOne(f);state.analysis.set(f,a);markFileStateDirty(f)}if(a.ev>.045)up++;else if(a.ev<-.045)down++;else same++}catch(e){errors++;console.warn(f.name,e)}
+    try{let a=state.analysis.get(f);if(!a){a=await withTimeout(analyzeOne(f),60000,`Auto Fine Tune ${f.name}`);state.analysis.set(f,a);markFileStateDirty(f)}if(a.ev>.045)up++;else if(a.ev<-.045)down++;else same++}catch(e){errors++;if(e?.code==='KEITA_TIMEOUT')recoverAiAfterTimeout('auto');console.warn(f.name,e)}
     done++;const now=performance.now();if(now-lastUi>250||done===total){lastUi=now;els.analyzeBar.style.width=(total?done/total*100:100)+'%';setStatus(els.autoStatus,`Auto Tune ${done.toLocaleString()}/${total.toLocaleString()} · สว่างขึ้น ${up.toLocaleString()} · คงเดิม ${same.toLocaleString()} · มืดลง ${down.toLocaleString()}${errors?` · Error ${errors.toLocaleString()}`:''}`,'warn')}
     if(done-lastCheckpoint>=500){await flushDirtyFileStates();lastCheckpoint=done;els.sessionNote.textContent=`Auto checkpoint ${done.toLocaleString()}/${total.toLocaleString()} · บันทึกผลรายไฟล์แล้ว`}
     if(done%1000===0)renderPreviewThrottled();
