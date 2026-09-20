@@ -795,3 +795,22 @@ body.review-mode .editor-layout { grid-template-columns:minmax(0,2.4fr) minmax(2
 @media (max-width: 560px) {
   .watermark-actions, .watermark-edit-actions, .watermark-orientation, .wm-position-grid { grid-template-columns:1fr; }
 }
+
+/* Optional video light adjustment */
+.light-adjust-card { overflow: visible; }
+.light-adjust-card .wm-slider { transition: opacity .15s ease; }
+.light-adjust-card.controls-disabled .wm-slider,
+.light-adjust-card.controls-disabled .light-adjust-actions { opacity: .48; }
+.light-adjust-actions { display:flex; justify-content:flex-end; margin-top:10px; }
+.encode-note {
+  margin-top: 11px;
+  padding: 10px 11px;
+  border: 1px solid rgba(251,191,36,.28);
+  border-radius: 10px;
+  background: rgba(251,191,36,.06);
+  color: #d4d4d8;
+  font-size: .7rem;
+  line-height: 1.55;
+}
+.encode-note strong { color:#fbbf24; }
+.export-note strong { color:#fbbf24; }
