@@ -1728,14 +1728,22 @@ function recordExportFailure(file,stage,mode,e){const row={at:new Date().toISOSt
 function refreshExportFailureUi(){const n=state.exportFailures.length;if(els.retryFailedExport){els.retryFailedExport.classList.toggle('hidden',!n);els.retryFailedExport.disabled=!n||state.exporting}if(els.downloadExportErrors)els.downloadExportErrors.classList.toggle('hidden',!n);if(els.exportRecoveryInfo){els.exportRecoveryInfo.classList.toggle('hidden',!n);els.exportRecoveryInfo.textContent=n?`มีไฟล์ผิดพลาด ${n.toLocaleString()} รายการ · ใช้ Retry Failed Only หรือดาวน์โหลด KEITA_ERRORS.csv`:''}}
 
 async function scanCompletedFiles(dir){
-  const good=new Set();if(!dir)return good;let batch=[],seen=0;
-  const flush=async()=>{if(!batch.length)return;const part=batch;batch=[];const files=await Promise.all(part.map(x=>x.h.getFile().catch(()=>null)));for(let i=0;i<part.length;i++)if(files[i]&&files[i].size>1024)good.add(part[i].name);seen+=part.length;if(seen%512===0)await new Promise(r=>setTimeout(r,0))};
+  const good=new Map();if(!dir)return good;let batch=[],seen=0;
+  const flush=async()=>{if(!batch.length)return;const part=batch;batch=[];const files=await Promise.all(part.map(x=>x.h.getFile().catch(()=>null)));for(let i=0;i<part.length;i++)if(files[i]&&files[i].size>1024)good.set(part[i].name,files[i].size);seen+=part.length;if(seen%512===0)await new Promise(r=>setTimeout(r,0))};
   try{for await(const [name,h] of dir.entries()){if(h.kind!=='file')continue;batch.push({name,h});if(batch.length>=64)await flush()}await flush()}catch(e){console.warn('scan export folder',e)}
   return good
 }
 async function trySubdir(root,name){try{return await root.getDirectoryHandle(name)}catch{return null}}
+function recoverCompletedOutput(mode,file,name,size){
+  const token=exportToken(mode,file);if(!(size>1024)){state.exported.delete(token);return false}
+  const m=state.exportManifest.get(token);
+  if(m&&m.outputName===name&&Number(m.size||0)===Number(size||0)){state.exported.add(token);return true}
+  // Crash may happen after the JPEG commit but before Manifest checkpoint. Recover the real disk file into Manifest.
+  state.exportManifest.set(token,manifestRecord(mode,file,name,size));state.exportManifestDirty++;state.exported.add(token);return true
+}
 async function reconcileExistingExports(dirs,all,hlSet,needMode,indexMap){
-  setStatus(els.result,'กำลังอ่านรายการไฟล์จากงาน Export เดิม…','warn');
+  setStatus(els.result,'กำลังตรวจ Manifest + ไฟล์จริงจากงาน Export เดิม…','warn');
+  if(!state.exportManifestLoaded)await loadExportManifest(state.exportRoot);
   let names01=null,names02=null,names03=null,sub01=null;
   if(needMode('01')){
     if(els.cullFolders.checked){sub01=new Map();for(const n of ['PASS','REVIEW','REJECT']){const d=await trySubdir(dirs['01'],n);sub01.set(n,await scanCompletedFiles(d))}}
@@ -1743,15 +1751,19 @@ async function reconcileExistingExports(dirs,all,hlSet,needMode,indexMap){
   }
   if(needMode('02'))names02=await scanCompletedFiles(dirs['02']);
   if(needMode('03'))names03=await scanCompletedFiles(dirs['03']);
-  let found=0,checked=0;
+  let found=0,checked=0,recoveredManifest=0;
   for(const f of all){
     const i=indexMap.get(f),name=outputName(f,i);
-    if(needMode('01')){let ok=false;if(sub01){const r=state.culling.get(f),bucket=r?.status==='reject'?'REJECT':r?.status==='review'?'REVIEW':'PASS';ok=sub01.get(bucket)?.has(name)||false}else ok=names01?.has(name)||false;const t=exportToken('01',f);if(ok){state.exported.add(t);found++}else state.exported.delete(t);checked++}
-    if(hlSet.has(f)&&needMode('02')){const t=exportToken('02',f),ok=names02?.has(name)||false;if(ok){state.exported.add(t);found++}else state.exported.delete(t);checked++}
-    if(hlSet.has(f)&&needMode('03')){const t=exportToken('03',f),ok=names03?.has(name)||false;if(ok){state.exported.add(t);found++}else state.exported.delete(t);checked++}
-    if(checked&&checked%5000===0){setStatus(els.result,`ตรวจงานเดิม ${checked.toLocaleString()} รายการ · พบไฟล์สมบูรณ์ ${found.toLocaleString()}`,'warn');await new Promise(r=>setTimeout(r,0))}
+    if(needMode('01')){
+      let size=0;if(sub01){const r=state.culling.get(f),bucket=r?.status==='reject'?'REJECT':r?.status==='review'?'REVIEW':'PASS';size=sub01.get(bucket)?.get(name)||0}else size=names01?.get(name)||0;
+      const before=state.exportManifest.has(exportToken('01',f));if(recoverCompletedOutput('01',f,name,size)){found++;if(!before)recoveredManifest++}checked++
+    }
+    if(hlSet.has(f)&&needMode('02')){const size=names02?.get(name)||0,before=state.exportManifest.has(exportToken('02',f));if(recoverCompletedOutput('02',f,name,size)){found++;if(!before)recoveredManifest++}checked++}
+    if(hlSet.has(f)&&needMode('03')){const size=names03?.get(name)||0,before=state.exportManifest.has(exportToken('03',f));if(recoverCompletedOutput('03',f,name,size)){found++;if(!before)recoveredManifest++}checked++}
+    if(checked&&checked%5000===0){setStatus(els.result,`ตรวจงานเดิม ${checked.toLocaleString()} รายการ · สมบูรณ์ ${found.toLocaleString()} · กู้เข้า Manifest ${recoveredManifest.toLocaleString()}`,'warn');await new Promise(r=>setTimeout(r,0))}
   }
-  setStatus(els.result,`ตรวจงานเดิมเสร็จ · พบไฟล์สมบูรณ์ ${found.toLocaleString()} รายการ · จะข้ามทั้งหมดและทำต่อเฉพาะที่ขาด`,'good');
+  if(state.exportManifestDirty)await flushExportManifest(true);
+  setStatus(els.result,`ตรวจงานเดิมเสร็จ · สมบูรณ์ ${found.toLocaleString()} รายการ · กู้เข้า Manifest ${recoveredManifest.toLocaleString()} · จะทำต่อเฉพาะไฟล์ที่ขาด`,'good');
   await saveSessionNow(true).catch(()=>{});return found
 }
 function cleanWorstBytes(file){const visual=els.autoEnabled.checked||els.resizeEnabled.checked;if(visual)return Number(els.fileLimit.value||4.8)*1048576;return file.size}
@@ -1809,37 +1821,52 @@ async function testOne(){
 async function prepareExport(mode){
   if(!state.files.length||state.exporting)return null;if(!state.output){await chooseOutput();if(!state.output)return null}if(!(await queryHandlePermission(state.output,'readwrite')))throw new Error('ไม่ได้รับสิทธิ์เขียน Folder Export');const plan=await preflightExport(mode,{interactive:true});await verifyOutputWritable();if(!state.exportRoot){if(state.exportSessionDirect)state.exportRoot=state.output;else{if(!state.exportSessionName)state.exportSessionName=`KEITA_EXPORT_${nowStamp()}`;state.exportRoot=await state.output.getDirectoryHandle(state.exportSessionName,{create:true})}scheduleSaveSession()}if(!state.exportManifestLoaded)await loadExportManifest(state.exportRoot);await flushExportManifest(true);return plan
 }
-async function exportMode(mode='all'){try{await ensureLicenseActive({silent:true})}catch{return}
-  if(state.exporting)return;els.result.classList.remove('hidden');let plan;try{plan=await prepareExport(mode);if(!plan)return}catch(e){if(e.name==='AbortError'){setStatus(els.result,'ยกเลิก Export แล้ว','warn');return}setStatus(els.result,`Export เริ่มไม่ได้: ${e.message||e}`,'bad');return}
+async function exportMode(mode='all',{onlyFailed=false}={}){
+  if(state.exporting)return;els.result.classList.remove('hidden');
+  const retryKeys=onlyFailed?new Set(state.exportFailures.map(x=>x.sourceKey).filter(Boolean)):null;
+  if(onlyFailed&&!retryKeys.size){setStatus(els.result,'ไม่มีไฟล์ Error ให้ Retry','good');return}
+  let plan;try{plan=await prepareExport(mode);if(!plan)return}catch(e){if(e.name==='AbortError'){setStatus(els.result,'ยกเลิก Export แล้ว','warn');return}setStatus(els.result,`Export เริ่มไม่ได้: ${e.message||e}`,'bad');return}
+  const previousFailureCount=state.exportFailures.length;state.exportFailures=[];refreshExportFailureUi();
   const dirs={};if(mode==='01'||mode==='all')dirs['01']=await state.exportRoot.getDirectoryHandle('01_ALL_PHOTOS',{create:true});if(mode==='02'||mode==='all')dirs['02']=await state.exportRoot.getDirectoryHandle('02_HIGHLIGHT_WATERMARK',{create:true});if(mode==='03'||mode==='all')dirs['03']=await state.exportRoot.getDirectoryHandle('03_HIGHLIGHT_CLEAN',{create:true});
-  const all=plan.all,hlSet=new Set(plan.hl),indexMap=new Map(all.map((f,i)=>[f,i]));let totalUnits=0,doneUnits=0;const needMode=m=>mode==='all'||mode===m;
+  const all=plan.all,hlSet=new Set(plan.hl),indexMap=new Map(all.map((f,i)=>[f,i]));const needMode=m=>mode==='all'||mode===m;
   const recovered=await reconcileExistingExports(dirs,all,hlSet,needMode,indexMap);
-  for(const f of all){if(needMode('01')){totalUnits++;if(state.exported.has(exportToken('01',f)))doneUnits++}if(hlSet.has(f)&&needMode('02')){totalUnits++;if(state.exported.has(exportToken('02',f)))doneUnits++}if(hlSet.has(f)&&needMode('03')){totalUnits++;if(state.exported.has(exportToken('03',f)))doneUnits++}}
-  if(doneUnits>=totalUnits){setStatus(els.result,`Export ${mode==='all'?'ALL 3':mode} ชุดนี้ครบแล้ว · ภาพต้นฉบับ ${all.length.toLocaleString()} รูป${mode==='all'?` · HL ${plan.hl.length.toLocaleString()} รูป`:''} · สำเนาที่เขียน ${totalUnits.toLocaleString()} ไฟล์`,'good');return}
-  state.exporting=true;state.exportMode=mode;state.cancelExport=false;els.cancelExport.classList.remove('hidden');els.exportProgress.classList.remove('hidden');for(const b of [els.exportAll,els.export01,els.export02,els.export03])b.disabled=true;
+  let fullTotal=0,fullDone=0;for(const f of all){if(needMode('01')){fullTotal++;if(state.exported.has(exportToken('01',f)))fullDone++}if(hlSet.has(f)&&needMode('02')){fullTotal++;if(state.exported.has(exportToken('02',f)))fullDone++}if(hlSet.has(f)&&needMode('03')){fullTotal++;if(state.exported.has(exportToken('03',f)))fullDone++}}
+  const jobs=[];for(let i=0;i<all.length;i++){const f=all[i];if(onlyFailed&&!retryKeys.has(fileKey(f)))continue;const isHl=hlSet.has(f),n01=needMode('01')&&!state.exported.has(exportToken('01',f)),n02=isHl&&needMode('02')&&!state.exported.has(exportToken('02',f)),n03=isHl&&needMode('03')&&!state.exported.has(exportToken('03',f));if(n01||n02||n03)jobs.push({f,i,n01,n02,n03})}
+  if(!jobs.length){await flushExportManifest(true);setStatus(els.result,onlyFailed?`Retry ตรวจแล้ว: ไฟล์ Error เดิม ${previousFailureCount.toLocaleString()} รายการถูกเขียนครบแล้ว`:`Export ${mode==='all'?'ALL 3':mode} ชุดนี้ครบแล้ว · สำเนา ${fullTotal.toLocaleString()} ไฟล์`,'good');state.lastFailedExportMode=null;refreshExportFailureUi();return}
+  const retryUnits=jobs.reduce((n,j)=>n+(j.n01?1:0)+(j.n02?1:0)+(j.n03?1:0),0),totalUnits=onlyFailed?retryUnits:fullTotal;let doneUnits=onlyFailed?0:fullDone;
+  state.exporting=true;state.exportMode=mode;state.cancelExport=false;els.cancelExport.classList.remove('hidden');els.exportProgress.classList.remove('hidden');for(const b of [els.exportAll,els.export01,els.export02,els.export03,els.retryFailedExport])b.disabled=true;
   let fail=0,ok=0,lastSaved=doneUnits,lastUi=0,lastProgressAt=performance.now(),activeFile='';const started=performance.now(),startDone=doneUnits;const perf={jobs:0,decode:0,render:0,encode:0,watermark:0,write:0};let checkpointPromise=Promise.resolve();
   const heavy=els.autoEnabled.checked||resizeActuallyNeeded(all[0]||{}),hc=Math.max(2,Number(navigator.hardwareConcurrency||4)),dm=Number(navigator.deviceMemory||8),hlRatio=plan.all.length?plan.hl.length/plan.all.length:0;
-  // v18 Safe Turbo: A7R/high-res JPEG + Auto + Watermark can consume a lot of RAM.
-  // Keep heavy visual work to 1–2 workers and avoid many simultaneous FileSystemWritable streams.
   let concurrency=heavy?(dm<=4?1:2):Math.min(4,hc);const outEdge=Number(els.longEdge.value||4500);if(heavy&&(!els.resizeEnabled.checked||outEdge>5200))concurrency=1;if(mode==='all'&&heavy&&hlRatio>.45)concurrency=1;concurrency=Math.max(1,Math.min(concurrency,4));
-  const jobs=[];for(let i=0;i<all.length;i++){const f=all[i],isHl=hlSet.has(f),n01=needMode('01')&&!state.exported.has(exportToken('01',f)),n02=isHl&&needMode('02')&&!state.exported.has(exportToken('02',f)),n03=isHl&&needMode('03')&&!state.exported.has(exportToken('03',f));if(n01||n02||n03)jobs.push({f,i,n01,n02,n03})}
   let cursor=0,noSpace=false;const speedSamples=[[started,doneUnits]];
   const currentSpeed=now=>{speedSamples.push([now,doneUnits]);while(speedSamples.length>2&&speedSamples[0][0]<now-20000)speedSamples.shift();const elapsed=Math.max(.001,(now-started)/1000),made=Math.max(0,doneUnits-startDone),globalRate=made/elapsed,first=speedSamples[0],rollingDt=Math.max(.001,(now-first[0])/1000),rollingMade=Math.max(0,doneUnits-first[1]),rollingRate=rollingMade/rollingDt;return made>=4&&elapsed>=2?(rollingRate>0?rollingRate*.78+globalRate*.22:globalRate):0};
-  const updateUi=(force=false)=>{const now=performance.now();if(!force&&now-lastUi<220&&doneUnits<totalUnits)return;lastUi=now;const elapsed=Math.max(.001,(now-started)/1000),rate=currentSpeed(now),remain=Math.max(0,totalUnits-doneUnits),eta=rate>0?remain/rate:NaN,pct=doneUnits/Math.max(1,totalUnits)*100;els.exportBar.style.width=pct+'%';const timeText=rate>0?` · ${rate.toFixed(2)} ไฟล์/วินาที · ใช้ไป ${fmtDuration(elapsed)} · เหลือประมาณ ${fmtDuration(eta)} · คาดเสร็จ ${etaClock(eta)}`:` · กำลังวัดความเร็วเพื่อคำนวณเวลาคงเหลือ…`;const ptxt=perf.jobs>=3?` · เฉลี่ย/ภาพ Decode ${Math.round(perf.decode/perf.jobs)}ms · Render ${Math.round(perf.render/perf.jobs)}ms · JPEG ${Math.round(perf.encode/perf.jobs)}ms · Write ${Math.round(perf.write/perf.jobs)}ms`:'';const idle=(now-lastProgressAt)/1000,idleText=idle>20?` · กำลังประมวลผลไฟล์ใหญ่ ${Math.round(idle)}s${activeFile?' · '+activeFile:''}`:'';setStatus(els.result,`Safe Turbo ×${concurrency} · ${mode==='all'?'ALL 3':mode} · ${pct.toFixed(1)}% · ภาพต้นฉบับ ${all.length.toLocaleString()} รูป${mode==='all'?` · HL ${plan.hl.length.toLocaleString()} รูป`:''} · เขียน ${doneUnits.toLocaleString()}/${totalUnits.toLocaleString()} ไฟล์${timeText}${ptxt}${idleText} · กู้คืนเดิม ${recovered.toLocaleString()} · สำเร็จใหม่ ${ok.toLocaleString()} · ผิดพลาด ${fail.toLocaleString()}`,'warn')};
-  const checkpoint=()=>{checkpointPromise=checkpointPromise.then(()=>saveSessionNow(true)).catch(e=>console.warn('export checkpoint',e));return checkpointPromise};
-  async function writeExportUnit(dir,res,token,opts){const tw=performance.now();await saveOneVerified(dir,res,opts);perf.write+=performance.now()-tw;state.exported.add(token);doneUnits++;ok++;lastProgressAt=performance.now();updateUi()}
-  async function worker(slot){let localJobs=0;while(!state.cancelExport&&!noSpace){const j=jobs[cursor++];if(!j)break;const {f,n01,n02,n03}=j;activeFile=f.name;lastProgressAt=performance.now();try{const b=await withTimeout(buildOutputs(f,indexMap.get(f),{needClean:n01||n03,needWatermark:n02,gpuSlot:slot}),180000,`ประมวลผล ${f.name}`);perf.jobs++;perf.decode+=b.metrics?.decode||0;perf.render+=b.metrics?.render||0;perf.encode+=b.metrics?.encode||0;perf.watermark+=b.metrics?.watermark||0;
-      // Write sequentially per source image. This keeps open file streams and peak RAM bounded.
-      if(n01){const d=await exportTargetDir(dirs['01'],f);await writeExportUnit(d,b.clean,exportToken('01',f))}
+  const updateUi=(force=false)=>{const now=performance.now();if(!force&&now-lastUi<220&&doneUnits<totalUnits)return;lastUi=now;const elapsed=Math.max(.001,(now-started)/1000),rate=currentSpeed(now),remain=Math.max(0,totalUnits-doneUnits),eta=rate>0?remain/rate:NaN,pct=doneUnits/Math.max(1,totalUnits)*100;els.exportBar.style.width=pct+'%';const timeText=rate>0?` · ${rate.toFixed(2)} ไฟล์/วินาที · ใช้ไป ${fmtDuration(elapsed)} · เหลือ ${fmtDuration(eta)} · คาดเสร็จ ${etaClock(eta)}`:' · กำลังวัดความเร็ว…';const ptxt=perf.jobs>=3?` · Decode ${Math.round(perf.decode/perf.jobs)}ms · Render ${Math.round(perf.render/perf.jobs)}ms · JPEG ${Math.round(perf.encode/perf.jobs)}ms · Write ${Math.round(perf.write/perf.jobs)}ms`:'';const idle=(now-lastProgressAt)/1000,idleText=idle>20?` · ไฟล์ใหญ่ ${Math.round(idle)}s · ${activeFile}`:'';setStatus(els.result,`${onlyFailed?'Retry Failed':'Safe Turbo'} ×${concurrency} · ${pct.toFixed(1)}% · ${doneUnits.toLocaleString()}/${totalUnits.toLocaleString()}${timeText}${ptxt}${idleText} · กู้เดิม ${recovered.toLocaleString()} · สำเร็จใหม่ ${ok.toLocaleString()} · Error ${fail.toLocaleString()}`,'warn')};
+  const checkpoint=()=>{checkpointPromise=checkpointPromise.then(async()=>{await flushExportManifest(true);await saveSessionNow(true)}).catch(e=>console.warn('export checkpoint',e));return checkpointPromise};
+  async function writeExportUnit(dir,res,token,modeKey,file,opts){const tw=performance.now(),size=await saveOneVerified(dir,res,opts);perf.write+=performance.now()-tw;state.exported.add(token);recordManifestComplete(modeKey,file,res,size);doneUnits++;ok++;lastProgressAt=performance.now();updateUi();if(state.exportManifestDirty>=250)flushExportManifest(false).catch(e=>console.warn('manifest checkpoint',e))}
+  async function worker(slot){let localJobs=0;while(!state.cancelExport&&!noSpace){const j=jobs[cursor++];if(!j)break;const {f,n01,n02,n03}=j;activeFile=f.name;lastProgressAt=performance.now();let stage='BUILD';try{
+      const b=await withTimeout(buildOutputs(f,indexMap.get(f),{needClean:n01||n03,needWatermark:n02,gpuSlot:slot}),180000,`ประมวลผล ${f.name}`);perf.jobs++;perf.decode+=b.metrics?.decode||0;perf.render+=b.metrics?.render||0;perf.encode+=b.metrics?.encode||0;perf.watermark+=b.metrics?.watermark||0;
+      if(n01){stage='WRITE_01';const d=await exportTargetDir(dirs['01'],f);await writeExportUnit(d,b.clean,exportToken('01',f),'01',f)}
       if(state.cancelExport||noSpace)break;
-      if(n03)await writeExportUnit(dirs['03'],b.clean,exportToken('03',f));
+      if(n03){stage='WRITE_03';await writeExportUnit(dirs['03'],b.clean,exportToken('03',f),'03',f)}
       if(state.cancelExport||noSpace)break;
-      if(n02)await writeExportUnit(dirs['02'],b.watermark,exportToken('02',f),{forceVerify:true});
-    }catch(e){fail++;console.error(f.name,e);if(storageNoSpaceError(e)){noSpace=true;state.cancelExport=true;setStatus(els.result,`หยุดทันที: พื้นที่ปลายทางไม่พอ/เขียนไม่ได้ ที่ ${f.name} · ไฟล์ที่เขียนไม่ครบถูกลบออก`,'bad');break}if(e?.code==='KEITA_TIMEOUT'){state.cancelExport=true;setStatus(els.result,`หยุดเพื่อความปลอดภัย: ${e.message} · งานที่เสร็จแล้วไม่หาย เปิด KEITA_EXPORT เดิมเพื่อทำต่อได้`,'bad');break}}updateUi();if(doneUnits-lastSaved>=500){lastSaved=doneUnits;els.sessionNote.textContent=`Export checkpoint ${doneUnits.toLocaleString()}/${totalUnits.toLocaleString()} · Safe Turbo ×${concurrency} · ${((doneUnits/Math.max(1,totalUnits))*100).toFixed(1)}% · บันทึก Resume แล้ว`;checkpoint()}if(++localJobs%6===0)await new Promise(r=>setTimeout(r,0))}}
+      if(n02){stage='WRITE_02';await writeExportUnit(dirs['02'],b.watermark,exportToken('02',f),'02',f,{forceVerify:true})}
+    }catch(e){
+      fail++;recordExportFailure(f,stage,mode,e);refreshExportFailureUi();console.error(f.name,e);
+      if(storageNoSpaceError(e)){noSpace=true;state.cancelExport=true;setStatus(els.result,`หยุดทันที: พื้นที่ปลายทางไม่พอ/เขียนไม่ได้ ที่ ${f.name}`,'bad');break}
+      if(e?.code==='KEITA_TIMEOUT'){state.cancelExport=true;setStatus(els.result,`Watchdog หยุดที่ ${f.name}: ${e.message} · บันทึก Error แล้ว สามารถ Retry Failed Only`,'bad');break}
+    }
+    updateUi();if(doneUnits-lastSaved>=500){lastSaved=doneUnits;els.sessionNote.textContent=`Export checkpoint ${doneUnits.toLocaleString()}/${totalUnits.toLocaleString()} · Manifest + Resume`;checkpoint()}if(++localJobs%6===0)await new Promise(r=>setTimeout(r,0))
+  }}
   const heartbeat=setInterval(()=>updateUi(true),5000);
   try{await Promise.all(Array.from({length:concurrency},(_,i)=>worker(i)));await checkpoint()}finally{clearInterval(heartbeat);releaseFastGpuPool()}
-  updateUi(true);state.exporting=false;state.exportMode=null;els.cancelExport.classList.add('hidden');for(const b of [els.exportAll,els.export01,els.export02,els.export03])b.disabled=!state.files.length;await saveSessionNow(true);updateExportEstimate();const totalElapsed=Math.max(.001,(performance.now()-started)/1000),madeNow=Math.max(0,doneUnits-startDone),avgRate=madeNow/totalElapsed;if(state.cancelExport&&!noSpace)setStatus(els.result,`หยุดแล้วที่ ${doneUnits.toLocaleString()}/${totalUnits.toLocaleString()} · ใช้ไป ${fmtDuration(totalElapsed)}${avgRate>0?` · เฉลี่ย ${avgRate.toFixed(2)} ไฟล์/วินาที`:''} · สามารถกด Export ชุดเดิมเพื่อทำต่อ`,'warn');else if(!state.cancelExport){const avgPass=fastEncodeState.images?fastEncodeState.passes/fastEncodeState.images:0;setStatus(els.result,`เสร็จแล้ว · Safe Turbo ×${concurrency} · ${mode==='all'?'ALL 3':mode} · ภาพต้นฉบับ ${all.length.toLocaleString()} รูป${mode==='all'?` · HL ${plan.hl.length.toLocaleString()} รูป`:''} · เขียน ${doneUnits.toLocaleString()}/${totalUnits.toLocaleString()} ไฟล์ · ใช้เวลา ${fmtDuration(totalElapsed)}${avgRate>0?` · เฉลี่ย ${avgRate.toFixed(2)} ไฟล์/วินาที`:''} · ผิดพลาด ${fail.toLocaleString()} · JPEG เฉลี่ย ${avgPass?avgPass.toFixed(1):'—'} pass/ภาพ · Write commit ทุกไฟล์ · Read-back ตรวจ ${fastWriteState.verified.toLocaleString()}/${fastWriteState.writes.toLocaleString()} ไฟล์`,fail?'warn':'good')}
+  await flushExportManifest(true).catch(e=>console.warn('final manifest',e));if(state.exportFailures.length)await writeExportErrorsCsv().catch(e=>console.warn('error csv',e));
+  updateUi(true);state.exporting=false;state.exportMode=null;els.cancelExport.classList.add('hidden');for(const b of [els.exportAll,els.export01,els.export02,els.export03])b.disabled=!state.files.length;refreshExportFailureUi();await saveSessionNow(true);updateExportEstimate();
+  const totalElapsed=Math.max(.001,(performance.now()-started)/1000),madeNow=Math.max(0,doneUnits-startDone),avgRate=madeNow/totalElapsed;
+  if(state.exportFailures.length)setStatus(els.result,`จบรอบโดยมี Error ${state.exportFailures.length.toLocaleString()} รายการ · สำเร็จใหม่ ${ok.toLocaleString()} · KEITA_ERRORS.csv ถูกสร้างแล้ว · กด Retry Failed Only ได้`,'warn');
+  else if(state.cancelExport&&!noSpace)setStatus(els.result,`หยุดแล้วที่ ${doneUnits.toLocaleString()}/${totalUnits.toLocaleString()} · ใช้ ${fmtDuration(totalElapsed)} · เปิดงานเดิมแล้วทำต่อได้`,'warn');
+  else{state.lastFailedExportMode=null;setStatus(els.result,`เสร็จแล้ว · ${onlyFailed?'Retry Failed':'Safe Turbo'} · เขียน ${doneUnits.toLocaleString()}/${totalUnits.toLocaleString()} · ใช้ ${fmtDuration(totalElapsed)}${avgRate>0?` · ${avgRate.toFixed(2)} ไฟล์/วินาที`:''} · Manifest ${state.exportManifest.size.toLocaleString()} รายการ`,'good')}
 }
+async function retryFailedExport(){if(!state.exportFailures.length){setStatus(els.result,'ไม่มี Error ให้ Retry','good');return}return exportMode(state.lastFailedExportMode||'all',{onlyFailed:true})}
 async function exportAll(){return exportMode('all')}
 
 els.closeDialog.addEventListener('click',()=>els.photoDialog.close());
