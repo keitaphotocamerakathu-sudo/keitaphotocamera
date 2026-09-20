@@ -1,7 +1,7 @@
 # KEITA PHOTO TOOLS v18 — Production Notes
 
-Current production build: **18.6.1-20260920**  
-UI badge: **Build 18.6.1 · 20260920.9**
+Current production build: **18.6.2-20260920**  
+UI badge: **Build 18.6.2 · 20260920.10**
 
 ## Production goal
 
@@ -100,3 +100,10 @@ The v18 internal navigation uses `?v=20260920.6`. If a browser tab was already o
 - Whole-function watchdog timeouts are not immediately re-run with another AI job, reducing cascading background work after a hang.
 - Auto status now reports Safe Fallback recoveries and separates remaining JPEG / Timeout / Other errors.
 - Re-running Auto resumes from existing per-file analysis; completed files are reused while missing results are retried.
+
+
+## Auto Core Fix 18.6.2
+- Restored the missing `detectScene()` function used by Auto Fine Tune and Highlight scoring. Its absence caused every Auto image to fail as Other Error.
+- Added an Auto Core row to Production Check for `detectScene`, `roiStats`, and `analyzeOne`.
+- Added a circuit breaker: five identical consecutive Auto errors stop the run automatically instead of corrupting thousands of results.
+- Auto status now shows the latest actual error message for diagnostics.
