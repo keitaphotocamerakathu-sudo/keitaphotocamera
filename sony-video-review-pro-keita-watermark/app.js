@@ -52,7 +52,7 @@ const els = {
   photographerCode: $('#photographerCode'), sequenceStart: $('#sequenceStart'), sequenceDigits: $('#sequenceDigits'), filenamePreview: $('#filenamePreview'), outputDestinationText: $('#outputDestinationText'),
   queueSelected: $('#queueSelected'), queueFavorite: $('#queueFavorite'), queueReject: $('#queueReject'), queueErrors: $('#queueErrors'), queueWatermarks: $('#queueWatermarks'),
   watermarkLayer: $('#watermarkLayer'), watermarkEnabled: $('#watermarkEnabled'), addWatermarkBtn: $('#addWatermarkBtn'), addKeitaWatermarkBtn: $('#addKeitaWatermarkBtn'), watermarkFileInput: $('#watermarkFileInput'), watermarkEmpty: $('#watermarkEmpty'), watermarkList: $('#watermarkList'), watermarkEditor: $('#watermarkEditor'), selectedWatermarkName: $('#selectedWatermarkName'), selectedWatermarkIndex: $('#selectedWatermarkIndex'), wmSize: $('#wmSize'), wmOpacity: $('#wmOpacity'), wmX: $('#wmX'), wmY: $('#wmY'), wmSizeText: $('#wmSizeText'), wmOpacityText: $('#wmOpacityText'), wmXText: $('#wmXText'), wmYText: $('#wmYText'), duplicateWatermarkBtn: $('#duplicateWatermarkBtn'), deleteWatermarkBtn: $('#deleteWatermarkBtn'),
-  lightAdjustEnabled: $('#lightAdjustEnabled'), lightAdjustPanel: $('#lightAdjustPanel'), lightQualityChip: $('#lightQualityChip'), videoBrightness: $('#videoBrightness'), videoContrast: $('#videoContrast'), videoSaturation: $('#videoSaturation'), videoBrightnessText: $('#videoBrightnessText'), videoContrastText: $('#videoContrastText'), videoSaturationText: $('#videoSaturationText'), resetLightBtn: $('#resetLightBtn'),
+  lightAdjustEnabled: $('#lightAdjustEnabled'), lightAdjustPanel: $('#lightAdjustPanel'), lightAdjustBody: $('#lightAdjustBody'), lightCollapseBtn: $('#lightCollapseBtn'), lightQualityChip: $('#lightQualityChip'), videoBrightness: $('#videoBrightness'), videoContrast: $('#videoContrast'), videoSaturation: $('#videoSaturation'), videoBrightnessText: $('#videoBrightnessText'), videoContrastText: $('#videoContrastText'), videoSaturationText: $('#videoSaturationText'), resetLightBtn: $('#resetLightBtn'),
   startBtn: $('#startBtn'), retryFailedBtn: $('#retryFailedBtn'), cancelBtn: $('#cancelBtn'), openOutputBtn: $('#openOutputBtn'), processMessage: $('#processMessage'),
   progressBar: $('#progressBar'), progressText: $('#progressText'), progressCount: $('#progressCount'),
 };
@@ -86,6 +86,7 @@ const state = {
   selectedWatermarkId: null,
   watermarkSeq: 0,
   lightAdjustEnabled: false,
+  lightAdjustCollapsed: false,
 };
 
 const supported = 'showDirectoryPicker' in window && window.isSecureContext;
@@ -345,6 +346,18 @@ function resetLightAdjustments(){
   if(els.videoContrast)els.videoContrast.value='0';
   if(els.videoSaturation)els.videoSaturation.value='0';
   updateLightAdjustmentUI();
+}
+function updateLightCollapseUI(){
+  const collapsed=Boolean(state.lightAdjustCollapsed);
+  els.lightAdjustPanel?.classList.toggle('is-collapsed',collapsed);
+  if(els.lightCollapseBtn){
+    els.lightCollapseBtn.setAttribute('aria-expanded',String(!collapsed));
+    els.lightCollapseBtn.textContent=collapsed?'⌄ แสดง':'⌃ ซ่อน';
+  }
+}
+function toggleLightCollapse(){
+  state.lightAdjustCollapsed=!state.lightAdjustCollapsed;
+  updateLightCollapseUI();
 }
 function selectedWatermark(){return state.watermarks.find(w=>w.id===state.selectedWatermarkId)||null;}
 function watermarkPreviewWidth(wm){const side=wm?.angle===90||wm?.angle===270;if(!side)return wm?.width||.22;return clamp((wm?.width||.22)*(Math.max(1,wm?.naturalWidth||1)/Math.max(1,wm?.naturalHeight||1)),.01,2);}
@@ -816,6 +829,7 @@ els.filterSelect.addEventListener('change',()=>{renderFiles();updateSummary();})
 els.lightAdjustEnabled?.addEventListener('change',updateLightAdjustmentUI);
 [els.videoBrightness,els.videoContrast,els.videoSaturation].forEach(el=>el?.addEventListener('input',updateLightAdjustmentUI));
 els.resetLightBtn?.addEventListener('click',resetLightAdjustments);
+els.lightCollapseBtn?.addEventListener('click',toggleLightCollapse);
 
 // Watermarks
 els.addWatermarkBtn?.addEventListener('click',()=>els.watermarkFileInput?.click());
@@ -845,4 +859,4 @@ window.addEventListener('keydown',e=>{
 
 window.addEventListener('beforeunload',()=>{if(state.previewUrl)URL.revokeObjectURL(state.previewUrl);for(const w of state.watermarks)try{URL.revokeObjectURL(w.url);}catch{}state.trimWorker?.terminate();});
 
-resetFilmstrip();updatePresetLabels();renderWatermarkPanel();updateLightAdjustmentUI();updateSummary();updateSelectionUI();
+resetFilmstrip();updatePresetLabels();renderWatermarkPanel();updateLightAdjustmentUI();updateLightCollapseUI();updateSummary();updateSelectionUI();
