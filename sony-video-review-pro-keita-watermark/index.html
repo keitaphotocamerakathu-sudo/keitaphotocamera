@@ -125,6 +125,43 @@
             <div id="emptyPreview" class="empty-preview">🎬<span>ยังไม่ได้เลือกวิดีโอ</span></div>
           </div>
 
+          <div id="lightAdjustPanel" class="light-adjust-dock controls-disabled">
+            <div class="light-dock-head">
+              <div class="light-dock-title">
+                <span class="light-dock-icon">◐</span>
+                <div>
+                  <span class="preview-control-label">LIGHT / COLOR</span>
+                  <p>ปรับแล้วดูผลกับ VDO ด้านบนได้ทันที</p>
+                </div>
+              </div>
+              <div class="light-dock-actions">
+                <span class="quality-chip">OFF = LOSSLESS</span>
+                <button id="resetLightBtn" class="btn ghost compact light-reset-btn" type="button">Reset</button>
+                <label class="switch-row light-master-switch"><input id="lightAdjustEnabled" type="checkbox" /><span>เปิดใช้</span></label>
+              </div>
+            </div>
+
+            <div class="light-control-grid">
+              <label class="light-control">
+                <span><em>Brightness</em><b id="videoBrightnessText">0%</b></span>
+                <input id="videoBrightness" type="range" min="-50" max="50" step="1" value="0" />
+              </label>
+              <label class="light-control">
+                <span><em>Contrast</em><b id="videoContrastText">0%</b></span>
+                <input id="videoContrast" type="range" min="-50" max="50" step="1" value="0" />
+              </label>
+              <label class="light-control">
+                <span><em>Saturation</em><b id="videoSaturationText">0%</b></span>
+                <input id="videoSaturation" type="range" min="-100" max="100" step="1" value="0" />
+              </label>
+            </div>
+
+            <div class="light-dock-note">
+              <span>ⓘ</span>
+              <span><b>หมายเหตุคุณภาพ:</b> ปิดไว้จะไม่ Encode เพิ่มจากการปรับแสง · เปิดแล้ว Encode H.264 คุณภาพสูง 1 รอบ · ถ้าใช้ลายน้ำด้วยจะรวมทุกอย่างในรอบเดียว</span>
+            </div>
+          </div>
+
           <div class="review-actions-row">
             <button id="keepBtn" class="btn review-state keep" type="button" disabled>✓ Keep / Export</button>
             <button id="favoriteBtn" class="btn review-state favorite" type="button" disabled>★ Favorite</button>
@@ -225,21 +262,6 @@
             <p>เลื่อนวิดีโอไปจังหวะสำคัญ แล้วกด Auto Trim หรือปุ่ม <kbd>T</kbd></p>
             <div class="summary-line"><span>ก่อน</span><b id="autoBeforeLabel">2.0s</b></div>
             <div class="summary-line"><span>หลัง</span><b id="autoAfterLabel">4.0s</b></div>
-          </div>
-
-          <div id="lightAdjustPanel" class="clip-summary-card light-adjust-card controls-disabled">
-            <div class="watermark-card-head">
-              <div>
-                <span class="preview-control-label">LIGHT / COLOR</span>
-                <p>ปรับความสว่าง คอนทราสต์ และความอิ่มสีของ VDO ก่อน Export</p>
-              </div>
-              <label class="switch-row"><input id="lightAdjustEnabled" type="checkbox" /><span>เปิดใช้</span></label>
-            </div>
-            <label class="wm-slider"><span>ความสว่าง <b id="videoBrightnessText">0%</b></span><input id="videoBrightness" type="range" min="-50" max="50" step="1" value="0" /></label>
-            <label class="wm-slider"><span>Contrast <b id="videoContrastText">0%</b></span><input id="videoContrast" type="range" min="-50" max="50" step="1" value="0" /></label>
-            <label class="wm-slider"><span>Saturation <b id="videoSaturationText">0%</b></span><input id="videoSaturation" type="range" min="-100" max="100" step="1" value="0" /></label>
-            <div class="light-adjust-actions"><button id="resetLightBtn" class="btn ghost compact" type="button">↺ Reset 0</button></div>
-            <div class="encode-note"><strong>หมายเหตุ:</strong> ค่าเริ่มต้น OFF · ถ้าไม่เปิดฟังก์ชันนี้ ระบบจะไม่ Encode เพิ่มเพราะการปรับแสง และถ้าไม่ใส่ลายน้ำด้วยจะคงโหมด Video Lossless เดิม · เมื่อเปิดปรับแสง ระบบต้อง Encode H.264 ใหม่ 1 ครั้ง หากใส่ลายน้ำพร้อมกันจะรวมปรับแสง + ลายน้ำในรอบเดียวเพื่อลดการสูญเสียคุณภาพ</div>
           </div>
 
           <div class="clip-summary-card watermark-card">
@@ -368,6 +390,6 @@
     </footer>
   </main>
 
-  <script type="module" src="app.js?v=20260920-light-adjust-v1"></script>
+  <script type="module" src="app.js?v=20260920-light-dock-v2"></script>
 </body>
 </html>
