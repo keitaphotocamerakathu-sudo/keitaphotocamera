@@ -1543,6 +1543,30 @@ function shouldExport(file){if(!els.cullEnabled.checked)return true;const r=stat
 const exportSubdirCache=new WeakMap();
 async function exportTargetDir(root,file){if(!els.cullFolders.checked)return root;const r=state.culling.get(file),name=r?.status==='reject'?'REJECT':r?.status==='review'?'REVIEW':'PASS';let m=exportSubdirCache.get(root);if(!m){m=new Map();exportSubdirCache.set(root,m)}if(m.has(name))return m.get(name);const h=await root.getDirectoryHandle(name,{create:true});m.set(name,h);return h}
 function exportToken(mode,file){return `${mode}|${fileKey(file)}`}
+async function existingExportFileOk(root,file,index,mode){
+  try{
+    const dir=mode==='01'?await exportTargetDir(root,file):root;
+    const fh=await dir.getFileHandle(outputName(file,index));
+    const ef=await fh.getFile();
+    return ef.size>1024;
+  }catch{return false}
+}
+async function reconcileExistingExports(dirs,all,hlSet,needMode,indexMap){
+  const checks=[];for(const f of all){const i=indexMap.get(f);
+    if(needMode('01'))checks.push({mode:'01',root:dirs['01'],f,i});
+    if(hlSet.has(f)&&needMode('02'))checks.push({mode:'02',root:dirs['02'],f,i});
+    if(hlSet.has(f)&&needMode('03'))checks.push({mode:'03',root:dirs['03'],f,i});
+  }
+  let found=0;const batch=24;
+  for(let s=0;s<checks.length;s+=batch){
+    const part=checks.slice(s,s+batch),ans=await Promise.all(part.map(x=>existingExportFileOk(x.root,x.f,x.i,x.mode)));
+    for(let k=0;k<part.length;k++){const x=part[k],token=exportToken(x.mode,x.f);if(ans[k]){state.exported.add(token);found++}else state.exported.delete(token)}
+    if(s===0||s+batch>=checks.length||(s/batch)%5===0)setStatus(els.result,`กำลังตรวจงาน Export เดิม… ${Math.min(s+batch,checks.length).toLocaleString()}/${checks.length.toLocaleString()} · พบไฟล์ที่เสร็จแล้ว ${found.toLocaleString()}`,'warn');
+    await new Promise(r=>setTimeout(r,0));
+  }
+  await saveSessionNow(true).catch(()=>{});
+  return found
+}
 function cleanWorstBytes(file){const visual=els.autoEnabled.checked||els.resizeEnabled.checked;if(visual)return Number(els.fileLimit.value||4.8)*1048576;return file.size}
 function exportPlan(mode='all'){
   const all=state.files.filter(shouldExport),hl=all.filter(isHighlight),limit=Number(els.fileLimit.value||4.8)*1048576;
@@ -1601,6 +1625,7 @@ async function exportMode(mode='all'){try{await ensureLicenseActive({silent:true
   if(state.exporting)return;els.result.classList.remove('hidden');let plan;try{plan=await prepareExport(mode);if(!plan)return}catch(e){if(e.name==='AbortError'){setStatus(els.result,'ยกเลิก Export แล้ว','warn');return}setStatus(els.result,`Export เริ่มไม่ได้: ${e.message||e}`,'bad');return}
   const dirs={};if(mode==='01'||mode==='all')dirs['01']=await state.exportRoot.getDirectoryHandle('01_ALL_PHOTOS',{create:true});if(mode==='02'||mode==='all')dirs['02']=await state.exportRoot.getDirectoryHandle('02_HIGHLIGHT_WATERMARK',{create:true});if(mode==='03'||mode==='all')dirs['03']=await state.exportRoot.getDirectoryHandle('03_HIGHLIGHT_CLEAN',{create:true});
   const all=plan.all,hlSet=new Set(plan.hl),indexMap=new Map(all.map((f,i)=>[f,i]));let totalUnits=0,doneUnits=0;const needMode=m=>mode==='all'||mode===m;
+  const recovered=await reconcileExistingExports(dirs,all,hlSet,needMode,indexMap);
   for(const f of all){if(needMode('01')){totalUnits++;if(state.exported.has(exportToken('01',f)))doneUnits++}if(hlSet.has(f)&&needMode('02')){totalUnits++;if(state.exported.has(exportToken('02',f)))doneUnits++}if(hlSet.has(f)&&needMode('03')){totalUnits++;if(state.exported.has(exportToken('03',f)))doneUnits++}}
   if(doneUnits>=totalUnits){setStatus(els.result,`Export ${mode==='all'?'ALL 3':mode} ชุดนี้ครบแล้ว · ภาพต้นฉบับ ${all.length.toLocaleString()} รูป${mode==='all'?` · HL ${plan.hl.length.toLocaleString()} รูป`:''} · สำเนาที่เขียน ${totalUnits.toLocaleString()} ไฟล์`,'good');return}
   state.exporting=true;state.exportMode=mode;state.cancelExport=false;els.cancelExport.classList.remove('hidden');els.exportProgress.classList.remove('hidden');for(const b of [els.exportAll,els.export01,els.export02,els.export03])b.disabled=true;
@@ -1612,7 +1637,7 @@ async function exportMode(mode='all'){try{await ensureLicenseActive({silent:true
   const jobs=[];for(let i=0;i<all.length;i++){const f=all[i],isHl=hlSet.has(f),n01=needMode('01')&&!state.exported.has(exportToken('01',f)),n02=isHl&&needMode('02')&&!state.exported.has(exportToken('02',f)),n03=isHl&&needMode('03')&&!state.exported.has(exportToken('03',f));if(n01||n02||n03)jobs.push({f,i,n01,n02,n03})}
   let cursor=0,noSpace=false;const speedSamples=[[started,doneUnits]];
   const currentSpeed=now=>{speedSamples.push([now,doneUnits]);while(speedSamples.length>2&&speedSamples[0][0]<now-20000)speedSamples.shift();const elapsed=Math.max(.001,(now-started)/1000),made=Math.max(0,doneUnits-startDone),globalRate=made/elapsed,first=speedSamples[0],rollingDt=Math.max(.001,(now-first[0])/1000),rollingMade=Math.max(0,doneUnits-first[1]),rollingRate=rollingMade/rollingDt;return made>=4&&elapsed>=2?(rollingRate>0?rollingRate*.78+globalRate*.22:globalRate):0};
-  const updateUi=(force=false)=>{const now=performance.now();if(!force&&now-lastUi<220&&doneUnits<totalUnits)return;lastUi=now;const elapsed=Math.max(.001,(now-started)/1000),rate=currentSpeed(now),remain=Math.max(0,totalUnits-doneUnits),eta=rate>0?remain/rate:NaN,pct=doneUnits/Math.max(1,totalUnits)*100;els.exportBar.style.width=pct+'%';const timeText=rate>0?` · ${rate.toFixed(2)} ไฟล์/วินาที · ใช้ไป ${fmtDuration(elapsed)} · เหลือประมาณ ${fmtDuration(eta)} · คาดเสร็จ ${etaClock(eta)}`:` · กำลังวัดความเร็วเพื่อคำนวณเวลาคงเหลือ…`;const ptxt=perf.jobs>=3?` · เฉลี่ย/ภาพ Decode ${Math.round(perf.decode/perf.jobs)}ms · Render ${Math.round(perf.render/perf.jobs)}ms · JPEG ${Math.round(perf.encode/perf.jobs)}ms · Write ${Math.round(perf.write/perf.jobs)}ms`:'';const idle=(now-lastProgressAt)/1000,idleText=idle>20?` · กำลังประมวลผลไฟล์ใหญ่ ${Math.round(idle)}s${activeFile?' · '+activeFile:''}`:'';setStatus(els.result,`Safe Turbo ×${concurrency} · ${mode==='all'?'ALL 3':mode} · ${pct.toFixed(1)}% · ภาพต้นฉบับ ${all.length.toLocaleString()} รูป${mode==='all'?` · HL ${plan.hl.length.toLocaleString()} รูป`:''} · เขียน ${doneUnits.toLocaleString()}/${totalUnits.toLocaleString()} ไฟล์${timeText}${ptxt}${idleText} · สำเร็จ ${ok.toLocaleString()} · ผิดพลาด ${fail.toLocaleString()}`,'warn')};
+  const updateUi=(force=false)=>{const now=performance.now();if(!force&&now-lastUi<220&&doneUnits<totalUnits)return;lastUi=now;const elapsed=Math.max(.001,(now-started)/1000),rate=currentSpeed(now),remain=Math.max(0,totalUnits-doneUnits),eta=rate>0?remain/rate:NaN,pct=doneUnits/Math.max(1,totalUnits)*100;els.exportBar.style.width=pct+'%';const timeText=rate>0?` · ${rate.toFixed(2)} ไฟล์/วินาที · ใช้ไป ${fmtDuration(elapsed)} · เหลือประมาณ ${fmtDuration(eta)} · คาดเสร็จ ${etaClock(eta)}`:` · กำลังวัดความเร็วเพื่อคำนวณเวลาคงเหลือ…`;const ptxt=perf.jobs>=3?` · เฉลี่ย/ภาพ Decode ${Math.round(perf.decode/perf.jobs)}ms · Render ${Math.round(perf.render/perf.jobs)}ms · JPEG ${Math.round(perf.encode/perf.jobs)}ms · Write ${Math.round(perf.write/perf.jobs)}ms`:'';const idle=(now-lastProgressAt)/1000,idleText=idle>20?` · กำลังประมวลผลไฟล์ใหญ่ ${Math.round(idle)}s${activeFile?' · '+activeFile:''}`:'';setStatus(els.result,`Safe Turbo ×${concurrency} · ${mode==='all'?'ALL 3':mode} · ${pct.toFixed(1)}% · ภาพต้นฉบับ ${all.length.toLocaleString()} รูป${mode==='all'?` · HL ${plan.hl.length.toLocaleString()} รูป`:''} · เขียน ${doneUnits.toLocaleString()}/${totalUnits.toLocaleString()} ไฟล์${timeText}${ptxt}${idleText} · กู้คืนเดิม ${recovered.toLocaleString()} · สำเร็จใหม่ ${ok.toLocaleString()} · ผิดพลาด ${fail.toLocaleString()}`,'warn')};
   const checkpoint=()=>{checkpointPromise=checkpointPromise.then(()=>saveSessionNow(true)).catch(e=>console.warn('export checkpoint',e));return checkpointPromise};
   async function writeExportUnit(dir,res,token,opts){const tw=performance.now();await saveOneVerified(dir,res,opts);perf.write+=performance.now()-tw;state.exported.add(token);doneUnits++;ok++;lastProgressAt=performance.now();updateUi()}
   async function worker(slot){let localJobs=0;while(!state.cancelExport&&!noSpace){const j=jobs[cursor++];if(!j)break;const {f,n01,n02,n03}=j;activeFile=f.name;lastProgressAt=performance.now();try{const b=await buildOutputs(f,indexMap.get(f),{needClean:n01||n03,needWatermark:n02,gpuSlot:slot});perf.jobs++;perf.decode+=b.metrics?.decode||0;perf.render+=b.metrics?.render||0;perf.encode+=b.metrics?.encode||0;perf.watermark+=b.metrics?.watermark||0;
