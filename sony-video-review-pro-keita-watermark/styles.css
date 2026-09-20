@@ -970,3 +970,37 @@ body.review-mode .editor-layout { grid-template-columns:minmax(0,2.4fr) minmax(2
   .quality-chip { order:3; }
   .light-dock-note { font-size:.62rem; }
 }
+
+/* Collapsible Light / Color dock */
+.light-adjust-body {
+  max-height: 320px;
+  opacity: 1;
+  overflow: hidden;
+  transform: translateY(0);
+  transition: max-height .22s ease, opacity .18s ease, transform .22s ease, margin .22s ease;
+}
+.light-adjust-dock.is-collapsed {
+  padding-bottom: 11px;
+}
+.light-adjust-dock.is-collapsed .light-adjust-body {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-6px);
+  margin: 0;
+  pointer-events: none;
+}
+.light-adjust-dock.is-collapsed .light-dock-title p {
+  display: none;
+}
+.light-collapse-btn {
+  width: auto !important;
+  min-width: 72px;
+  padding: 7px 10px !important;
+  border-radius: 999px !important;
+}
+.light-adjust-dock.is-collapsed .light-dock-head {
+  min-height: 36px;
+}
+@media (max-width: 640px) {
+  .light-collapse-btn { min-width: 68px; }
+}
