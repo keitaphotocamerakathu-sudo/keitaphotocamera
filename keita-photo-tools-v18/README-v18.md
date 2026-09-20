@@ -40,3 +40,28 @@
 - Stable root links point to `keita-photo-tools-v18`.
 - Source files contain no v17.13 UI label in the v18 License Manager or Worker health version.
 - Current production blocker is external deployment/configuration of the Cloudflare Worker/D1 URL; GitHub cannot supply that account-specific URL or secrets.
+
+
+## Production Hardening 18.4 — Build 20260920.4
+
+The production runtime is hardened for very large JPEG albums and long-running jobs.
+
+- Duplicate source filenames are detected case-insensitively. When Rename is off, duplicate names receive a deterministic source-key suffix instead of overwriting each other.
+- Preflight checks the final output-name plan again and blocks Export if any collision still remains.
+- Album identity uses a whole-album rolling fingerprint rather than only count/first/last files.
+- Resume storage uses IndexedDB v4 with separate `file_meta` and versioned `file_states` stores. EXIF metadata survives processing-setting changes without being rewritten with Culling/Auto/HL state.
+- Export writes `KEITA_EXPORT_MANIFEST.json` containing album fingerprint, processing configuration signature, source key, output name, output size, mode and completion time.
+- A resumed export compares the Manifest with real files on disk. Files committed before a crash but not yet checkpointed into the Manifest are recovered into it.
+- A Manifest whose album or processing configuration differs from the current job is rejected for direct resume, preventing old Auto/Resize/Watermark output from being silently reused.
+- Export failures are written to `KEITA_ERRORS.csv`; **Retry Failed Only** retries the affected source files while preserving already completed outputs.
+- Culling, Auto Fine Tune and Highlight all use per-photo watchdogs. Culling timeout falls back to REVIEW; analysis timeouts recover the AI model state and continue safely.
+- Highlight advanced candidates are stratified across the entire album timeline instead of being filled from the beginning of the album.
+- The application shows the visible build number in the header/footer.
+- **Production Check** validates secure context, File System Access, IndexedDB v4, Canvas, WebGL, ImageBitmap, browser storage, JPEG decoding, filename collisions, album fingerprint and export-folder write permission.
+- **Stress Test 50,000** simulates 50,000 state/output records, uniqueness checks and stratified candidate selection without needing 50,000 real JPEG files.
+- Large-album previews remain bounded: table max 100 rows, lazy thumbnails, virtualized Highlight Grid, decode-time downsampling and bounded Export concurrency.
+
+### Release verification rule
+Before a production build is considered ready, Owner and User runtime pages must both pass JavaScript syntax checks, duplicate-DOM-ID checks, required-element checks, and core-function parity for filename generation, fingerprinting, resume, Culling, Auto, Highlight, Manifest/Export, Production Check and Stress Test.
+
+A simulated 50,000-record stress test is a regression guard, not a substitute for a real large JPEG workload. Final field validation should still use a representative real event album on the target Chrome/Mac hardware.
