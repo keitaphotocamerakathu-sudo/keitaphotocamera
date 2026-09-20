@@ -192,7 +192,19 @@ function watermarkInputFilter(wm, inputIndex, label) {
   return `[${inputIndex}:v]${scale}${rotate},format=rgba,colorchannelmixer=aa=${opacity.toFixed(4)},setpts=PTS-STARTPTS[${label}]`;
 }
 
-async function renderWatermarkedVideo(file, start, end, rotation, watermarks) {
+function lightAdjustmentFilter(adjustments) {
+  const a = adjustments && adjustments.enabled ? adjustments : null;
+  if (!a) return '';
+  const brightnessPct = Math.max(-50, Math.min(50, Number(a.brightness) || 0));
+  const contrastPct = Math.max(-50, Math.min(50, Number(a.contrast) || 0));
+  const saturationPct = Math.max(-100, Math.min(100, Number(a.saturation) || 0));
+  const brightness = (brightnessPct / 100 * 0.30).toFixed(4);
+  const contrast = Math.max(0.5, Math.min(1.5, 1 + contrastPct / 100)).toFixed(4);
+  const saturation = Math.max(0, Math.min(2, 1 + saturationPct / 100)).toFixed(4);
+  return `eq=brightness=${brightness}:contrast=${contrast}:saturation=${saturation}`;
+}
+
+async function renderWatermarkedVideo(file, start, end, rotation, watermarks, adjustments) {
   const ffmpeg = await ensureCore();
   const duration = Math.max(0.01, end - start);
   const virtualName = safeVirtualName(file.name);
@@ -225,7 +237,11 @@ async function renderWatermarkedVideo(file, start, end, rotation, watermarks) {
     }
 
     const filters = [];
-    filters.push(`[0:v]${rotationFilter(rotation)},setpts=PTS-STARTPTS[base0]`);
+    const baseFilters=[rotationFilter(rotation)];
+    const lightFilter=lightAdjustmentFilter(adjustments);
+    if(lightFilter)baseFilters.push(lightFilter);
+    baseFilters.push('setpts=PTS-STARTPTS');
+    filters.push(`[0:v]${baseFilters.join(',')}[base0]`);
     let current = 'base0';
     safeWatermarks.forEach((wm, i) => {
       const wmLabel = `wm${i}`;
@@ -328,11 +344,13 @@ self.onmessage = async (event) => {
       return;
     }
     if (type === 'watermark') {
-      const { file, start, end, rotation, watermarks } = event.data;
-      if (!(file instanceof File)) throw new Error('ไม่พบไฟล์สำหรับใส่ลายน้ำ');
+      const { file, start, end, rotation, watermarks, adjustments } = event.data;
+      if (!(file instanceof File)) throw new Error('ไม่พบไฟล์สำหรับประมวลผล');
       if (!(Number.isFinite(start) && Number.isFinite(end) && end > start)) throw new Error('ช่วงเวลาตัดไม่ถูกต้อง');
-      if (!Array.isArray(watermarks) || !watermarks.length) throw new Error('ยังไม่มีลายน้ำ');
-      const result = await renderWatermarkedVideo(file, start, end, rotation, watermarks);
+      const hasWatermark=Array.isArray(watermarks)&&watermarks.length>0;
+      const hasAdjustment=Boolean(adjustments&&adjustments.enabled);
+      if(!hasWatermark&&!hasAdjustment)throw new Error('ไม่มีการปรับแสงหรือลายน้ำที่ต้อง Encode');
+      const result = await renderWatermarkedVideo(file, start, end, rotation, watermarks, adjustments);
       self.postMessage({ type: 'result', id, ok: true, buffer: result.buffer, extension: result.extension }, [result.buffer]);
       return;
     }
