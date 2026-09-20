@@ -1,7 +1,7 @@
 # KEITA PHOTO TOOLS v18 — Production Notes
 
-Current production build: **18.5.0-20260920**  
-UI badge: **Build 18.5.0 · 20260920.5**
+Current production build: **18.5.1-20260920**  
+UI badge: **Build 18.5.1 · 20260920.6**
 
 ## Production goal
 
@@ -81,4 +81,4 @@ The built-in 50,000 test validates data-structure and workflow pressure, but it 
 
 ## Cache / stale page
 
-The v18 internal navigation uses `?v=20260920.5`. If a browser tab was already open before deployment, refresh the tab before starting a new event job and verify the visible Build badge.
+The v18 internal navigation uses `?v=20260920.6`. If a browser tab was already open before deployment, refresh the tab before starting a new event job and verify the visible Build badge.
