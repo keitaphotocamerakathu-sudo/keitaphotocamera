@@ -889,21 +889,23 @@ async function cullOne(file){
   bmp.close();return {status,reason,focusScore:score,centerFocus:center,thirdFocus:thirds,personFocus,personStableFocus:personStable,faceFocus,faceStableFocus:faceStable,subjectStableFocus:stableSubject,wholeFocus:whole,personAcutance:acuGuard.personA,personAcutanceMedian:acuGuard.personPatch,faceAcutance:acuGuard.faceA,darkFlashBlurMode:acuGuard.darkFlash,personCount:persons.length,faceCount:faces.length,personBox:bestPerson?normalizeBox(bestPerson,w,h):null,faceBox:bestFace?normalizeBox(bestFace,w,h):null,faceReliable,groupPrimary:isGroup,groupCandidateCount:groupInfo?.candidates?.length||0,primaryFaceLight:faceLight?{mean:faceLight.mean,high:faceLight.high,low:faceLight.low,ok:faceLight.ok}:null,blurGuard:true,acutanceBlurGuard:true,cullMode:mode,blurEvidence:{suspect:acuGuard.suspect,verySoft:acuGuard.verySoft},burstTag:'',burstId:null};
 }
 function assignBurstTags(){const gap=Number(els.burstGap.value||2)*1000;let group=[],gid=0;for(const f of state.files){const r=state.culling.get(f);if(r){r.burstId=null;r.burstTag=''}}const flush=()=>{if(group.length<2){group=[];return}gid++;let best=null;for(const f of group){const r=state.culling.get(f);if(r&&r.status!=='reject'&&(!best||r.focusScore>state.culling.get(best).focusScore))best=f}for(const f of group){const r=state.culling.get(f);if(!r)continue;r.burstId=gid;r.burstTag=r.status==='reject'?'':(f===best?'BEST':'KEEP')}group=[]};let prevTime=null,prevFile=null;for(let i=0;i<state.files.length;i++){const f=state.files[i],m=state.meta.get(f)||{},d=parseExifDate(m.date),tm=d?d.getTime():null;if(tm!==null&&prevTime!==null&&tm-prevTime>=0&&tm-prevTime<=gap){if(!group.length&&prevFile)group.push(prevFile);group.push(f)}else flush();prevTime=tm;prevFile=f}flush()}
-async function cullAlbum(){if(!state.files.length||state.cullingRunning||!els.cullEnabled.checked)return;try{await ensureLicenseActive({silent:true})}catch{return}setStatus(els.cullStatus,'กำลังอัปเดต KEITA Master AI ล่าสุดก่อนคัดภาพ…','warn');try{await loadMasterProfileRemote({silent:true})}catch{}renderAiProductionStats();state.cullingRunning=true;state.cancelCull=false;els.runCull.disabled=true;els.stopCull.disabled=false;els.cullProgress.classList.remove('hidden');const total=state.files.length,renderEvery=total>5000?100:total>1000?50:20;let cc=cullCounts(),done=total-cc.unculled;els.cullBar.style.width=(done/total*100)+'%';for(let i=0;i<total;i++){if(state.cancelCull)break;const f=state.files[i];if(state.culling.has(f))continue;let r;try{r=await cullOne(f);r=await teachApplySellableAdvice(f,r)}catch(e){console.warn(f.name,e);r={status:'review',reason:'วิเคราะห์ไม่สำเร็จ — ควรตรวจ',focusScore:0,error:true}}state.culling.set(f,r);done++;if(done%1000===0)els.sessionNote.textContent=`Culling ${done.toLocaleString()} รูป · Resume จะบันทึกเมื่อคัดเสร็จ/หยุด`;cc.unculled=Math.max(0,cc.unculled-1);if(r.status==='pass')cc.pass++;else if(r.status==='review')cc.review++;else cc.reject++;els.cullBar.style.width=(done/total*100)+'%';setStatus(els.cullStatus,`คัด ${done}/${total} · PASS ${cc.pass} · REVIEW ${cc.review} · REJECT ${cc.reject}`,'warn');if(done%renderEvery===0){renderCullCounts();renderPreview()}await new Promise(r=>setTimeout(r,0))}assignBurstTags();if(!state.cancelCull)els.cullBar.style.width='100%';state.cullingRunning=false;els.stopCull.disabled=true;els.runCull.disabled=false;renderCullCounts();cc=cullCounts();setStatus(els.cullStatus,state.cancelCull?`หยุดแล้ว — กดคัดภาพอีกครั้งเพื่อทำต่อ · เหลือ ${cc.unculled}`:`คัดเสร็จแล้ว · PASS ${cc.pass} · REVIEW ${cc.review} · REJECT ${cc.reject}${teachProductionReady('sellable').ready&&teachReferenceMode()!=='off'?' · KEITA Reference พร้อม':''}`,'good');await saveSessionNow(true);renderPreview()}
-function detectScene(full,meta){
-  if(els.sceneMode.value!=='auto') return {mode:els.sceneMode.value,auto:false};
-  const iso=Number(meta?.iso||0),mean=full.mean||0,p50=full.p50||0,p90=full.p90||0,p10=full.p10||0;
-  const dynamic=Math.max(0,p90-p10);
-  const nightScore=(mean<.34?1:0)+(p50<.34?1:0)+(p90<.78?1:0)+(iso>=1600?1:iso>=800?.5:0);
-  const forestScore=(full.green>.14?1:0)+(dynamic>.58?1:0)+(full.low>.025?1:0)+(full.high>.004?1:0)+(p50<.55?0.5:0);
-  const mixed=((full.high>.008&&full.low>.05)||(Math.abs(full.r-full.b)>.09&&iso>=800)||(p90>.93&&p50<.42))?1:0;
-  let mode='day';
-  if(nightScore>=2.5) mode='night';
-  else if(forestScore>=3) mode='forest';
-  else if(mixed) mode='mixed';
-  return {mode,auto:true};
+async function cullAlbum(){
+  if(!state.files.length||state.cullingRunning||!els.cullEnabled.checked)return;try{await loadMasterProfileRemote({silent:true})}catch{}
+  state.cullingRunning=true;state.cancelCull=false;els.runCull.disabled=true;els.stopCull.disabled=false;els.cullProgress.classList.remove('hidden');
+  const total=state.files.length;let cc=cullCounts(),done=total-cc.unculled,lastUi=0,lastCheckpoint=done;els.cullBar.style.width=(done/Math.max(1,total)*100)+'%';
+  for(let i=0;i<total;i++){
+    if(state.cancelCull)break;const f=state.files[i];if(state.culling.has(f))continue;
+    let r;try{r=await cullOne(f);r=await teachApplySellableAdvice(f,r)}catch(e){console.warn(f.name,e);r={status:'review',reason:'วิเคราะห์ไม่สำเร็จ — ควรตรวจ',focusScore:0,error:true}}
+    state.culling.set(f,r);markFileStateDirty(f);done++;cc.unculled=Math.max(0,cc.unculled-1);if(r.status==='pass')cc.pass++;else if(r.status==='review')cc.review++;else cc.reject++;
+    const now=performance.now();if(now-lastUi>250||done===total){lastUi=now;els.cullBar.style.width=(done/Math.max(1,total)*100)+'%';setStatus(els.cullStatus,`คัด ${done.toLocaleString()}/${total.toLocaleString()} · PASS ${cc.pass.toLocaleString()} · REVIEW ${cc.review.toLocaleString()} · REJECT ${cc.reject.toLocaleString()}`,'warn')}
+    if(done-lastCheckpoint>=500){await flushDirtyFileStates();lastCheckpoint=done;els.sessionNote.textContent=`Culling checkpoint ${done.toLocaleString()}/${total.toLocaleString()} · บันทึกผลรายไฟล์แล้ว`}
+    if(done%1000===0){renderCullCounts();renderPreviewThrottled()}
+    if(done%4===0)await new Promise(r=>setTimeout(r,0));
+  }
+  assignBurstTags();requestFileStateRewrite();if(!state.cancelCull)els.cullBar.style.width='100%';state.cullingRunning=false;els.stopCull.disabled=true;els.runCull.disabled=false;renderCullCounts();cc=cullCounts();
+  setStatus(els.cullStatus,state.cancelCull?`หยุดแล้ว — กดคัดภาพอีกครั้งเพื่อทำต่อ · เหลือ ${cc.unculled.toLocaleString()}`:`คัดเสร็จแล้ว · PASS ${cc.pass.toLocaleString()} · REVIEW ${cc.review.toLocaleString()} · REJECT ${cc.reject.toLocaleString()}${teachProductionReady('sellable').ready&&teachReferenceMode()!=='off'?' · KEITA Reference พร้อม':''}`,'good');
+  await saveSessionNow(true);renderPreviewThrottled(true)
 }
-
 async function analyzeOne(file){const meta=state.meta.get(file)||{};const {bmp,w,h}=await decodeFile(file,640);const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(bmp,0,0,w,h);let source='Histogram',roi={x:0,y:0,w,h},confidence=0;if(els.subjectWeight.value!=='off'){const cr=state.culling.get(file);if(cr?.faceBox&&cr.faceReliable){roi=denormalizeBox(cr.faceBox,w,h);source='Face';confidence=.95}else if(cr?.personBox){roi=denormalizeBox(cr.personBox,w,h);source='Person';confidence=.9}else{await ensureModels(els.autoStatus);if(state.faceModel){try{const faces=await state.faceModel.estimateFaces(c,false);if(faces.length){const f=faces.sort((a,b)=>((b.bottomRight[0]-b.topLeft[0])*(b.bottomRight[1]-b.topLeft[1]))-((a.bottomRight[0]-a.topLeft[0])*(a.bottomRight[1]-a.topLeft[1])))[0];const fw=f.bottomRight[0]-f.topLeft[0],fh=f.bottomRight[1]-f.topLeft[1];roi={x:f.topLeft[0]-fw*.4,y:f.topLeft[1]-fh*.35,w:fw*1.8,h:fh*1.8};source='Face';confidence=f.probability?.[0]||.9}}catch{}}if(source==='Histogram'&&state.personModel){try{const ps=(await state.personModel.detect(c,10,.30)).filter(p=>p.class==='person');if(ps.length){const p=ps.sort((a,b)=>b.score-a.score)[0],q=p.bbox;roi={x:q[0]+q[2]*.15,y:q[1],w:q[2]*.7,h:q[3]*.55};source='Person';confidence=p.score}}catch{}}}}
   const full=roiStats(x,0,0,w,h),sub=source==='Histogram'?roiStats(x,w*.2,h*.15,w*.6,h*.7):roiStats(x,roi.x,roi.y,roi.w,roi.h),scene=detectScene(full,meta);bmp.close();
   const sw=els.subjectWeight.value==='high'?.68:els.subjectWeight.value==='medium'?.48:0;const lum=full.mean*(1-sw)+sub.mean*sw;
@@ -1182,8 +1184,34 @@ async function encodeToLimit(canvas,exifBytes){
 function outputName(file,index){if(!els.renameEnabled.checked)return file.name;const n=Number(els.startNo.value||1)+index,d=Number(els.digits.value||4),run=pad(n,d),code=String(els.photographer.value||'').replace(/[^A-Za-z0-9_-]/g,'');const b=baseName(file.name);if(els.renameMode.value==='pse')return `PSE${code}-${run}.JPG`;if(els.renameMode.value==='original')return `${b}-${run}.JPG`;return `${b}PSE${code}-${run}.JPG`}
 function jpegHeadDimensions(buffer){try{const u=new Uint8Array(buffer);let p=2;while(p+9<u.length){if(u[p]!==0xff){p++;continue}let marker=u[p+1];while(marker===0xff&&p+2<u.length){p++;marker=u[p+1]}if(marker===0xd8||marker===0xd9){p+=2;continue}if(marker===0xda)break;if(p+4>u.length)break;const len=(u[p+2]<<8)|u[p+3];if(len<2||p+2+len>u.length)break;if([0xc0,0xc1,0xc2,0xc3,0xc5,0xc6,0xc7,0xc9,0xca,0xcb,0xcd,0xce,0xcf].includes(marker)&&len>=7){return {height:(u[p+5]<<8)|u[p+6],width:(u[p+7]<<8)|u[p+8]}}p+=2+len}}catch{}return {width:null,height:null}}
 async function readMeta(file){try{const head=await file.slice(0,262144).arrayBuffer(),p=parseExif(head),d=jpegHeadDimensions(head);return {date:p.date,tz:p.tz,iso:p.iso,model:p.model,orientation:p.orientation,width:p.width||d.width,height:p.height||d.height,size:file.size}}catch{return {size:file.size}}}
-async function addFiles(list,{pathMap=null,restoreSaved=true,preserveSource=false,resumeExport=false}={}){const files=[...list].filter(f=>/jpe?g$/i.test(f.name)).sort((a,b)=>((pathMap?.get(a))||a.webkitRelativePath||a.name).localeCompare((pathMap?.get(b))||b.webkitRelativePath||b.name,undefined,{numeric:true,sensitivity:'base'}));state.files=files;state.filePaths.clear();if(pathMap)for(const f of files)state.filePaths.set(f,pathMap.get(f)||f.name);else for(const f of files)state.filePaths.set(f,f.webkitRelativePath||f.name);state.meta.clear();state.analysis.clear();state.culling.clear();state.highlights.clear();state.watermarkSelected.clear();state.exportRoot=null;if(!resumeExport){state.exported.clear();state.exportSessionName=null}if(!preserveSource){state.sourceHandle=null;if(state.resumeRecord){state.resumeRecord.sourceHandle=null;state.resumeRecord.sourceName=null}};els.analyze.disabled=!files.length;els.skipAutoToHighlight.disabled=!files.length;els.runCull.disabled=!files.length;els.testOne.disabled=!files.length;els.checkSpace.disabled=!files.length;els.exportAll.disabled=!files.length;els.export01.disabled=!files.length;els.export02.disabled=!files.length;els.export03.disabled=!files.length;els.openReviewQueue.disabled=true;els.runHighlight.disabled=!files.length;els.openHighlightQueue.disabled=!files.length;els.teachNext.disabled=!files.length;state.teachIndex=null;state.teachHistory=[];closeTeachUrl();if(els.teachImg){els.teachImg.classList.add('hidden');els.teachEmpty.classList.remove('hidden')}for(const b of [els.teachKeep,els.teachReject,els.teachNotHl,els.teachHl,els.teachPrev])if(b)b.disabled=true;setStatus(els.autoStatus,files.length?'กำลังอ่าน EXIF…':'เลือกรูปก่อน');setStatus(els.cullStatus,files.length?'กำลัง Scan metadata…':'เลือกรูปก่อน');const chunk=24;for(let start=0;start<files.length;start+=chunk){const part=files.slice(start,start+chunk),metas=await Promise.all(part.map(readMeta));for(let j=0;j<part.length;j++){const f=part[j];state.meta.set(f,metas[j]);if(restoreSaved){const saved=state.savedFileStates.get(fileKey(f));if(saved?.culling)state.culling.set(f,saved.culling);if(saved?.analysis)state.analysis.set(f,saved.analysis);if(saved?.highlight)state.highlights.set(f,saved.highlight);if(saved?.watermark)state.watermarkSelected.add(fileKey(f))}}updateFileSummary();setStatus(els.cullStatus,`Scan metadata ${Math.min(start+chunk,files.length)}/${files.length}`,'warn');await new Promise(r=>setTimeout(r,0))}assignBurstTags();setStatus(els.autoStatus,files.length?(state.analysis.size?`เรียกคืน Auto ${state.analysis.size.toLocaleString()} รูป · พร้อมทำต่อ`:'พร้อมวิเคราะห์ Auto Fine Tune'):'เลือกรูปก่อน','good');const cc=cullCounts();setStatus(els.cullStatus,files.length?(cc.unculled<files.length?`เรียกคืน Culling ${files.length-cc.unculled}/${files.length} · พร้อมทำต่อ`:'พร้อมคัดภาพ — ประมวลผลทีละรูป ไม่โหลดทั้งอัลบั้มเข้า RAM'):'เลือกรูปก่อน','good');updateFileSummary();renderCullCounts();renderPreview();updateExportEstimate();scheduleSaveSession()}
-function updateFileSummary(){const total=state.files.reduce((s,f)=>s+f.size,0),iso=[...state.meta.values()].map(m=>m.iso).filter(Boolean);els.fileSummary.innerHTML=state.files.length?`<span class="chip">${state.files.length.toLocaleString()} รูป</span><span class="chip">${fmtBytes(total)}</span>${iso.length?`<span class="chip">ISO ${Math.min(...iso)}–${Math.max(...iso)}</span>`:''}`:'<span class="chip">ยังไม่มีไฟล์</span>'}
+async function addFiles(list,{pathMap=null,restoreSaved=true,preserveSource=false,resumeExport=false}={}){
+  const files=[...list].filter(f=>/jpe?g$/i.test(f.name)).sort((a,b)=>((pathMap?.get(a))||a.webkitRelativePath||a.name).localeCompare((pathMap?.get(b))||b.webkitRelativePath||b.name,undefined,{numeric:true,sensitivity:'base'}));
+  state.files=files;state.filePaths.clear();if(pathMap)for(const f of files)state.filePaths.set(f,pathMap.get(f)||f.name);else for(const f of files)state.filePaths.set(f,f.webkitRelativePath||f.name);
+  state.fileTotalBytes=files.reduce((s,f)=>s+Number(f.size||0),0);state.isoMin=null;state.isoMax=null;state.largeAlbum=files.length>=5000;state.dirtyStateFiles.clear();
+  state.meta.clear();state.analysis.clear();state.culling.clear();state.highlights.clear();state.watermarkSelected.clear();state.exportRoot=null;
+  if(!resumeExport){state.exported.clear();state.exportSessionName=null;state.exportSessionDirect=false}
+  if(!preserveSource){state.sourceHandle=null;if(state.resumeRecord){state.resumeRecord.sourceHandle=null;state.resumeRecord.sourceName=null}}
+  els.analyze.disabled=!files.length;els.skipAutoToHighlight.disabled=!files.length;els.runCull.disabled=!files.length;els.testOne.disabled=!files.length;els.checkSpace.disabled=!files.length;els.exportAll.disabled=!files.length;els.export01.disabled=!files.length;els.export02.disabled=!files.length;els.export03.disabled=!files.length;els.openReviewQueue.disabled=true;els.runHighlight.disabled=!files.length;els.openHighlightQueue.disabled=!files.length;els.teachNext.disabled=!files.length;
+  state.teachIndex=null;state.teachHistory=[];closeTeachUrl();if(els.teachImg){els.teachImg.classList.add('hidden');els.teachEmpty.classList.remove('hidden')}for(const b of [els.teachKeep,els.teachReject,els.teachNotHl,els.teachHl,els.teachPrev])if(b)b.disabled=true;
+  setStatus(els.autoStatus,files.length?'กำลังอ่าน EXIF…':'เลือกรูปก่อน');setStatus(els.cullStatus,files.length?'กำลัง Scan metadata…':'เลือกรูปก่อน');
+  const chunk=state.largeAlbum?16:24;let restored=0;
+  for(let start=0;start<files.length;start+=chunk){
+    const part=files.slice(start,start+chunk),metas=await Promise.all(part.map(readMeta));
+    for(let j=0;j<part.length;j++){
+      const f=part[j],m=metas[j];state.meta.set(f,m);
+      const iso=Number(m?.iso);if(Number.isFinite(iso)&&iso>0){state.isoMin=state.isoMin==null?iso:Math.min(state.isoMin,iso);state.isoMax=state.isoMax==null?iso:Math.max(state.isoMax,iso)}
+      if(restoreSaved){const saved=state.savedFileStates.get(fileKey(f));if(saved){restored++;if(saved.culling)state.culling.set(f,saved.culling);if(saved.analysis)state.analysis.set(f,saved.analysis);if(saved.highlight)state.highlights.set(f,saved.highlight);if(saved.watermark)state.watermarkSelected.add(fileKey(f))}}
+    }
+    const batchNo=Math.floor(start/chunk);if(batchNo%10===0||start+chunk>=files.length)updateFileSummary();
+    setStatus(els.cullStatus,`Scan metadata ${Math.min(start+chunk,files.length).toLocaleString()}/${files.length.toLocaleString()}${state.largeAlbum?' · Large Album Mode':''}`,'warn');
+    if(batchNo%4===0)await new Promise(r=>setTimeout(r,0));
+  }
+  if(!restored&&files.length&&!resumeExport)requestFileStateRewrite();
+  assignBurstTags();setStatus(els.autoStatus,files.length?(state.analysis.size?`เรียกคืน Auto ${state.analysis.size.toLocaleString()} รูป · พร้อมทำต่อ`:'พร้อมวิเคราะห์ Auto Fine Tune'):'เลือกรูปก่อน','good');
+  const cc=cullCounts();setStatus(els.cullStatus,files.length?(cc.unculled<files.length?`เรียกคืน Culling ${(files.length-cc.unculled).toLocaleString()}/${files.length.toLocaleString()} · พร้อมทำต่อ`:`พร้อมคัดภาพ · ${files.length.toLocaleString()} รูป${state.largeAlbum?' · Large Album Mode / bounded memory':''}`):'เลือกรูปก่อน','good');
+  updateFileSummary();renderCullCounts();renderPreview();updateExportEstimate();scheduleSaveSession()
+}
+function updateFileSummary(){const n=state.files.length;els.fileSummary.innerHTML=n?`<span class="chip">${n.toLocaleString()} รูป</span><span class="chip">${fmtStorage(state.fileTotalBytes||0)}</span>${state.isoMin!=null?`<span class="chip">ISO ${state.isoMin}–${state.isoMax}</span>`:''}${state.largeAlbum?'<span class="chip">Large Album · bounded memory</span>':''}`:'<span class="chip">ยังไม่มีไฟล์</span>'}
 function analysisText(a){if(!a)return 'ยังไม่วิเคราะห์';const dir=a.ev>.045?`สว่าง +${a.ev.toFixed(2)} EV`:a.ev<-.045?`มืด ${a.ev.toFixed(2)} EV`:'Exposure คงเดิม';const wb=Math.max(Math.abs((a.gains?.r??1)-1),Math.abs((a.gains?.b??1)-1))>.012?'WB Auto':'WB เดิม';const scene=(a.scene||'day').toUpperCase();const dr=a.scene==='forest'?` · DR ${(a.forestRange||0).toFixed(2)}`:'';const dep=(a.depth||0)>0?' · Depth':'';const g=a.hlGuard;const guard=g?.checked?(g.adjusted?` · HL-Safe ${Math.round((1-(g.scale??1))*100)}% ลด Auto (${Math.round(g.beforeScore||0)}→${Math.round(g.afterScore||0)})`:` · HL-Safe ✓ ${Math.round(g.afterScore||0)}`):(els.hlSafeAuto?.checked?' · HL-Safe รอตรวจตอนคัด HL':'');return `${scene}${dr}${dep} · ${dir} · H ${Math.round(a.highlights||0)} · S +${Math.round(a.shadows||0)} · ${wb} · Vib ${Number(a.vibrance||0).toFixed(1)} · ${a.source||'Auto'}${guard}`}
 
 function isHighlight(file){return !!state.highlights.get(file)?.selected}
@@ -1485,66 +1513,45 @@ async function makeAfterPreviewUrl(file){
 }
 function releasePreviewUrls(){for(const u of state.previewUrls)try{URL.revokeObjectURL(u)}catch{}state.previewUrls=[]}
 
+let lastPreviewRenderAt=0;
+function renderPreviewThrottled(force=false){const now=performance.now();if(!force&&processingHeavy()&&now-lastPreviewRenderAt<5000)return;lastPreviewRenderAt=now;renderPreview()}
 function renderPreview(){
-  releasePreviewUrls();
+  lastPreviewRenderAt=performance.now();releasePreviewUrls();
   if(!state.files.length){els.rows.innerHTML='<tr><td colspan="11">เลือกรูปก่อน</td></tr>';els.previewSummary.textContent='ยังไม่มีไฟล์';els.renamePreview.textContent='ตัวอย่าง: —';updateHighlightCounts();return}
-  const seqMap=new Map();let seq=0;for(const f of state.files)if(shouldExport(f))seqMap.set(f,seq++);
-  els.renamePreview.textContent=`ตัวอย่าง: ${state.files[0].name} → ${outputName(state.files[0],seqMap.get(state.files[0])??0)}`;
-  const filter=els.previewFilter.value||'all',items=[];for(let i=0;i<state.files.length;i++){const f=state.files[i],r=state.culling.get(f);if(filter==='highlight'){if(isHighlight(f))items.push({f,i,r});continue}if(filter==='all'||(filter==='unculled'&&!r)||(r&&r.status===filter))items.push({f,i,r})}
-  els.previewSummary.textContent=`${items.length.toLocaleString()} / ${state.files.length.toLocaleString()} ไฟล์`;
-  els.rows.innerHTML=items.slice(0,100).map(({f,i,r})=>{const m=state.meta.get(f)||{},a=state.analysis.get(f),resize=els.resizeEnabled.checked?`Long Edge ${els.longEdge.value}px · ≤ ${els.fileLimit.value}MB`:'ไม่ Resize',url=URL.createObjectURL(f);state.previewUrls.push(url);const options=`<option value="" ${!r?'selected':''}>ยังไม่คัด</option><option value="pass" ${r?.status==='pass'?'selected':''}>PASS</option><option value="review" ${r?.status==='review'?'selected':''}>REVIEW</option><option value="reject" ${r?.status==='reject'?'selected':''}>REJECT</option>`;return `<tr><td>${i+1}</td><td><button class="thumb-btn" data-preview-index="${i}" type="button" title="เปิดดูภาพ"><img class="thumb" loading="lazy" src="${url}" alt="${f.name.replace(/"/g,'')}"></button></td><td>${f.name}<br><span class="tiny">${fmtBytes(f.size)} · ISO ${m.iso||'—'} · ${m.date||'ไม่มี EXIF'}</span></td><td>${cullLabel(r)}<br><select class="status-select" data-index="${i}">${options}</select></td><td>${focusText(r)}</td><td>${outputName(f,seqMap.get(f)??i)}</td><td>${analysisText(a)}</td><td>${highlightCell(f,i)}</td><td>${resize}</td><td>${isHighlight(f)?'<span class="wm-badge">HL · AUTO</span>':'<span class="tiny">—</span>'}</td><td>${r?.status==='reject'?'<span class="badtxt">ไม่ Export ตามค่าเริ่มต้น</span>':a?'<span class="goodtxt">พร้อม</span>':(!els.autoEnabled.checked?'<span class="goodtxt">Original พร้อม</span>':'<span class="muted">รอ Auto / Export</span>')}</td></tr>`}).join('');
+  const filter=els.previewFilter.value||'all',items=[];let matched=0,exportSeq=0;
+  for(let i=0;i<state.files.length;i++){
+    const f=state.files[i],r=state.culling.get(f),exp=shouldExport(f),seqIndex=exp?exportSeq++:i;
+    let ok=false;if(filter==='highlight')ok=isHighlight(f);else ok=filter==='all'||(filter==='unculled'&&!r)||(r&&r.status===filter);
+    if(ok){matched++;if(items.length<100)items.push({f,i,r,seqIndex})}
+  }
+  const first=state.files[0];els.renamePreview.textContent=`ตัวอย่าง: ${first.name} → ${outputName(first,0)}`;
+  els.previewSummary.textContent=`${matched.toLocaleString()} / ${state.files.length.toLocaleString()} ไฟล์${matched>100?' · แสดง 100 แรก':''}`;
+  els.rows.innerHTML=items.map(({f,i,r,seqIndex})=>{const m=state.meta.get(f)||{},a=state.analysis.get(f),resize=els.resizeEnabled.checked?`Long Edge ${els.longEdge.value}px · ≤ ${els.fileLimit.value}MB`:'ไม่ Resize',url=URL.createObjectURL(f);state.previewUrls.push(url);const options=`<option value="" ${!r?'selected':''}>ยังไม่คัด</option><option value="pass" ${r?.status==='pass'?'selected':''}>PASS</option><option value="review" ${r?.status==='review'?'selected':''}>REVIEW</option><option value="reject" ${r?.status==='reject'?'selected':''}>REJECT</option>`;return `<tr><td>${i+1}</td><td><button class="thumb-btn" data-preview-index="${i}" type="button" title="เปิดดูภาพ"><img class="thumb" loading="lazy" src="${url}" alt="${f.name.replace(/"/g,'')}"></button></td><td>${f.name}<br><span class="tiny">${fmtBytes(f.size)} · ISO ${m.iso||'—'} · ${m.date||'ไม่มี EXIF'}</span></td><td>${cullLabel(r)}<br><select class="status-select" data-index="${i}">${options}</select></td><td>${focusText(r)}</td><td>${outputName(f,seqIndex)}</td><td>${analysisText(a)}</td><td>${highlightCell(f,i)}</td><td>${resize}</td><td>${isHighlight(f)?'<span class="wm-badge">HL · AUTO</span>':'<span class="tiny">—</span>'}</td><td>${r?.status==='reject'?'<span class="badtxt">ไม่ Export ตามค่าเริ่มต้น</span>':a?'<span class="goodtxt">พร้อม</span>':(!els.autoEnabled.checked?'<span class="goodtxt">Original พร้อม</span>':'<span class="muted">รอ Auto / Export</span>')}</td></tr>`}).join('');
   els.rows.querySelectorAll('.status-select').forEach(sel=>sel.addEventListener('change',()=>setManualCull(Number(sel.dataset.index),sel.value)));
   els.rows.querySelectorAll('.thumb-btn').forEach(btn=>btn.addEventListener('click',()=>openPhotoPreview(Number(btn.dataset.previewIndex))));
   els.rows.querySelectorAll('.wm-photo-check').forEach(ch=>ch.addEventListener('change',()=>setPhotoWatermarkByIndex(Number(ch.dataset.index),ch.checked)));
   els.rows.querySelectorAll('.highlight-photo-check').forEach(ch=>ch.addEventListener('change',()=>setHighlightByIndex(Number(ch.dataset.index),ch.checked,{pinned:true})));
-  updateWatermarkCount();updateHighlightCounts();refreshWatermarkStage();
+  updateWatermarkCount();updateHighlightCounts();if(!processingHeavy())refreshWatermarkStage();
 }
 async function analyzeAlbum(){
   if(!state.files.length||state.analyzing)return;
-  state.analyzing=true;state.cancelAnalyze=false;
-  els.analyze.disabled=true;els.stopAnalyze.disabled=false;els.analyzeProgress.classList.remove('hidden');
-
-  // Auto Tune must count only files that are actually allowed to continue to export.
-  // REJECT (and REVIEW when disabled for export) are excluded from both work and denominator.
-  const eligible=[];
-  let skippedReject=0,skippedReview=0;
-  for(const f of state.files){
-    if(!els.cullEnabled.checked){eligible.push(f);continue}
-    const cr=state.culling.get(f);
-    if(cr?.status==='reject'&&!els.exportReject.checked){skippedReject++;continue}
-    if(cr?.status==='review'&&!els.exportReview.checked){skippedReview++;continue}
-    eligible.push(f);
-  }
-
-  const total=eligible.length;
-  let up=0,same=0,down=0,done=0,errors=0;
-  els.analyzeBar.style.width=total? '0%':'100%';
+  state.analyzing=true;state.cancelAnalyze=false;els.analyze.disabled=true;els.stopAnalyze.disabled=false;els.analyzeProgress.classList.remove('hidden');
+  const eligible=[];let skippedReject=0,skippedReview=0;
+  for(const f of state.files){if(!els.cullEnabled.checked){eligible.push(f);continue}const cr=state.culling.get(f);if(cr?.status==='reject'&&!els.exportReject.checked){skippedReject++;continue}if(cr?.status==='review'&&!els.exportReview.checked){skippedReview++;continue}eligible.push(f)}
+  const total=eligible.length;let up=0,same=0,down=0,done=0,errors=0,lastUi=0,lastCheckpoint=0;els.analyzeBar.style.width=total?'0%':'100%';
   setStatus(els.autoStatus,`Auto Tune ${total.toLocaleString()} รูป${skippedReject?` · ข้าม REJECT ${skippedReject.toLocaleString()}`:''}${skippedReview?` · ข้าม REVIEW ${skippedReview.toLocaleString()}`:''}`,'warn');
-
   for(let i=0;i<eligible.length;i++){
-    if(state.cancelAnalyze)break;
-    const f=eligible[i];
-    try{
-      let a=state.analysis.get(f);
-      if(!a){a=await analyzeOne(f);state.analysis.set(f,a)}
-      if(a.ev>.045)up++;else if(a.ev<-.045)down++;else same++;
-    }catch(e){errors++;console.warn(f.name,e)}
-    done++;
-    if(done%1000===0)els.sessionNote.textContent=`Auto Tune ${done.toLocaleString()} รูป · Resume จะบันทึกเมื่อเสร็จ/หยุด`;
-    els.analyzeBar.style.width=(total?done/total*100:100)+'%';
-    setStatus(els.autoStatus,`Auto Tune ${done.toLocaleString()}/${total.toLocaleString()} · สว่างขึ้น ${up.toLocaleString()} · คงเดิม ${same.toLocaleString()} · มืดลง ${down.toLocaleString()}${skippedReject?` · ข้าม REJECT ${skippedReject.toLocaleString()}`:''}${skippedReview?` · ข้าม REVIEW ${skippedReview.toLocaleString()}`:''}${errors?` · Error ${errors.toLocaleString()}`:''}`,'warn');
-    if(i%(total>5000?100:total>1000?50:20)===0)renderPreview();
-    await new Promise(r=>setTimeout(r,0));
+    if(state.cancelAnalyze)break;const f=eligible[i];
+    try{let a=state.analysis.get(f);if(!a){a=await analyzeOne(f);state.analysis.set(f,a);markFileStateDirty(f)}if(a.ev>.045)up++;else if(a.ev<-.045)down++;else same++}catch(e){errors++;console.warn(f.name,e)}
+    done++;const now=performance.now();if(now-lastUi>250||done===total){lastUi=now;els.analyzeBar.style.width=(total?done/total*100:100)+'%';setStatus(els.autoStatus,`Auto Tune ${done.toLocaleString()}/${total.toLocaleString()} · สว่างขึ้น ${up.toLocaleString()} · คงเดิม ${same.toLocaleString()} · มืดลง ${down.toLocaleString()}${errors?` · Error ${errors.toLocaleString()}`:''}`,'warn')}
+    if(done-lastCheckpoint>=500){await flushDirtyFileStates();lastCheckpoint=done;els.sessionNote.textContent=`Auto checkpoint ${done.toLocaleString()}/${total.toLocaleString()} · บันทึกผลรายไฟล์แล้ว`}
+    if(done%1000===0)renderPreviewThrottled();
+    if(done%4===0)await new Promise(r=>setTimeout(r,0));
   }
-
   state.analyzing=false;els.stopAnalyze.disabled=true;els.analyze.disabled=false;
-  if(state.cancelAnalyze){
-    setStatus(els.autoStatus,`หยุดแล้ว · ทำไป ${done.toLocaleString()}/${total.toLocaleString()}${skippedReject?` · ข้าม REJECT ${skippedReject.toLocaleString()}`:''}`,'warn');
-  }else{
-    setStatus(els.autoStatus,`เสร็จแล้ว ${done.toLocaleString()}/${total.toLocaleString()} · สว่างขึ้น ${up.toLocaleString()} · คงเดิม ${same.toLocaleString()} · มืดลง ${down.toLocaleString()}${skippedReject?` · ข้าม REJECT ${skippedReject.toLocaleString()}`:''}${skippedReview?` · ข้าม REVIEW ${skippedReview.toLocaleString()}`:''}${errors?` · Error ${errors.toLocaleString()}`:''}`,'good');
-    setStatus(els.highlightStatus,els.hlSafeAuto?.checked?'Auto Fine Tune พร้อมแล้ว — ตอนกด ★ ระบบจะเทียบก่อน/หลังและลด Auto อัตโนมัติถ้า HL แย่ลง':'Auto Fine Tune พร้อมแล้ว — กด ★ เลือก Highlight เพื่อคัดภาพโชว์ผลงาน','good');
-  }
-  await saveSessionNow(true);renderPreview();
+  if(state.cancelAnalyze)setStatus(els.autoStatus,`หยุดแล้ว · ทำไป ${done.toLocaleString()}/${total.toLocaleString()}`,'warn');
+  else{setStatus(els.autoStatus,`เสร็จแล้ว ${done.toLocaleString()}/${total.toLocaleString()} · สว่างขึ้น ${up.toLocaleString()} · คงเดิม ${same.toLocaleString()} · มืดลง ${down.toLocaleString()}${errors?` · Error ${errors.toLocaleString()}`:''}`,'good');setStatus(els.highlightStatus,els.hlSafeAuto?.checked?'Auto Fine Tune พร้อมแล้ว — ตอนกด ★ ระบบจะเทียบก่อน/หลังและลด Auto อัตโนมัติถ้า HL แย่ลง':'Auto Fine Tune พร้อมแล้ว — กด ★ เลือก Highlight เพื่อคัดภาพโชว์ผลงาน','good')}
+  await saveSessionNow(true);renderPreviewThrottled(true)
 }
 function skipAutoAndGoHighlight(){
   if(!state.files.length)return;els.autoEnabled.checked=false;state.analysis.clear();for(const [f,h] of state.highlights){if(h.pinned){h.score=null;h.breakdown=null}else state.highlights.delete(f)};resetExportSession();updateHighlightCounts();renderPreview();setStatus(els.autoStatus,'ข้าม Auto Fine Tune — จะใช้ภาพต้นฉบับ','good');setStatus(els.highlightStatus,'โหมด ORIGINAL — กด ★ เลือก Highlight ได้ทันที','good');els.highlightSection?.scrollIntoView({behavior:'smooth',block:'start'});scheduleSaveSession()
