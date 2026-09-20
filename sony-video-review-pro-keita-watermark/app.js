@@ -313,6 +313,29 @@ function setRotation(r){ const item=currentItem(); if(!item||state.processing)re
 function selectedWatermark(){return state.watermarks.find(w=>w.id===state.selectedWatermarkId)||null;}
 function watermarkPreviewWidth(wm){const side=wm?.angle===90||wm?.angle===270;if(!side)return wm?.width||.22;return clamp((wm?.width||.22)*(Math.max(1,wm?.naturalWidth||1)/Math.max(1,wm?.naturalHeight||1)),.01,2);}
 function watermarkOrientationLabel(angle){angle=((Number(angle)||0)%360+360)%360;return angle===0?'แนวนอน':angle===90?'แนวตั้ง 90°':angle===270?'แนวตั้ง -90°':'180°';}
+function outputVideoSize(item){
+  const srcW=Math.max(1,Number(item?.videoWidth)||1920),srcH=Math.max(1,Number(item?.videoHeight)||1080);
+  const side=item?.rotation===90||item?.rotation===270;
+  return {width:side?srcH:srcW,height:side?srcW:srcH};
+}
+function outputVideoOrientation(item){const s=outputVideoSize(item);return s.height>s.width?'portrait':'landscape';}
+function detectFrameWatermark(name,width,height){
+  const w=Math.max(1,Number(width)||1),h=Math.max(1,Number(height)||1),ratio=w/h;
+  const is169=Math.abs(ratio-(16/9))<0.035,is916=Math.abs(ratio-(9/16))<0.035;
+  const exactHd=(w===1920&&h===1080)||(w===1080&&h===1920);
+  const nameLooksLikeFrame=/frame|กรอบ/i.test(String(name||''));
+  const fullFrame=(is169||is916)&&(exactHd||nameLooksLikeFrame);
+  return {fullFrame,appliesTo:fullFrame?(h>w?'portrait':'landscape'):'all'};
+}
+function watermarkAppliesToItem(wm,item){
+  if(!wm||wm.appliesTo===undefined||wm.appliesTo===null||wm.appliesTo==='all')return true;
+  return wm.appliesTo===outputVideoOrientation(item);
+}
+function applicableWatermarks(item){return state.watermarks.filter(w=>watermarkAppliesToItem(w,item));}
+function watermarkTargetLabel(wm){
+  if(!wm?.fullFrame)return watermarkOrientationLabel(wm?.angle);
+  return wm.appliesTo==='portrait'?'FRAME แนวตั้ง 9:16':'FRAME แนวนอน 16:9';
+}
 async function getImageDimensions(file){
   try{if('createImageBitmap' in window){const b=await createImageBitmap(file);const d={width:b.width||1,height:b.height||1};b.close?.();return d;}}
   catch{}
@@ -322,8 +345,22 @@ async function addWatermarkFile(file,opts={}){
   if(state.processing)throw new Error('กำลัง Export อยู่ กรุณารอให้เสร็จก่อน');
   if(!(file instanceof Blob)||!String(file.type||'').startsWith('image/'))throw new Error('ไฟล์ลายน้ำต้องเป็นรูปภาพ PNG/JPG/WebP');
   const d=await getImageDimensions(file);const id=++state.watermarkSeq;
-  const wm={id,name:file.name||`watermark-${id}.png`,file,url:URL.createObjectURL(file),naturalWidth:d.width,naturalHeight:d.height,x:clamp(opts.x??(.5+((id%5)-2)*.035),0,1),y:clamp(opts.y??.5,0,1),width:clamp(opts.width??.22,.03,.95),opacity:clamp(opts.opacity??.7,.05,1),angle:[0,90,180,270].includes(opts.angle)?opts.angle:0};
-  state.watermarks.push(wm);state.selectedWatermarkId=id;state.watermarkEnabled=true;if(els.watermarkEnabled)els.watermarkEnabled.checked=true;renderWatermarks();renderWatermarkPanel();updateSelectionUI();
+  const detected=detectFrameWatermark(file.name,d.width,d.height);
+  const fullFrame=opts.fullFrame??detected.fullFrame;
+  const appliesTo=opts.appliesTo??(fullFrame?detected.appliesTo:'all');
+  const wm={
+    id,name:file.name||`watermark-${id}.png`,file,url:URL.createObjectURL(file),naturalWidth:d.width,naturalHeight:d.height,
+    x:clamp(opts.x??(fullFrame?.5:(.5+((id%5)-2)*.035)),0,1),
+    y:clamp(opts.y??.5,0,1),
+    width:clamp(opts.width??(fullFrame?1:.22),.03,1),
+    opacity:clamp(opts.opacity??(fullFrame?1:.7),.05,1),
+    angle:fullFrame?0:([0,90,180,270].includes(opts.angle)?opts.angle:0),
+    fullFrame:Boolean(fullFrame),
+    appliesTo
+  };
+  state.watermarks.push(wm);state.selectedWatermarkId=id;state.watermarkEnabled=true;if(els.watermarkEnabled)els.watermarkEnabled.checked=true;
+  if(fullFrame)els.processMessage.textContent=`ตรวจพบ ${watermarkTargetLabel(wm)} ${d.width}×${d.height} · จะพอดีเต็ม VDO และใช้เฉพาะคลิปแนวเดียวกันอัตโนมัติ`;
+  renderWatermarks();renderWatermarkPanel();updateSelectionUI();
 }
 async function addKeitaWatermark(){
   try{const r=await fetch('./keita-logo.png');if(!r.ok)throw new Error(`โหลดโลโก้ไม่สำเร็จ (${r.status})`);const b=await r.blob();await addWatermarkFile(new File([b],'KEITA_PHOTO_CAMERA.png',{type:b.type||'image/png'}),{width:.2,opacity:.72});}
@@ -339,7 +376,7 @@ function syncWatermarkLayerBounds(){
 function renderWatermarks(){
   if(!els.watermarkLayer)return;syncWatermarkLayerBounds();els.watermarkLayer.classList.toggle('enabled',state.watermarkEnabled&&state.watermarks.length>0);els.watermarkLayer.innerHTML='';
   if(!state.watermarkEnabled||!state.watermarks.length||!currentItem())return;
-  for(const wm of state.watermarks){
+  for(const wm of applicableWatermarks(currentItem())){
     const el=document.createElement('div');el.className=`watermark-object ${wm.id===state.selectedWatermarkId?'selected':''}`;el.dataset.wmId=wm.id;el.style.setProperty('--wm-x',`${wm.x*100}%`);el.style.setProperty('--wm-y',`${wm.y*100}%`);el.style.setProperty('--wm-w',`${watermarkPreviewWidth(wm)*100}%`);el.style.setProperty('--wm-angle',`${wm.angle}deg`);el.style.setProperty('--wm-opacity',wm.opacity);
     const img=document.createElement('img');img.src=wm.url;img.alt=wm.name;el.appendChild(img);
     if(wm.id===state.selectedWatermarkId){const h=document.createElement('span');h.className='watermark-resize-handle';h.title='ลากเพื่อย่อ/ขยาย';el.appendChild(h);bindWatermarkResize(h,wm);}
@@ -347,28 +384,33 @@ function renderWatermarks(){
   }
 }
 function bindWatermarkDrag(el,wm){
-  el.addEventListener('pointerdown',e=>{if(state.processing||e.target.closest('.watermark-resize-handle'))return;e.preventDefault();e.stopPropagation();state.selectedWatermarkId=wm.id;renderWatermarkPanel();const r=els.watermarkLayer.getBoundingClientRect();if(!r.width||!r.height)return;const ox=(e.clientX-r.left)/r.width-wm.x,oy=(e.clientY-r.top)/r.height-wm.y;el.setPointerCapture?.(e.pointerId);
+  el.addEventListener('pointerdown',e=>{if(state.processing||wm.fullFrame||e.target.closest('.watermark-resize-handle'))return;e.preventDefault();e.stopPropagation();state.selectedWatermarkId=wm.id;renderWatermarkPanel();const r=els.watermarkLayer.getBoundingClientRect();if(!r.width||!r.height)return;const ox=(e.clientX-r.left)/r.width-wm.x,oy=(e.clientY-r.top)/r.height-wm.y;el.setPointerCapture?.(e.pointerId);
     const move=ev=>{wm.x=clamp((ev.clientX-r.left)/r.width-ox,0,1);wm.y=clamp((ev.clientY-r.top)/r.height-oy,0,1);el.style.setProperty('--wm-x',`${wm.x*100}%`);el.style.setProperty('--wm-y',`${wm.y*100}%`);renderWatermarkEditorValues();};
     const done=ev=>{try{el.releasePointerCapture?.(ev.pointerId);}catch{}el.removeEventListener('pointermove',move);el.removeEventListener('pointerup',done);el.removeEventListener('pointercancel',done);};el.addEventListener('pointermove',move);el.addEventListener('pointerup',done);el.addEventListener('pointercancel',done);
   });
 }
 function bindWatermarkResize(handle,wm){
   handle.addEventListener('pointerdown',e=>{if(state.processing)return;e.preventDefault();e.stopPropagation();const r=els.watermarkLayer.getBoundingClientRect();const cx=r.left+wm.x*r.width,cy=r.top+wm.y*r.height,startDist=Math.max(8,Math.hypot(e.clientX-cx,e.clientY-cy)),startW=wm.width;handle.setPointerCapture?.(e.pointerId);
-    const move=ev=>{const d=Math.max(4,Math.hypot(ev.clientX-cx,ev.clientY-cy));wm.width=clamp(startW*(d/startDist),.03,.95);const host=handle.parentElement;if(host)host.style.setProperty('--wm-w',`${watermarkPreviewWidth(wm)*100}%`);renderWatermarkEditorValues();};
+    const move=ev=>{if(wm.fullFrame)return;const d=Math.max(4,Math.hypot(ev.clientX-cx,ev.clientY-cy));wm.width=clamp(startW*(d/startDist),.03,1);const host=handle.parentElement;if(host)host.style.setProperty('--wm-w',`${watermarkPreviewWidth(wm)*100}%`);renderWatermarkEditorValues();};
     const done=ev=>{try{handle.releasePointerCapture?.(ev.pointerId);}catch{}handle.removeEventListener('pointermove',move);handle.removeEventListener('pointerup',done);handle.removeEventListener('pointercancel',done);};handle.addEventListener('pointermove',move);handle.addEventListener('pointerup',done);handle.addEventListener('pointercancel',done);
   });
 }
 function renderWatermarkList(){
-  if(!els.watermarkList)return;els.watermarkEmpty.classList.toggle('hidden',state.watermarks.length>0);els.watermarkList.innerHTML='';state.watermarks.forEach((wm,i)=>{const b=document.createElement('button');b.type='button';b.className=`watermark-list-item ${wm.id===state.selectedWatermarkId?'active':''}`;b.innerHTML=`<img class="watermark-thumb" src="${wm.url}" alt=""><span class="watermark-list-name">${escapeHtml(wm.name)}</span><span class="watermark-list-meta">${Math.round(wm.width*100)}% · ${watermarkOrientationLabel(wm.angle)}</span>`;b.addEventListener('click',()=>{state.selectedWatermarkId=wm.id;renderWatermarks();renderWatermarkPanel();});els.watermarkList.appendChild(b);});
+  if(!els.watermarkList)return;els.watermarkEmpty.classList.toggle('hidden',state.watermarks.length>0);els.watermarkList.innerHTML='';state.watermarks.forEach((wm,i)=>{const b=document.createElement('button');b.type='button';b.className=`watermark-list-item ${wm.id===state.selectedWatermarkId?'active':''}`;b.innerHTML=`<img class="watermark-thumb" src="${wm.url}" alt=""><span class="watermark-list-name">${escapeHtml(wm.name)}</span><span class="watermark-list-meta">${wm.fullFrame?'AUTO · ':''}${Math.round(wm.width*100)}% · ${watermarkTargetLabel(wm)}</span>`;b.addEventListener('click',()=>{state.selectedWatermarkId=wm.id;renderWatermarks();renderWatermarkPanel();});els.watermarkList.appendChild(b);});
 }
 function renderWatermarkEditorValues(){const wm=selectedWatermark();if(!wm)return;els.wmSize.value=wm.width*100;els.wmOpacity.value=wm.opacity*100;els.wmX.value=wm.x*100;els.wmY.value=wm.y*100;els.wmSizeText.textContent=`${(wm.width*100).toFixed(1)}%`;els.wmOpacityText.textContent=`${Math.round(wm.opacity*100)}%`;els.wmXText.textContent=`${(wm.x*100).toFixed(1)}%`;els.wmYText.textContent=`${(wm.y*100).toFixed(1)}%`;document.querySelectorAll('.wm-angle').forEach(b=>b.classList.toggle('active',Number(b.dataset.angle)===wm.angle));}
 function renderWatermarkPanel(){
   renderWatermarkList();const wm=selectedWatermark();els.watermarkEditor.classList.toggle('hidden',!wm);if(!wm)return;els.selectedWatermarkName.textContent=wm.name;const idx=state.watermarks.findIndex(w=>w.id===wm.id);els.selectedWatermarkIndex.textContent=`${idx+1} / ${state.watermarks.length}`;renderWatermarkEditorValues();
 }
-function updateSelectedWatermarkFromControls(){const wm=selectedWatermark();if(!wm||state.processing)return;wm.width=clamp(Number(els.wmSize.value)/100,.03,.95);wm.opacity=clamp(Number(els.wmOpacity.value)/100,.05,1);wm.x=clamp(Number(els.wmX.value)/100,0,1);wm.y=clamp(Number(els.wmY.value)/100,0,1);renderWatermarks();renderWatermarkPanel();updateSelectionUI();}
+function updateSelectedWatermarkFromControls(){const wm=selectedWatermark();if(!wm||state.processing)return;if(!wm.fullFrame){wm.width=clamp(Number(els.wmSize.value)/100,.03,1);wm.x=clamp(Number(els.wmX.value)/100,0,1);wm.y=clamp(Number(els.wmY.value)/100,0,1);}wm.opacity=clamp(Number(els.wmOpacity.value)/100,.05,1);renderWatermarks();renderWatermarkPanel();updateSelectionUI();}
 function buildWatermarkExportSpecs(item){
-  if(!state.watermarkEnabled||!state.watermarks.length)return[];const srcW=Number(item.videoWidth)||1920,srcH=Number(item.videoHeight)||1080,side=item.rotation===90||item.rotation===270,outW=side?srcH:srcW,outH=side?srcW:srcH;
-  return state.watermarks.map(w=>{const targetW=Math.max(8,Math.round(w.width*outW)),rotatedSide=w.angle===90||w.angle===270,ratio=rotatedSide?(w.naturalWidth/Math.max(1,w.naturalHeight)):(w.naturalHeight/Math.max(1,w.naturalWidth)),targetH=Math.max(2,Math.round(targetW*ratio));return{file:w.file,name:w.name,width:targetW,x:Math.round(w.x*outW-targetW/2),y:Math.round(w.y*outH-targetH/2),angle:w.angle,opacity:w.opacity};});
+  if(!state.watermarkEnabled||!state.watermarks.length)return[];
+  const {width:outW,height:outH}=outputVideoSize(item);
+  return applicableWatermarks(item).map(w=>{
+    if(w.fullFrame)return{file:w.file,name:w.name,width:outW,height:outH,x:0,y:0,angle:0,opacity:w.opacity,fullFrame:true};
+    const targetW=Math.max(8,Math.round(w.width*outW)),rotatedSide=w.angle===90||w.angle===270,ratio=rotatedSide?(w.naturalWidth/Math.max(1,w.naturalHeight)):(w.naturalHeight/Math.max(1,w.naturalWidth)),targetH=Math.max(2,Math.round(targetW*ratio));
+    return{file:w.file,name:w.name,width:targetW,height:targetH,x:Math.round(w.x*outW-targetW/2),y:Math.round(w.y*outH-targetH/2),angle:w.angle,opacity:w.opacity,fullFrame:false};
+  });
 }
 
 function autoTrimCurrent(){
@@ -592,7 +634,7 @@ async function trimLossless(file,start,end){const result=await workerRequest('tr
 async function renderWatermarked(file,start,end,item,onProgress){
   const specs=buildWatermarkExportSpecs(item);
   if(!specs.length) return null;
-  const payload={file,start,end,rotation:item.rotation||0,sourceWidth:item.videoWidth||1920,sourceHeight:item.videoHeight||1080,watermarks:specs.map(w=>({file:w.file,name:w.name,x:w.x,y:w.y,width:w.width,angle:w.angle,opacity:w.opacity}))};
+  const payload={file,start,end,rotation:item.rotation||0,sourceWidth:item.videoWidth||1920,sourceHeight:item.videoHeight||1080,watermarks:specs.map(w=>({file:w.file,name:w.name,x:w.x,y:w.y,width:w.width,height:w.height,angle:w.angle,opacity:w.opacity,fullFrame:w.fullFrame}))};
   const result=await workerRequest('watermark',payload,onProgress);
   return {blob:new Blob([result.buffer],{type:'video/mp4'}),extension:'.mp4'};
 }
@@ -658,8 +700,9 @@ async function processQueue(queue,{retry=false}={}){
       try{
         const file=await item.handle.getFile();if(!item.duration)await readMediaDuration(item);const start=clamp(item.trimStart,0,item.duration),end=clamp(item.trimEnd,start+.05,item.duration);if(end-start<.05)throw new Error('ช่วงตัดสั้นเกินไป');
         let finalName=item.plannedOutputName;
-        if(state.watermarkEnabled&&state.watermarks.length){
-          finalName=finalName.replace(/\.[^.]+$/,'.mp4');item.plannedOutputName=finalName;els.processMessage.textContent=`กำลัง Encode ${item.name} + ลายน้ำ ${state.watermarks.length} ชิ้น…`;
+        const itemWatermarks=buildWatermarkExportSpecs(item);
+        if(state.watermarkEnabled&&itemWatermarks.length){
+          finalName=finalName.replace(/\.[^.]+$/,'.mp4');item.plannedOutputName=finalName;els.processMessage.textContent=`กำลัง Encode ${item.name} + ลายน้ำ ${itemWatermarks.length} ชิ้น…`;
           const rendered=await renderWatermarked(file,start,end,item,p=>setOverallProgress(i,p*.94,queue.length));const outHandle=await outDir.getFileHandle(finalName,{create:true});els.processMessage.textContent=`กำลังบันทึก ${finalName} · Watermark H.264`;
           await writeBlobToHandle(rendered.blob,outHandle,p=>setOverallProgress(i,.94+p*.06,queue.length));
         }else{
@@ -731,7 +774,7 @@ els.addWatermarkBtn?.addEventListener('click',()=>els.watermarkFileInput?.click(
 els.addKeitaWatermarkBtn?.addEventListener('click',addKeitaWatermark);
 els.watermarkFileInput?.addEventListener('change',async()=>{const files=[...(els.watermarkFileInput.files||[])];for(const file of files){try{await addWatermarkFile(file);}catch(e){alert(`${file.name}: ${e.message||e}`);}}els.watermarkFileInput.value='';});
 els.watermarkEnabled?.addEventListener('change',()=>{state.watermarkEnabled=els.watermarkEnabled.checked&&state.watermarks.length>0;if(els.watermarkEnabled.checked&&!state.watermarks.length){els.watermarkEnabled.checked=false;state.watermarkEnabled=false;els.watermarkFileInput?.click();}renderWatermarks();renderWatermarkPanel();updateSelectionUI();});
-document.querySelectorAll('.wm-angle').forEach(btn=>btn.addEventListener('click',()=>{const wm=selectedWatermark();if(!wm||state.processing)return;wm.angle=Number(btn.dataset.angle)||0;renderWatermarks();renderWatermarkPanel();}));
+document.querySelectorAll('.wm-angle').forEach(btn=>btn.addEventListener('click',()=>{const wm=selectedWatermark();if(!wm||state.processing||wm.fullFrame)return;wm.angle=Number(btn.dataset.angle)||0;renderWatermarks();renderWatermarkPanel();}));
 [els.wmSize,els.wmOpacity,els.wmX,els.wmY].forEach(el=>el?.addEventListener('input',updateSelectedWatermarkFromControls));
 els.duplicateWatermarkBtn?.addEventListener('click',duplicateSelectedWatermark);els.deleteWatermarkBtn?.addEventListener('click',deleteSelectedWatermark);
 els.watermarkLayer?.addEventListener('pointerdown',e=>{if(e.target===els.watermarkLayer){state.selectedWatermarkId=null;renderWatermarks();renderWatermarkPanel();}});
