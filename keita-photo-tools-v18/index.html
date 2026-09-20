@@ -629,15 +629,15 @@ function parseExifDate(s){if(!s)return null;const m=s.match(/^(\d{4}):(\d{2}):(\
 function formatExifDate(d){const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}:${p(d.getMonth()+1)}:${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`}
 function adjustedDate(meta,index){if(!els.dateEnabled.checked||!meta.date)return meta.date||null;const old=parseExifDate(meta.date);if(!old)return meta.date;const mode=els.dateMode.value;if(mode==='dateonly'&&els.newDate.value){const [y,m,d]=els.newDate.value.split('-').map(Number);old.setFullYear(y,m-1,d);return formatExifDate(old)}if(mode==='offset'){old.setSeconds(old.getSeconds()+Number(els.offSeconds.value||0)+60*Number(els.offMinutes.value||0)+3600*Number(els.offHours.value||0)+86400*Number(els.offDays.value||0));return formatExifDate(old)}if(mode==='absolute'&&els.newDate.value){const [y,m,d]=els.newDate.value.split('-').map(Number),t=els.newTime.value.split(':').map(Number);const base=state.files[0]&&state.meta.get(state.files[0])?.date?parseExifDate(state.meta.get(state.files[0]).date):null;const delta=base&&old?old-base:0;return formatExifDate(new Date(y,m-1,d,t[0]||0,t[1]||0,t[2]||0).getTime()+delta)}return meta.date}
 
-async function createRawBitmapNoOrientation(file){
-  try{return await createImageBitmap(file,{imageOrientation:'none'})}
-  catch{return await createImageBitmap(file)}
+async function createRawBitmapNoOrientation(file,resizeW=0,resizeH=0){
+  const opts={imageOrientation:'none'};if(resizeW>0&&resizeH>0){opts.resizeWidth=Math.max(1,Math.round(resizeW));opts.resizeHeight=Math.max(1,Math.round(resizeH));opts.resizeQuality='high'}
+  try{return await createImageBitmap(file,opts)}
+  catch{if(resizeW>0&&resizeH>0){try{return await createImageBitmap(file,{resizeWidth:Math.max(1,Math.round(resizeW)),resizeHeight:Math.max(1,Math.round(resizeH)),resizeQuality:'high'})}catch{}}return await createImageBitmap(file)}
 }
 function effectiveExifOrientation(file,bmp){
   const m=state.meta.get(file)||{};let o=Number(m.orientation||1);const mw=Number(m.width||0),mh=Number(m.height||0);
-  // Some browsers ignore imageOrientation:'none' and already rotate the bitmap.
-  // If EXIF says 90° but bitmap dimensions are already swapped, do not rotate twice.
-  if([5,6,7,8].includes(o)&&mw&&mh&&bmp.width===mh&&bmp.height===mw)o=1;
+  // Chrome versions differ on whether imageOrientation:'none' is honored. Detect an already-rotated bitmap by aspect ratio, even after decode-time resize.
+  if([5,6,7,8].includes(o)&&mw&&mh&&bmp?.width&&bmp?.height){const ar=bmp.width/bmp.height,raw=mw/mh,rot=mh/mw,dr=Math.abs(Math.log(Math.max(.0001,ar/raw))),do_=Math.abs(Math.log(Math.max(.0001,ar/rot)));if(do_+0.03<dr)o=1}
   return o>=1&&o<=8?o:1
 }
 function orientedDimensions(w,h,o=1){return [5,6,7,8].includes(Number(o))?{w:h,h:w}:{w,h}}
@@ -654,10 +654,12 @@ function drawExifOriented(ctx,img,o,dw,dh){
   ctx.restore();ctx.setTransform(1,0,0,1,0,0)
 }
 async function decodeFile(file,max=0){
-  const raw=await createRawBitmapNoOrientation(file),o=effectiveExifOrientation(file,raw),od=orientedDimensions(raw.width,raw.height,o);let w=od.w,h=od.h;
+  const m=state.meta.get(file)||{},mw=Number(m.width||0),mh=Number(m.height||0);let rw=0,rh=0;
+  if(max&&mw&&mh&&Math.max(mw,mh)>max){const s=max/Math.max(mw,mh);rw=Math.max(1,Math.round(mw*s));rh=Math.max(1,Math.round(mh*s))}
+  const raw=await createRawBitmapNoOrientation(file,rw,rh),o=effectiveExifOrientation(file,raw),od=orientedDimensions(raw.width,raw.height,o);let w=od.w,h=od.h;
   if(max&&Math.max(w,h)>max){const scale=max/Math.max(w,h);w=Math.max(1,Math.round(w*scale));h=Math.max(1,Math.round(h*scale))}
   if(o===1&&w===raw.width&&h===raw.height)return {bmp:raw,w,h};
-  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';drawExifOriented(x,raw,o,w,h);raw.close();const bmp=await createImageBitmap(c);return {bmp,w,h}
+  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';drawExifOriented(x,raw,o,w,h);raw.close();const bmp=await createImageBitmap(c);c.width=1;c.height=1;return {bmp,w,h}
 }
 function roiStats(ctx,x,y,w,h){x=Math.max(0,Math.floor(x));y=Math.max(0,Math.floor(y));w=Math.max(1,Math.min(ctx.canvas.width-x,Math.floor(w)));h=Math.max(1,Math.min(ctx.canvas.height-y,Math.floor(h)));const d=ctx.getImageData(x,y,w,h).data;let sum=0,r=0,g=0,b=0,n=0,hi=0,lo=0,sat=0,green=0;const hist=new Uint32Array(256);for(let i=0;i<d.length;i+=16){const R=d[i],G=d[i+1],B=d[i+2],L=.2126*R+.7152*G+.0722*B;sum+=L;r+=R;g+=G;b+=B;n++;hist[L|0]++;if(L>245)hi++;if(L<12)lo++;const mx=Math.max(R,G,B),mn=Math.min(R,G,B);sat+=(mx-mn)/(mx||1);if(G>R*1.08&&G>B*1.08)green++}function pct(p){let target=n*p,c=0;for(let i=0;i<256;i++){c+=hist[i];if(c>=target)return i}return 255}return {mean:sum/n/255,r:r/n/255,g:g/n/255,b:b/n/255,high:hi/n,low:lo/n,sat:sat/n,green:green/n,p10:pct(.1)/255,p50:pct(.5)/255,p90:pct(.9)/255}}
 async function ensureModels(statusEl=els.autoStatus){
@@ -1102,8 +1104,10 @@ function bindWatermarkPointer(el,w,handle){el.addEventListener('pointerdown',e=>
 async function drawWatermarks(canvas,file,enabled=false){if(!enabled)return;const orientation=canvas.height>canvas.width?'portrait':'landscape',layers=wmVisibleLayersForOrientation(orientation);if(!layers.length)throw new Error(`ยังไม่มีลายน้ำสำหรับภาพ${orientation==='portrait'?'แนวตั้ง':'แนวนอน'}`);const ctx=canvas.getContext('2d'),cw=canvas.width,ch=canvas.height;for(const w of layers){const img=await ensureWmImage(w);const dw=w.w*cw,dh=dw/(w.ratio||((img.naturalWidth||1)/(img.naturalHeight||1))),dx=w.x*cw,dy=w.y*ch;ctx.drawImage(img,dx,dy,dw,dh)}}
 
 async function processVisual(file,a,gpuSlot=0){
-  const t0=performance.now();const raw=await createRawBitmapNoOrientation(file),tDecode=performance.now(),o=effectiveExifOrientation(file,raw),od=orientedDimensions(raw.width,raw.height,o);let tw=od.w,th=od.h;
-  if(els.resizeEnabled.checked){const le=clamp(Number(els.longEdge.value||4500),500,12000),mx=Math.max(tw,th);if(!(els.noUpscale.checked&&mx<=le)){const scale=le/mx;tw=Math.max(1,Math.round(tw*scale));th=Math.max(1,Math.round(th*scale))}}
+  const t0=performance.now(),m=state.meta.get(file)||{},mw=Number(m.width||0),mh=Number(m.height||0),mo=Number(m.orientation||1);let targetRawW=0,targetRawH=0;
+  if(els.resizeEnabled.checked&&mw&&mh){const od0=orientedDimensions(mw,mh,mo),le=clamp(Number(els.longEdge.value||4500),500,12000),mx=Math.max(od0.w,od0.h);if(!(els.noUpscale.checked&&mx<=le)&&mx>0){const scale=le/mx;targetRawW=Math.max(1,Math.round(mw*scale));targetRawH=Math.max(1,Math.round(mh*scale))}}
+  const raw=await createRawBitmapNoOrientation(file,targetRawW,targetRawH),tDecode=performance.now(),o=effectiveExifOrientation(file,raw),od=orientedDimensions(raw.width,raw.height,o);let tw=od.w,th=od.h;
+  if(els.resizeEnabled.checked){const le=clamp(Number(els.longEdge.value||4500),500,12000),mx=Math.max(tw,th);if(!(els.noUpscale.checked&&mx<=le)&&Math.abs(mx-le)>1){const scale=le/mx;tw=Math.max(1,Math.round(tw*scale));th=Math.max(1,Math.round(th*scale))}}
   // Orientation + resize once. When GPU Auto Tune is available, encode directly from WebGL instead of copying a 13–20 MP frame back to a second 2D canvas.
   const base=makeFastCanvas(tw,th);const bx=base.getContext('2d');bx.imageSmoothingEnabled=true;bx.imageSmoothingQuality='high';drawExifOriented(bx,raw,o,tw,th);raw.close();
   let c=base,isGpu=false;
