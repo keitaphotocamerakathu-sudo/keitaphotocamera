@@ -401,26 +401,27 @@ function fileKey(file){const rel=state.filePaths.get(file)||file.webkitRelativeP
 function resetExportSession(){state.exported.clear();state.exportRoot=null;state.exportSessionName=null;els.exportBar.style.width='0%';scheduleSaveSession()}
 
 // ---- Resume session (IndexedDB + File System Access handle when available) ----
-const DB_NAME='keita-photo-tools',STORE='sessions',TEACH_STORE='teach',FILE_STATE_STORE='file_states',SESSION_ID='current';
+const DB_NAME='keita-photo-tools',STORE='sessions',TEACH_STORE='teach',FILE_STATE_STORE='file_states',META_STORE='file_meta',SESSION_ID='current';
 function ensureKeitaStores(db){
   if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE,{keyPath:'id'});
   if(!db.objectStoreNames.contains(TEACH_STORE))db.createObjectStore(TEACH_STORE,{keyPath:'id'});
   if(!db.objectStoreNames.contains(FILE_STATE_STORE))db.createObjectStore(FILE_STATE_STORE,{keyPath:'key'});
+  if(!db.objectStoreNames.contains(META_STORE))db.createObjectStore(META_STORE,{keyPath:'key'});
 }
 function openDb(){
   return new Promise((resolve,reject)=>{
     const first=indexedDB.open(DB_NAME);
     first.onupgradeneeded=()=>ensureKeitaStores(first.result);
     first.onerror=()=>reject(first.error);
-    first.onblocked=()=>reject(new Error('IndexedDB ถูกแท็บอื่นล็อกอยู่ — ปิดแท็บ KEITA เก่าแล้วลองใหม่'));
+    first.onblocked=()=>reject(new Error('IndexedDB ถูกแท็บ KEITA อื่นล็อกอยู่ — ปิดแท็บเก่าแล้วลองใหม่'));
     first.onsuccess=()=>{
-      const db=first.result,missing=[STORE,TEACH_STORE,FILE_STATE_STORE].filter(n=>!db.objectStoreNames.contains(n));
+      const db=first.result,required=[STORE,TEACH_STORE,FILE_STATE_STORE,META_STORE],missing=required.filter(n=>!db.objectStoreNames.contains(n));
       if(!missing.length){db.onversionchange=()=>db.close();resolve(db);return}
       const next=Math.max(2,Number(db.version||1)+1);db.close();
       const up=indexedDB.open(DB_NAME,next);
       up.onupgradeneeded=()=>ensureKeitaStores(up.result);
       up.onerror=()=>reject(up.error);
-      up.onblocked=()=>reject(new Error('IndexedDB upgrade ถูกแท็บอื่นล็อกอยู่ — ปิดแท็บ KEITA เก่าแล้วลองใหม่'));
+      up.onblocked=()=>reject(new Error('IndexedDB upgrade ถูกแท็บ KEITA อื่นล็อกอยู่ — ปิดแท็บเก่าแล้วลองใหม่'));
       up.onsuccess=()=>{up.result.onversionchange=()=>up.result.close();resolve(up.result)}
     }
   })
