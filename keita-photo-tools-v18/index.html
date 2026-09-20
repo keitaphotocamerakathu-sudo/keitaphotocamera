@@ -65,8 +65,8 @@ button,input,select,label{touch-action:manipulation}
 <main class="app" id="app">
   <header class="topbar">
     <div class="brand"><div class="brandmark">K</div><div class="brandtext"><b>KEITA PHOTO CAMERA</b><span>Batch Photo Workflow</span></div></div>
-    <div class="top-pills"><a class="btn navlink" href="teach.html?v=20260920.5">สอน KEITA AI</a><a class="btn navlink" href="license.html?v=20260920.5">License</a><a class="btn navlink" href="user.html?v=20260920.5">หน้า User</a><span class="pill"><span class="dot"></span> Local processing</span><span class="pill">JPEG</span><span class="pill">Original safe</span></div>
-  <span class="pill" id="buildVersionBadge">Build 18.5.0 · 20260920.5</span></header>
+    <div class="top-pills"><a class="btn navlink" href="teach.html?v=20260920.6">สอน KEITA AI</a><a class="btn navlink" href="license.html?v=20260920.6">License</a><a class="btn navlink" href="user.html?v=20260920.6">หน้า User</a><span class="pill"><span class="dot"></span> Local processing</span><span class="pill">JPEG</span><span class="pill">Original safe</span></div>
+  <span class="pill" id="buildVersionBadge">Build 18.5.1 · 20260920.6</span></header>
 
   <section class="intro">
     <div><h1>จัดการรูปทั้งอัลบั้ม<br>ให้จบในหน้าเดียว</h1><p>เลือกภาพ → Smart Culling → Auto Fine Tune → เลือก Highlight → Rename / Resize / EXIF → Watermark → Export โดยไฟล์ต้นฉบับไม่ถูกเขียนทับ</p></div>
@@ -101,7 +101,7 @@ button,input,select,label{touch-action:manipulation}
     <div class="session-note" id="sessionNote">ระบบจะบันทึก Culling / Auto / Export progress ลงในเครื่องอัตโนมัติเมื่อใช้โหมด Resume</div>
     <div class="setting-card" style="margin-top:10px;padding:11px;background:var(--surface-2)">
       <div class="section-head" style="margin-bottom:7px"><div><b>Production Check</b><div class="tiny">ตรวจ Browser / IndexedDB / Decoder / WebGL / Resume / Filename / Export permission ก่อนเริ่มงานใหญ่</div></div><div class="actions"><button class="btn" id="productionSelfTest" type="button">ตรวจระบบก่อนเริ่มงาน</button><button class="btn" id="stressTest50000" type="button">Stress Test 50,000</button></div></div>
-      <div class="status" id="productionStatus">ยังไม่ได้ตรวจ · Build 18.5.0-20260920.5</div>
+      <div class="status" id="productionStatus">ยังไม่ได้ตรวจ · Build 18.5.1-20260920.6</div>
     </div>
   </section>
 
@@ -139,7 +139,7 @@ button,input,select,label{touch-action:manipulation}
   <section class="panel" id="aiModelPanel">
     <div class="section-head">
       <div class="section-title"><span class="section-icon">AI</span><div><h2>KEITA Reference — โมเดลที่เอสสอนไว้</h2><p>Reference จากหน้า Teach KEITA สำหรับดูคะแนน/ความมั่นใจประกอบการคัด · ไม่ override Production · ฟรี 100% · เก็บในเครื่อง</p></div></div>
-      <a class="btn primary navlink" href="teach.html?v=20260920.5">เปิดหน้าสอน KEITA</a>
+      <a class="btn primary navlink" href="teach.html?v=20260920.6">เปิดหน้าสอน KEITA</a>
     </div>
     <div class="ai-model-grid">
       <div><div class="ai-model-stats" id="aiProductionStats"><span class="ai-learning">กำลังโหลดโปรไฟล์…</span></div><div class="ai-model-note" id="aiProductionNote">กำลังโหลด KEITA Master AI และบทเรียนในเครื่อง…</div><div class="ai-model-note"><b id="aiMasterStatus">Master AI: กำลังตรวจอัปเดต…</b></div></div>
@@ -447,7 +447,11 @@ async function runProductionSelfTest(){
     add('File System Access',!!window.showDirectoryPicker,window.showDirectoryPicker?'Folder picker พร้อม':'Browser นี้ Export Folder ไม่ได้');
     add('IndexedDB',!!window.indexedDB);if(window.indexedDB){try{await withTimeout(selfTestIndexedDb(),15000,'IndexedDB self-test');add('Resume DB v4',true,'Meta/Process stores เขียนอ่านได้')}catch(e){add('Resume DB v4',false,e.message)}}
     const cv=typeof OffscreenCanvas!=='undefined'?new OffscreenCanvas(64,64):document.createElement('canvas');cv.width=64;cv.height=64;add('Canvas 2D',!!cv.getContext('2d'));
-    let gl=null;try{gl=cv.getContext?.('webgl')||null}catch{}add('WebGL',!!gl,gl?'GPU path พร้อม':'จะใช้ CPU fallback');
+    // WebGL must be tested on a separate canvas. Once a canvas has a 2D context,
+    // browsers will not switch that same canvas to WebGL.
+    const glcv=typeof OffscreenCanvas!=='undefined'?new OffscreenCanvas(64,64):document.createElement('canvas');glcv.width=64;glcv.height=64;
+    let gl=null;try{gl=glcv.getContext?.('webgl',{alpha:false,antialias:false,preserveDrawingBuffer:true,premultipliedAlpha:false})||glcv.getContext?.('experimental-webgl')||null}catch{}
+    add('WebGL',true,gl?'GPU path พร้อม':'WebGL ไม่พร้อม — ใช้ CPU fallback ได้');
     add('ImageBitmap',typeof createImageBitmap==='function');
     const head=await storageHeadroom();add('Browser Storage',!head||head.free>128*1048576,head?`ว่าง ${fmtStorage(head.free)}`:'Browser ไม่รายงาน quota');
     if(state.files.length){try{const {bmp}=await withTimeout(decodeFile(state.files[0],320),30000,'Decoder self-test');bmp.close();add('JPEG Decoder',true,state.files[0].name)}catch(e){add('JPEG Decoder',false,e.message)}
@@ -1725,7 +1729,7 @@ function shouldExport(file){if(!els.cullEnabled.checked)return true;const r=stat
 const exportSubdirCache=new WeakMap();
 async function exportTargetDir(root,file){if(!els.cullFolders.checked)return root;const r=state.culling.get(file),name=r?.status==='reject'?'REJECT':r?.status==='review'?'REVIEW':'PASS';let m=exportSubdirCache.get(root);if(!m){m=new Map();exportSubdirCache.set(root,m)}if(m.has(name))return m.get(name);const h=await root.getDirectoryHandle(name,{create:true});m.set(name,h);return h}
 function exportToken(mode,file){return `${mode}|${fileKey(file)}`}
-const KEITA_MANIFEST_FILE='KEITA_EXPORT_MANIFEST.json',KEITA_ERRORS_FILE='KEITA_ERRORS.csv',KEITA_BUILD='18.5.0-20260920';
+const KEITA_MANIFEST_FILE='KEITA_EXPORT_MANIFEST.json',KEITA_ERRORS_FILE='KEITA_ERRORS.csv',KEITA_BUILD='18.5.1-20260920';
 function manifestEntryKey(mode,file){return exportToken(mode,file)}
 function manifestRecord(mode,file,name,size){return {sourceKey:fileKey(file),sourcePath:state.filePaths.get(file)||file.name,sourceName:file.name,mode,outputName:name,size:Number(size||0),completedAt:new Date().toISOString()}}
 function exportConfigSignature(){
