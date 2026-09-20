@@ -350,7 +350,7 @@ async function addWatermarkFile(file,opts={}){
   const appliesTo=opts.appliesTo??(fullFrame?detected.appliesTo:'all');
   const wm={
     id,name:file.name||`watermark-${id}.png`,file,url:URL.createObjectURL(file),naturalWidth:d.width,naturalHeight:d.height,
-    x:clamp(opts.x??(fullFrame?.5:(.5+((id%5)-2)*.035)),0,1),
+    x:clamp(opts.x??(fullFrame ? .5 : (.5+((id%5)-2)*.035)),0,1),
     y:clamp(opts.y??.5,0,1),
     width:clamp(opts.width??(fullFrame?1:.22),.03,1),
     opacity:clamp(opts.opacity??(fullFrame?1:.7),.05,1),
@@ -379,7 +379,7 @@ function renderWatermarks(){
   for(const wm of applicableWatermarks(currentItem())){
     const el=document.createElement('div');el.className=`watermark-object ${wm.id===state.selectedWatermarkId?'selected':''}`;el.dataset.wmId=wm.id;el.style.setProperty('--wm-x',`${wm.x*100}%`);el.style.setProperty('--wm-y',`${wm.y*100}%`);el.style.setProperty('--wm-w',`${watermarkPreviewWidth(wm)*100}%`);el.style.setProperty('--wm-angle',`${wm.angle}deg`);el.style.setProperty('--wm-opacity',wm.opacity);
     const img=document.createElement('img');img.src=wm.url;img.alt=wm.name;el.appendChild(img);
-    if(wm.id===state.selectedWatermarkId){const h=document.createElement('span');h.className='watermark-resize-handle';h.title='ลากเพื่อย่อ/ขยาย';el.appendChild(h);bindWatermarkResize(h,wm);}
+    if(wm.id===state.selectedWatermarkId&&!wm.fullFrame){const h=document.createElement('span');h.className='watermark-resize-handle';h.title='ลากเพื่อย่อ/ขยาย';el.appendChild(h);bindWatermarkResize(h,wm);}
     bindWatermarkDrag(el,wm);el.addEventListener('click',e=>{e.stopPropagation();state.selectedWatermarkId=wm.id;renderWatermarks();renderWatermarkPanel();});els.watermarkLayer.appendChild(el);
   }
 }
