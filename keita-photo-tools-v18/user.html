@@ -1302,12 +1302,12 @@ async function processVisual(file,a,gpuSlot=0){
   if(els.resizeEnabled.checked){const le=clamp(Number(els.longEdge.value||4500),500,12000),mx=Math.max(tw,th);if(!(els.noUpscale.checked&&mx<=le)&&Math.abs(mx-le)>1){const scale=le/mx;tw=Math.max(1,Math.round(tw*scale));th=Math.max(1,Math.round(th*scale))}}
   // Orientation + resize once. When GPU Auto Tune is available, encode directly from WebGL instead of copying a 13–20 MP frame back to a second 2D canvas.
   const base=makeFastCanvas(tw,th);const bx=base.getContext('2d');bx.imageSmoothingEnabled=true;bx.imageSmoothingQuality='high';drawExifOriented(bx,raw,o,tw,th);raw.close();
-  let c=base,isGpu=false;
-  if(a&&els.autoEnabled.checked){
-    let sh=0;if(els.sharpen.value!=='off'){if(els.sharpen.value==='low')sh=.14;else if(els.sharpen.value==='medium')sh=.22;else sh=(a.sharp||4)*.038}
-    const gpu=fastGpuTone(base,a,sh,gpuSlot);
+  let c=base,isGpu=false,tone=effectiveToneForFile(file,a);
+  if(tone){
+    let sh=0;if(els.autoEnabled.checked&&els.sharpen.value!=='off'){if(els.sharpen.value==='low')sh=.14;else if(els.sharpen.value==='medium')sh=.22;else sh=(tone.sharp||4)*.038}
+    const gpu=fastGpuTone(base,tone,sh,gpuSlot);
     if(gpu){c=gpu;isGpu=true;base.width=1;base.height=1}
-    else{const x=base.getContext('2d',{willReadFrequently:true});if(a?.nr>=5){const tmp=document.createElement('canvas');tmp.width=tw;tmp.height=th;const tx=tmp.getContext('2d');tx.filter='blur(0.25px)';tx.drawImage(base,0,0);x.clearRect(0,0,tw,th);x.drawImage(tmp,0,0);tmp.width=1;tmp.height=1}let img=x.getImageData(0,0,tw,th);applyTone(img,a);if(sh>0)sharpenImageData(img,clamp(sh,.08,.28));x.putImageData(img,0,0)}
+    else{const x=base.getContext('2d',{willReadFrequently:true});if(tone?.nr>=5){const tmp=document.createElement('canvas');tmp.width=tw;tmp.height=th;const tx=tmp.getContext('2d');tx.filter='blur(0.25px)';tx.drawImage(base,0,0);x.clearRect(0,0,tw,th);x.drawImage(tmp,0,0);tmp.width=1;tmp.height=1}let img=x.getImageData(0,0,tw,th);applyTone(img,tone);if(sh>0)sharpenImageData(img,clamp(sh,.08,.28));x.putImageData(img,0,0)}
   }
   const tEnd=performance.now();return {canvas:c,w:tw,h:th,sourceOrientation:o,isGpu,timings:{decode:tDecode-t0,render:tEnd-tDecode}}
 }
@@ -1778,9 +1778,9 @@ function dialogSetStatus(status){const idx=state.dialogIndex;if(idx==null)return
 function focusText(r){if(!r)return '<span class="muted">—</span>';const sc=Math.round(r.focusScore||0),tone=sc>=50?'var(--green)':sc>=28?'var(--amber)':'var(--red)',stable=Number.isFinite(r.subjectStableFocus)?` · เสถียร ${Math.round(r.subjectStableFocus)}`:'',acu=Number.isFinite(r.personAcutance)?` · Acu ${Number(r.personAcutance).toFixed(2)}`:'';return `<span class="focus-meter"><span class="focus-bar"><i style="width:${sc}%;background:${tone}"></i></span><b>${sc}</b></span><br><span class="tiny">C ${Math.round(r.centerFocus||0)} · ⅓ ${Math.round(r.thirdFocus||0)} · คน ${Math.round(r.personFocus||0)}${stable}${acu}${r.faceReliable?` · หน้า ${Math.round(r.faceFocus||0)}`:''}</span>`}
 function setManualCull(index,status){const f=state.files[index];if(!f)return;resetExportSession();if(!status)state.culling.delete(f);else{const r=state.culling.get(f)||{focusScore:0};r.status=status;r.reason='ปรับสถานะด้วยตนเอง';r.manual=true;state.culling.set(f,r)}if(status!=='pass'){const h=state.highlights.get(f);if(h){h.selected=false;h.pinned=false}}markFileStateDirty(f);scheduleBurstRebuild();renderCullCounts();updateHighlightCounts();renderPreview();scheduleSaveSession()}
 async function makeAfterPreviewUrl(file){
-  if(!els.autoEnabled.checked)return makeDisplayPreviewUrl(file,1200,.90);
-  let a=state.analysis.get(file);if(!a){a=await analyzeOne(file);state.analysis.set(file,a);scheduleSaveSession()}
-  const {bmp,w,h}=await decodeFile(file,1200),c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});if(a?.nr>=5)x.filter='blur(0.25px)';x.drawImage(bmp,0,0,w,h);x.filter='none';bmp.close();let img=x.getImageData(0,0,w,h);applyTone(img,a);let sh=0;if(els.sharpen.value!=='off'){if(els.sharpen.value==='low')sh=.12;else if(els.sharpen.value==='medium')sh=.20;else sh=(a.sharp||4)*.032}if(sh>0)sharpenImageData(img,clamp(sh,.06,.24));x.putImageData(img,0,0);const blob=await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error('Preview encode failed')),'image/jpeg',.90));return URL.createObjectURL(blob)
+  let a=state.analysis.get(file);if(els.autoEnabled.checked&&!a){a=await analyzeOne(file);state.analysis.set(file,a);markFileStateDirty(file);scheduleSaveSession()}
+  const tone=effectiveToneForFile(file,a);if(!tone)return makeDisplayPreviewUrl(file,1200,.90);
+  const {bmp,w,h}=await decodeFile(file,1200),c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});if(tone?.nr>=5)x.filter='blur(0.25px)';x.drawImage(bmp,0,0,w,h);x.filter='none';bmp.close();let img=x.getImageData(0,0,w,h);applyTone(img,tone);let sh=0;if(els.autoEnabled.checked&&els.sharpen.value!=='off'){if(els.sharpen.value==='low')sh=.12;else if(els.sharpen.value==='medium')sh=.20;else sh=(tone.sharp||4)*.032}if(sh>0)sharpenImageData(img,clamp(sh,.06,.24));x.putImageData(img,0,0);const blob=await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error('Preview encode failed')),'image/jpeg',.90));return URL.createObjectURL(blob)
 }
 function releasePreviewUrls(){if(state.previewObserver){try{state.previewObserver.disconnect()}catch{}state.previewObserver=null}for(const u of state.previewUrls)try{URL.revokeObjectURL(u)}catch{}state.previewUrls=[]}
 
@@ -1946,10 +1946,10 @@ function scheduleExportEstimate(){clearTimeout(state.exportEstimateTimer);state.
 function updateExportEstimate(){if(!els.exportEstimate)return;try{const p=exportPlan('all');els.exportEstimate.textContent=p.units?`ทั้ง 3 แฟ้ม: ภาพขาย ${p.all.length.toLocaleString()} รูป · HL ${p.hl.length.toLocaleString()} รูป · เขียนจริง ${p.units.toLocaleString()} ไฟล์สำเนา · สูงสุดประมาณ ${fmtStorage(p.bytes)} · แนะนำพื้นที่ว่าง ${fmtStorage(p.recommended)} · เวลา Export จะคำนวณจากความเร็วจริงหลังเริ่มงาน · กด “คำนวณพื้นที่” เพื่อเช็ก Browser storage/สิทธิ์ Folder`:'ยังไม่มีไฟล์สำหรับ Export'}catch{}}
 async function checkExportSpace(){els.result.classList.remove('hidden');try{if(!state.output){await chooseOutput();if(!state.output)return}if(!(await queryHandlePermission(state.output,'readwrite')))throw new Error('ไม่ได้รับสิทธิ์เขียน Folder Export');const plan=await preflightExport('all',{interactive:false});await verifyOutputWritable();setStatus(els.result,`Preflight ผ่าน · เขียน Folder ได้ · สูงสุด ${fmtStorage(plan.bytes)} · แนะนำพื้นที่ว่าง ${fmtStorage(plan.recommended)}`,'good')}catch(e){if(e.name==='AbortError')return;setStatus(els.result,`Preflight ไม่ผ่าน: ${e.message||e}`,'bad')}}
 function resizeActuallyNeeded(file){if(!els.resizeEnabled.checked)return false;const m=state.meta.get(file)||{},o=Number(m.orientation||1),d=orientedDimensions(Number(m.width||0),Number(m.height||0),o),le=clamp(Number(els.longEdge.value||4500),500,12000),limit=Number(els.fileLimit.value||4.8)*1048576;if(!d.w||!d.h)return true;const mx=Math.max(d.w,d.h),dimensionChange=els.noUpscale.checked?mx>le:Math.abs(mx-le)>1;return dimensionChange||Number(file.size||0)>limit}
-function canDirectClean(file){return !els.autoEnabled.checked&&!resizeActuallyNeeded(file)&&!els.dateEnabled.checked&&!els.tzEnabled.checked}
+function canDirectClean(file){return !els.autoEnabled.checked&&!hasManualEdit(file)&&!resizeActuallyNeeded(file)&&!els.dateEnabled.checked&&!els.tzEnabled.checked}
 async function buildOutputs(file,index,{needClean=true,needWatermark=false,gpuSlot=0}={}){
   const metrics={decode:0,render:0,encode:0,watermark:0};
-  const directClean=needClean&&canDirectClean(file),needsVisual=els.autoEnabled.checked||resizeActuallyNeeded(file)||needWatermark;
+  const directClean=needClean&&canDirectClean(file),needsVisual=els.autoEnabled.checked||hasManualEdit(file)||resizeActuallyNeeded(file)||needWatermark;
   // Read only the JPEG/EXIF head. Encoded JPEG stays as Blob parts so a 2 MB file is not copied through ArrayBuffer twice.
   const metaBuf=await file.slice(0,131072).arrayBuffer(),p=parseExif(metaBuf),m=state.meta.get(file)||{},date=adjustedDate(m,index),tz=els.tzEnabled.checked?els.timezone.value:m.tz;let a=state.analysis.get(file);if(els.autoEnabled.checked&&!a){a=await analyzeOne(file);state.analysis.set(file,a)}
   let clean=null,watermark=null,w=null,h=null,q=null,reencoded=false;
