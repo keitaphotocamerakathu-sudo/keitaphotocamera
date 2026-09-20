@@ -52,7 +52,7 @@ const els = {
   photographerCode: $('#photographerCode'), sequenceStart: $('#sequenceStart'), sequenceDigits: $('#sequenceDigits'), filenamePreview: $('#filenamePreview'), outputDestinationText: $('#outputDestinationText'),
   queueSelected: $('#queueSelected'), queueFavorite: $('#queueFavorite'), queueReject: $('#queueReject'), queueErrors: $('#queueErrors'), queueWatermarks: $('#queueWatermarks'),
   watermarkLayer: $('#watermarkLayer'), watermarkEnabled: $('#watermarkEnabled'), addWatermarkBtn: $('#addWatermarkBtn'), addKeitaWatermarkBtn: $('#addKeitaWatermarkBtn'), watermarkFileInput: $('#watermarkFileInput'), watermarkEmpty: $('#watermarkEmpty'), watermarkList: $('#watermarkList'), watermarkEditor: $('#watermarkEditor'), selectedWatermarkName: $('#selectedWatermarkName'), selectedWatermarkIndex: $('#selectedWatermarkIndex'), wmSize: $('#wmSize'), wmOpacity: $('#wmOpacity'), wmX: $('#wmX'), wmY: $('#wmY'), wmSizeText: $('#wmSizeText'), wmOpacityText: $('#wmOpacityText'), wmXText: $('#wmXText'), wmYText: $('#wmYText'), duplicateWatermarkBtn: $('#duplicateWatermarkBtn'), deleteWatermarkBtn: $('#deleteWatermarkBtn'),
-  lightAdjustEnabled: $('#lightAdjustEnabled'), lightAdjustPanel: $('#lightAdjustPanel'), videoBrightness: $('#videoBrightness'), videoContrast: $('#videoContrast'), videoSaturation: $('#videoSaturation'), videoBrightnessText: $('#videoBrightnessText'), videoContrastText: $('#videoContrastText'), videoSaturationText: $('#videoSaturationText'), resetLightBtn: $('#resetLightBtn'),
+  lightAdjustEnabled: $('#lightAdjustEnabled'), lightAdjustPanel: $('#lightAdjustPanel'), lightQualityChip: $('#lightQualityChip'), videoBrightness: $('#videoBrightness'), videoContrast: $('#videoContrast'), videoSaturation: $('#videoSaturation'), videoBrightnessText: $('#videoBrightnessText'), videoContrastText: $('#videoContrastText'), videoSaturationText: $('#videoSaturationText'), resetLightBtn: $('#resetLightBtn'),
   startBtn: $('#startBtn'), retryFailedBtn: $('#retryFailedBtn'), cancelBtn: $('#cancelBtn'), openOutputBtn: $('#openOutputBtn'), processMessage: $('#processMessage'),
   progressBar: $('#progressBar'), progressText: $('#progressText'), progressCount: $('#progressCount'),
 };
@@ -336,6 +336,7 @@ function updateLightAdjustmentUI(){
   if(els.videoContrastText)els.videoContrastText.textContent=`${a.contrast>0?'+':''}${a.contrast}%`;
   if(els.videoSaturationText)els.videoSaturationText.textContent=`${a.saturation>0?'+':''}${a.saturation}%`;
   els.lightAdjustPanel?.classList.toggle('controls-disabled',!state.lightAdjustEnabled);
+  if(els.lightQualityChip)els.lightQualityChip.textContent=state.lightAdjustEnabled?'ON = ENCODE 1×':'OFF = LOSSLESS';
   applyPreviewLightAdjustments();
   updateSelectionUI();
 }
