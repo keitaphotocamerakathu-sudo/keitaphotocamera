@@ -14,7 +14,7 @@
     await new Promise((ok,fail)=>{const s=document.createElement("script");s.src=src;s.onload=ok;s.onerror=()=>fail(new Error("โหลด ONNX Runtime ไม่สำเร็จ"));document.head.appendChild(s);});
   }
   async function decrypt(url,key){
-    const r=await fetch(url,{cache:"force-cache"}); if(!r.ok) throw new Error("โหลด FaceX model ไม่สำเร็จ: "+r.status);
+    const r=await fetch(url,{cache:"no-store"}); if(!r.ok) throw new Error("โหลด FaceX model ไม่สำเร็จ: "+r.status);
     const b=new Uint8Array(await r.arrayBuffer()), iv=b.subarray(0,12), data=b.subarray(12);
     const ck=await crypto.subtle.importKey("raw",key,{name:"AES-GCM"},false,["decrypt"]);
     return new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv},ck,data));
