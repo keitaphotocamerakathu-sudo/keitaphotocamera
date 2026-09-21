@@ -43,7 +43,7 @@
       user-select: none;
     }
   </style>
-  <script src="../js/face-engine-v2.js?v=20260921-v2"></script>\n</head>
+  <script src="../js/face-engine-v2.js?v=20260921-v3"></script>\n</head>
 
 <body class="bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-white min-h-screen transition safe-bottom">
 
@@ -212,7 +212,7 @@
       CONFIG.FACE_MODEL_URL ||
       "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
 
-    const FACE_SYNC_VERSION = "ultra-recall-v3+facex-v2";
+    const FACE_SYNC_VERSION = "ultra-recall-v3+facex-v3-xs-align";
     let faceModelsPromise = null;
 
     const MAX_VIDEO_SECONDS = 10;
@@ -672,7 +672,7 @@
                 media_type: "image",
                 frame_index: null,
                 video_time_seconds: null,
-                engine: "facex-v2"
+                engine: "facex-v3"
               }));
               const { error: v2Error } = await supabaseClient.from("faces").insert(v2rows);
               if (v2Error) throw v2Error;

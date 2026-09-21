@@ -496,7 +496,7 @@
       }
     }
 </style>
-  <script src="js/face-engine-v2.js?v=20260921-v2"></script>
+  <script src="js/face-engine-v2.js?v=20260921-v3"></script>
 </head>
 
 <body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-white transition safe-bottom">
@@ -1186,9 +1186,9 @@
             if (v2Faces.length) {
               const v2Descriptors = v2Faces.map(x => Array.from(x.descriptor));
               const v2Data = await callFaceSearchFunction({
-                event_id: eventId, engine: "facex-v2",
+                event_id: eventId, engine: "facex-v3",
                 descriptor: v2Descriptors[0], descriptors: v2Descriptors,
-                threshold: 0.22, max_results: 30, gap_limit: 0.025, strict: true
+                threshold: 0.30, max_results: 30, gap_limit: 0.035, strict: true
               });
               const v2Results = normalizeResults(v2Data.results || v2Data.matches || []);
               if (v2Results.length) {
