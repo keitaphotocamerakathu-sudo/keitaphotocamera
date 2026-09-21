@@ -43,7 +43,7 @@
       user-select: none;
     }
   </style>
-  <script src="../js/face-engine-profile-v1.js"></script>\n</head>
+  <script src="../js/face-engine-profile-v2.js"></script>\n</head>
 
 <body class="bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-white min-h-screen transition safe-bottom">
 
@@ -212,7 +212,7 @@
       CONFIG.FACE_MODEL_URL ||
       "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
 
-    const FACE_SYNC_VERSION = "ultra-recall-v4+facex-profile-v1";
+    const FACE_SYNC_VERSION = "ultra-recall-v5+facex-profile-v2+clean-faceapi-v4";
     let faceModelsPromise = null;
 
     const MAX_VIDEO_SECONDS = 10;
@@ -545,7 +545,7 @@
         const ssd = await faceapi
           .detectAllFaces(
             img,
-            new faceapi.SsdMobilenetv1Options({ minConfidence: 0.08 })
+            new faceapi.SsdMobilenetv1Options({ minConfidence: 0.35 })
           )
           .withFaceLandmarks()
           .withFaceDescriptors();
@@ -561,7 +561,7 @@
             img,
             new faceapi.TinyFaceDetectorOptions({
               inputSize: 1024,
-              scoreThreshold: 0.045
+              scoreThreshold: 0.24
             })
           )
           .withFaceLandmarks()
@@ -579,7 +579,7 @@
               tile,
               new faceapi.TinyFaceDetectorOptions({
                 inputSize: 768,
-                scoreThreshold: 0.035
+                scoreThreshold: 0.16
               })
             )
             .withFaceLandmarks()
@@ -593,7 +593,7 @@
           const foundSSD = await faceapi
             .detectAllFaces(
               tile,
-              new faceapi.SsdMobilenetv1Options({ minConfidence: 0.07 })
+              new faceapi.SsdMobilenetv1Options({ minConfidence: 0.25 })
             )
             .withFaceLandmarks()
             .withFaceDescriptors();
@@ -611,7 +611,7 @@
               rotated,
               new faceapi.TinyFaceDetectorOptions({
                 inputSize: 768,
-                scoreThreshold: 0.04
+                scoreThreshold: 0.20
               })
             )
             .withFaceLandmarks()
@@ -633,7 +633,7 @@
           .from("faces")
           .delete()
           .eq("photo_id", photo.id)
-          .in("engine", ["face-api-v3", "facex-profile-v1"]);
+          .in("engine", ["face-api-v4-clean", "facex-profile-v2"]);
 
         if (detections.length) {
           const rows = detections.map((det, faceIndex) => ({
@@ -646,7 +646,7 @@
             media_type: "image",
             frame_index: null,
             video_time_seconds: null,
-            engine: "face-api-v3"
+            engine: "face-api-v4-clean"
           }));
 
           const { error: insertError } = await supabaseClient
@@ -673,7 +673,7 @@
                 media_type: "image",
                 frame_index: null,
                 video_time_seconds: null,
-                engine: "facex-profile-v1"
+                engine: "facex-profile-v2"
               }));
               const { error: v2Error } = await supabaseClient.from("faces").insert(v2rows);
               if (v2Error) throw v2Error;

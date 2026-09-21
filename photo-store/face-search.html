@@ -496,7 +496,7 @@
       }
     }
 </style>
-  <script src="js/face-engine-profile-v1.js"></script>
+  <script src="js/face-engine-profile-v2.js"></script>
 </head>
 
 <body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-white transition safe-bottom">
@@ -1187,58 +1187,41 @@
               // Keep identities separate. A group photo must never become one
               // combined multi-person query. Try each detected face independently,
               // then keep only the strongest identity result.
-              const orderedFaces = [...v2Faces].sort((a, b) => {
-                const ab = a.box || {}, bb = b.box || {};
-                const aa = Math.max(0, (ab.x2 || 0) - (ab.x1 || 0)) *
-                           Math.max(0, (ab.y2 || 0) - (ab.y1 || 0));
-                const ba = Math.max(0, (bb.x2 || 0) - (bb.x1 || 0)) *
-                           Math.max(0, (bb.y2 || 0) - (bb.y1 || 0));
-                return ba - aa;
+              const dominantFace = [...v2Faces].sort((a, b) => {
+                const ab=a.box||{},bb=b.box||{};
+                const aa=Math.max(0,(ab.x2||0)-(ab.x1||0))*Math.max(0,(ab.y2||0)-(ab.y1||0));
+                const ba=Math.max(0,(bb.x2||0)-(bb.x1||0))*Math.max(0,(bb.y2||0)-(bb.y1||0));
+                return ba-aa;
+              })[0];
+
+              const descriptor = Array.from(dominantFace.descriptor);
+              const data = await callFaceSearchFunction({
+                event_id: eventId,
+                engine: "facex-profile-v2",
+                descriptor,
+                descriptors: [descriptor],
+                threshold: 0.60,
+                max_results: 60,
+                gap_limit: 0.08,
+                use_gap: false,
+                strict: true
               });
 
-              let bestV2 = null;
-
-              for (const face of orderedFaces) {
-                const descriptor = Array.from(face.descriptor);
-                const data = await callFaceSearchFunction({
-                  event_id: eventId,
-                  engine: "facex-profile-v1",
-                  descriptor,
-                  descriptors: [descriptor],
-                  // Event retrieval must use an absolute identity threshold.
-                  // Do not let an exact copy of the uploaded photo (distance ~0)
-                  // shrink the accepted range and hide side/profile shots.
-                  threshold: 0.48,
-                  max_results: 50,
-                  gap_limit: 0.08,
-                  use_gap: false,
-                  strict: true
-                });
-
-                // Do not silently fall back when the new profile index has
-                // never been built for this event. Otherwise the user sees a
-                // legacy result and assumes Profile V1 was tested.
-                if (Number(data.total_faces || 0) === 0) {
-                  Swal.fire(
-                    "Profile Face Index ยังไม่ได้ Sync",
-                    "Event นี้ยังไม่มี facex-profile-v1 ในฐานข้อมูล กรุณาไปหน้า Admin Face Sync แล้ว Sync ใหม่ให้ครบก่อนค้นหา",
-                    "warning"
-                  );
-                  return;
-                }
-
-                const faceResults = normalizeResults(data.results || data.matches || []);
-                if (!faceResults.length) continue;
-
-                const d = Number(data.best_distance);
-                const bestDistance = Number.isFinite(d)
-                  ? d
-                  : Number((data.results || data.matches || [])[0]?.distance ?? 999);
-
-                if (!bestV2 || bestDistance < bestV2.bestDistance) {
-                  bestV2 = { bestDistance, faceResults };
-                }
+              if (Number(data.total_faces || 0) === 0) {
+                Swal.fire(
+                  "Profile Face Index ยังไม่ได้ Sync",
+                  "Event นี้ยังไม่มี facex-profile-v2 ในฐานข้อมูล กรุณาไปหน้า Admin Face Sync แล้ว Sync ใหม่ให้ครบก่อนค้นหา",
+                  "warning"
+                );
+                return;
               }
+
+              const faceResults = normalizeResults(data.results || data.matches || []);
+              const d = Number(data.best_distance);
+              const bestDistance = Number.isFinite(d)
+                ? d
+                : Number((data.results || data.matches || [])[0]?.distance ?? 999);
+              const bestV2 = faceResults.length ? { bestDistance, faceResults } : null;
 
               // Keep FaceX results as the primary high-precision set, but
               // do NOT return yet. The legacy face-api index detects many more
@@ -1315,10 +1298,10 @@
         const hasPrimaryIdentity = primaryFaceResults.length > 0;
         const rescueData = await callFaceSearchFunction({
           event_id: eventId,
-          engine: "face-api-v3",
+          engine: "face-api-v4-clean",
           descriptor: rescueDescriptors[0],
           descriptors: rescueDescriptors,
-          threshold: hasPrimaryIdentity ? 0.50 : 0.40,
+          threshold: hasPrimaryIdentity ? 0.55 : 0.40,
           max_results: hasPrimaryIdentity ? 50 : 30,
           gap_limit: 0.06,
           use_gap: false,
@@ -1354,11 +1337,11 @@
           const rescue = rescueByPhotoId.get(photoId);
           const rescueDistance = Number(rescue?.distance ?? 999);
 
-          const strongProfile = profileDistance <= 0.38;
+          const strongProfile = profileDistance <= 0.40;
           const supportedProfile =
-            profileDistance <= 0.48 &&
+            profileDistance <= 0.60 &&
             rescue &&
-            rescueDistance <= 0.50;
+            rescueDistance <= 0.55;
 
           if (strongProfile || supportedProfile) {
             accepted.push({
@@ -1378,7 +1361,7 @@
 
           const rescueDistance = Number(item.distance ?? 999);
 
-          if (rescueDistance <= 0.34) {
+          if (rescueDistance <= 0.30) {
             accepted.push({
               ...item,
               match_source: "legacy-very-strong"

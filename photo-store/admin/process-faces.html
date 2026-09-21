@@ -890,7 +890,7 @@
       overflow-y: auto;
     }
   </style>
-  <script src="../js/face-engine-profile-v1.js"></script>
+  <script src="../js/face-engine-profile-v2.js"></script>
 </head>
 
 <body class="bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-white min-h-screen transition safe-bottom">
@@ -1171,7 +1171,7 @@
       CONFIG.FACE_MODEL_URL ||
       "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
 
-    const FACE_SYNC_VERSION = "ultra-recall-v4+facex-profile-v1";
+    const FACE_SYNC_VERSION = "ultra-recall-v5+facex-profile-v2+clean-faceapi-v4";
 
     const eventSelect = document.getElementById("eventSelect");
     const eventHelp = document.getElementById("eventHelp");
@@ -1640,7 +1640,7 @@
         .from("faces")
         .delete()
         .eq("photo_id", photoId)
-        .in("engine", ["face-api-v3", "facex-profile-v1"]);
+        .in("engine", ["face-api-v4-clean", "facex-profile-v2"]);
 
       if (error) {
         throw new Error("ลบ faces เดิมไม่สำเร็จ: " + error.message);
@@ -1711,7 +1711,7 @@
           const v2 = await KeitaFaceV2.analyze(img, { deep: true });
           const v2Rows = v2.map((det, faceIndex) => buildFaceRow({
             item, descriptor: det.descriptor, faceIndex, mediaType: "image",
-            imageUrl: safePreviewUrl, frameIndex: null, videoTimeSeconds: null, engine: "facex-profile-v1"
+            imageUrl: safePreviewUrl, frameIndex: null, videoTimeSeconds: null, engine: "facex-profile-v2"
           }));
           if (v2Rows.length) await insertFaceRows(v2Rows);
           log(`Face V2: ${item.filename || item.id} พบ ${v2Rows.length} หน้า`);
@@ -1821,7 +1821,7 @@
       imageUrl,
       frameIndex,
       videoTimeSeconds,
-      engine = "face-api-v3"
+      engine = "face-api-v4-clean"
     }) {
       return {
         event_id: item.event_id,
@@ -2064,7 +2064,7 @@
 
       // Full-frame multi-detector passes.
       try {
-        const ssd = await detectFacesWithSSD(prepared, 0.08);
+        const ssd = await detectFacesWithSSD(prepared, 0.35);
         allDetections.push(...(ssd || []));
       } catch (err) {
         console.warn("SSD face pass failed:", err);
@@ -2072,7 +2072,7 @@
 
       for (const size of [1024, 768]) {
         try {
-          const tiny = await detectFacesWithTiny(prepared, size, 0.045);
+          const tiny = await detectFacesWithTiny(prepared, size, 0.24);
           allDetections.push(...(tiny || []));
         } catch (err) {
           console.warn("Tiny full-image face pass failed:", err);
@@ -2083,13 +2083,13 @@
       const tiles = createDetectionTiles(prepared);
       for (const tile of tiles) {
         try {
-          const tinyTile = await detectFacesWithTiny(tile, 768, 0.035);
+          const tinyTile = await detectFacesWithTiny(tile, 768, 0.16);
           allDetections.push(...(tinyTile || []));
         } catch (err) {
           console.warn("Tiny tile face pass failed:", err);
         }
         try {
-          const ssdTile = await detectFacesWithSSD(tile, 0.07);
+          const ssdTile = await detectFacesWithSSD(tile, 0.25);
           allDetections.push(...(ssdTile || []));
         } catch (err) {
           console.warn("SSD tile face pass failed:", err);
@@ -2101,7 +2101,7 @@
       for (const angle of [-30, -15, 15, 30]) {
         const rotated = rotateCanvas(prepared, angle);
         try {
-          const rotatedFaces = await detectFacesWithTiny(rotated, 768, 0.04);
+          const rotatedFaces = await detectFacesWithTiny(rotated, 768, 0.20);
           allDetections.push(...(rotatedFaces || []));
         } catch (err) {
           console.warn("Rotated face pass failed:", angle, err);
