@@ -212,7 +212,7 @@
       CONFIG.FACE_MODEL_URL ||
       "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
 
-    const FACE_SYNC_VERSION = "high-recall-v2";
+    const FACE_SYNC_VERSION = "ultra-recall-v3";
     let faceModelsPromise = null;
 
     const MAX_VIDEO_SECONDS = 10;
@@ -479,19 +479,16 @@
         return [];
       }
 
-      const tileWidth = Math.min(width, Math.ceil(width * 0.62));
-      const tileHeight = Math.min(height, Math.ceil(height * 0.62));
-
-      const positions = [
-        [0, 0],
-        [Math.max(0, width - tileWidth), 0],
-        [0, Math.max(0, height - tileHeight)],
-        [Math.max(0, width - tileWidth), Math.max(0, height - tileHeight)]
-      ];
+      const tileWidth = Math.min(width, Math.ceil(width * 0.46));
+      const tileHeight = Math.min(height, Math.ceil(height * 0.46));
+      const xs = [0, Math.max(0, Math.round((width - tileWidth) / 2)), Math.max(0, width - tileWidth)];
+      const ys = [0, Math.max(0, Math.round((height - tileHeight) / 2)), Math.max(0, height - tileHeight)];
+      const positions = [];
+      for (const y of ys) for (const x of xs) positions.push([x, y]);
 
       return positions.map(([sx, sy]) => {
         const canvas = document.createElement("canvas");
-        const maxLongEdge = 1600;
+        const maxLongEdge = 2000;
         const ratio = Math.min(
           1,
           maxLongEdge / Math.max(tileWidth, tileHeight)
@@ -521,6 +518,23 @@
       }).filter(Boolean);
     }
 
+    function rotateUploadFaceCanvas(input, degrees) {
+      const width = Number(input.naturalWidth || input.width || 0);
+      const height = Number(input.naturalHeight || input.height || 0);
+      const rad = Number(degrees || 0) * Math.PI / 180;
+      const sin = Math.abs(Math.sin(rad));
+      const cos = Math.abs(Math.cos(rad));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.ceil(width * cos + height * sin));
+      canvas.height = Math.max(1, Math.ceil(width * sin + height * cos));
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return input;
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(rad);
+      ctx.drawImage(input, -width / 2, -height / 2, width, height);
+      return canvas;
+    }
+
     async function detectUploadFaces(faceScanFile) {
       await ensureUploadFaceModels();
 
@@ -531,7 +545,7 @@
         const ssd = await faceapi
           .detectAllFaces(
             img,
-            new faceapi.SsdMobilenetv1Options({ minConfidence: 0.12 })
+            new faceapi.SsdMobilenetv1Options({ minConfidence: 0.08 })
           )
           .withFaceLandmarks()
           .withFaceDescriptors();
@@ -546,8 +560,8 @@
           .detectAllFaces(
             img,
             new faceapi.TinyFaceDetectorOptions({
-              inputSize: 768,
-              scoreThreshold: 0.08
+              inputSize: 1024,
+              scoreThreshold: 0.045
             })
           )
           .withFaceLandmarks()
@@ -564,20 +578,51 @@
             .detectAllFaces(
               tile,
               new faceapi.TinyFaceDetectorOptions({
-                inputSize: 608,
-                scoreThreshold: 0.06
+                inputSize: 768,
+                scoreThreshold: 0.035
               })
             )
             .withFaceLandmarks()
             .withFaceDescriptors();
-
           all.push(...(found || []));
         } catch (err) {
-          console.warn("Upload tile face pass failed:", err);
+          console.warn("Upload Tiny tile face pass failed:", err);
+        }
+
+        try {
+          const foundSSD = await faceapi
+            .detectAllFaces(
+              tile,
+              new faceapi.SsdMobilenetv1Options({ minConfidence: 0.07 })
+            )
+            .withFaceLandmarks()
+            .withFaceDescriptors();
+          all.push(...(foundSSD || []));
+        } catch (err) {
+          console.warn("Upload SSD tile face pass failed:", err);
         }
       }
 
-      return dedupeUploadFaces(all, 0.18);
+      for (const angle of [-30, -15, 15, 30]) {
+        const rotated = rotateUploadFaceCanvas(img, angle);
+        try {
+          const found = await faceapi
+            .detectAllFaces(
+              rotated,
+              new faceapi.TinyFaceDetectorOptions({
+                inputSize: 768,
+                scoreThreshold: 0.04
+              })
+            )
+            .withFaceLandmarks()
+            .withFaceDescriptors();
+          all.push(...(found || []));
+        } catch (err) {
+          console.warn("Upload rotated face pass failed:", angle, err);
+        }
+      }
+
+      return dedupeUploadFaces(all, 0.16);
     }
 
     async function autoSyncUploadedImage(photo, faceScanFile, previewUrl) {
@@ -764,7 +809,7 @@
               throw new Error("อ่านขนาดรูปไม่ได้");
             }
 
-            const maxLongEdge = 2400;
+            const maxLongEdge = 3600;
             const ratio = Math.min(
               1,
               maxLongEdge / Math.max(sourceWidth, sourceHeight)
@@ -1104,7 +1149,7 @@
             <div class="font-bold">กำลังสร้างไฟล์สำหรับสแกนใบหน้า ${index}/${total}</div>
             <div class="break-all">${escapeHtml(file.name)}</div>
             <div class="text-xs text-slate-500 mt-1">
-              ด้านยาวไม่เกิน 2,400px · คุณภาพสูงสำหรับ AI
+              ด้านยาวไม่เกิน 3,600px · Ultra Recall สำหรับใบหน้าเล็ก/ไกล
             </div>
           `;
 
