@@ -1329,13 +1329,81 @@
           rescueData.results || rescueData.matches || []
         );
 
-        // FaceX stays first because it is the precision anchor. Legacy results
-        // only add photos not already returned by FaceX, which is specifically
-        // intended to recover profile/side shots.
-        results = dedupeResultsByPhotoId([
-          ...primaryFaceResults,
-          ...rescueResults
-        ]);
+        // Two-engine identity consensus:
+        // 1) Strong Profile V1 matches are accepted directly.
+        // 2) Wider Profile V1 matches (useful for ~45°/profile views) must also
+        //    be independently supported by face-api-v3 for the SAME photo.
+        // 3) Legacy-only rescue is allowed only at a very strong distance.
+        // This keeps the newly recovered side-angle photos while removing the
+        // unrelated runner that appeared when we simply unioned both engines.
+        const rescueByPhotoId = new Map(
+          rescueResults.map(item => [
+            String(item.photo?.id || item.photo_id || item.id || ""),
+            item
+          ])
+        );
+
+        const accepted = [];
+        const acceptedIds = new Set();
+
+        for (const item of primaryFaceResults) {
+          const photoId = String(item.photo?.id || item.photo_id || item.id || "");
+          if (!photoId) continue;
+
+          const profileDistance = Number(item.distance ?? 999);
+          const rescue = rescueByPhotoId.get(photoId);
+          const rescueDistance = Number(rescue?.distance ?? 999);
+
+          const strongProfile = profileDistance <= 0.38;
+          const supportedProfile =
+            profileDistance <= 0.48 &&
+            rescue &&
+            rescueDistance <= 0.50;
+
+          if (strongProfile || supportedProfile) {
+            accepted.push({
+              ...item,
+              match_source: strongProfile ? "profile-strong" : "profile+legacy"
+            });
+            acceptedIds.add(photoId);
+          }
+        }
+
+        // A face-api-only result must be extremely strong before it can add a
+        // photo that Profile V1 did not match. This is intentionally stricter
+        // than the normal rescue threshold to avoid false positives.
+        for (const item of rescueResults) {
+          const photoId = String(item.photo?.id || item.photo_id || item.id || "");
+          if (!photoId || acceptedIds.has(photoId)) continue;
+
+          const rescueDistance = Number(item.distance ?? 999);
+
+          if (rescueDistance <= 0.34) {
+            accepted.push({
+              ...item,
+              match_source: "legacy-very-strong"
+            });
+            acceptedIds.add(photoId);
+          }
+        }
+
+        console.debug("Face identity consensus", {
+          profile: primaryFaceResults.map(item => ({
+            id: item.photo?.id || item.photo_id,
+            distance: item.distance
+          })),
+          legacy: rescueResults.map(item => ({
+            id: item.photo?.id || item.photo_id,
+            distance: item.distance
+          })),
+          accepted: accepted.map(item => ({
+            id: item.photo?.id || item.photo_id,
+            distance: item.distance,
+            source: item.match_source
+          }))
+        });
+
+        results = dedupeResultsByPhotoId(accepted);
 
         Swal.close();
 
