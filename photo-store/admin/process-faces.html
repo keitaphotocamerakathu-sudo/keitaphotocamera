@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <title>Process Faces</title>
+  <link rel="icon" href="data:,">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -786,20 +787,7 @@
 
     function toggleDarkMode() {
       const html = document.documentElement;
-
       html.classList.toggle("dark");
-
-      const isDark = html.classList.contains("dark");
-
-      try {
-        localStorage.setItem(
-          "darkMode",
-          isDark ? "1" : "0"
-        );
-      } catch (storageErr) {
-        console.warn("Browser storage unavailable; continue without saved theme", storageErr);
-      }
-
       updateDarkButton();
     }
 
@@ -817,17 +805,8 @@
     }
 
     function initDarkMode() {
-      let saved = null;
-      try {
-        saved = localStorage.getItem("darkMode");
-      } catch (storageErr) {
-        console.warn("Browser storage unavailable; continue without saved theme", storageErr);
-      }
-
-      if (saved === "1") {
-        document.documentElement.classList.add("dark");
-      }
-
+      // Face Sync intentionally does not use localStorage / IndexedDB.
+      // This keeps processing independent from damaged Chrome profile storage.
       updateDarkButton();
     }
 
@@ -1512,6 +1491,8 @@
       }
 
       log("กำลังโหลด face-api model...");
+      const syncStatus = document.getElementById("syncProgressStatus");
+      if (syncStatus) syncStatus.textContent = "กำลังโหลด Face Models...";
 
       // High-recall mode uses both detectors:
       // SSD is stronger for difficult/smaller faces, Tiny adds a second opinion.
@@ -1526,10 +1507,14 @@
 
       modelsLoaded = true;
 
+      if (syncStatus) syncStatus.textContent = "Face Models พร้อม · กำลังเริ่ม Sync...";
       log("โหลด face-api model สำเร็จ");
     }
 
     async function startProcessFaces() {
+      console.log("[Face Sync] Start requested", new Date().toISOString());
+      const status = document.getElementById("syncProgressStatus");
+      if (status) status.textContent = "รับคำสั่งแล้ว · กำลังเตรียม Sync...";
       const eventId = eventSelect.value;
 
       if (!eventId) {
@@ -2499,10 +2484,6 @@
     function toggleDarkMode() {
       const html = document.documentElement;
       html.classList.toggle("dark");
-
-      const isDark = html.classList.contains("dark");
-      localStorage.setItem("darkMode", isDark ? "1" : "0");
-
       updateDarkButton();
     }
 
@@ -2515,17 +2496,8 @@
     }
 
     function initDarkMode() {
-      let saved = null;
-      try {
-        saved = localStorage.getItem("darkMode");
-      } catch (storageErr) {
-        console.warn("Browser storage unavailable; continue without saved theme", storageErr);
-      }
-
-      if (saved === "1") {
-        document.documentElement.classList.add("dark");
-      }
-
+      // Face Sync intentionally does not use localStorage / IndexedDB.
+      // This keeps processing independent from damaged Chrome profile storage.
       updateDarkButton();
     }
 
