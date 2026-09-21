@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ตรวจระบบค้นหาใบหน้า</title><script src="../js/face-engine-free-v1.js?v=20260921-free1"></script>
+<style>body{font:16px system-ui;max-width:680px;margin:40px auto;padding:20px;background:#10141c;color:#f5f7fa}button,input{font:inherit;padding:12px;border-radius:10px}button{background:#24cd8d;border:0}#log{white-space:pre-wrap;line-height:1.8}a{color:#46dda2}</style></head>
+<body><h1>ตรวจระบบค้นหาใบหน้า</h1><p>ประมวลผลบนอุปกรณ์ ไม่มีค่า API เพิ่ม</p><button id="check">ตรวจความพร้อม</button><p><label>ทดสอบภาพของคุณ <input id="photo" type="file" accept="image/*"></label></p><pre id="log">พร้อมตรวจ</pre><p><a href="process-faces.html">กลับหน้า Face Sync</a></p>
+<script>
+const log=document.getElementById('log');
+async function check(file){
+  document.getElementById('check').disabled=true;let image;
+  try{
+    await KeitaFaceFree.load({onProgress:p=>{log.textContent='กำลังโหลด '+p.model+' '+Math.round(p.received/p.total*100)+'%';}});
+    if(file)image=await KeitaFaceFree.loadImage(file);else{image=document.createElement('canvas');image.width=image.height=640;image.getContext('2d').fillRect(0,0,640,640);}
+    const started=performance.now(),scan=await KeitaFaceFree.analyze(image,{deep:false});
+    log.textContent='พร้อมใช้งาน · FREE 1\nพบ '+scan.faces.length+' ใบหน้า\nประมวลผล '+Math.round(performance.now()-started)+' ms\nโมเดลทั้งสองผ่านการตรวจสอบไฟล์แล้ว';
+  }catch(error){log.textContent='ตรวจไม่ผ่าน: '+error.message;console.error(error);}
+  finally{if(image?.src)image.src='';document.getElementById('check').disabled=false;}
+}
+document.getElementById('check').addEventListener('click',()=>check());document.getElementById('photo').addEventListener('change',e=>{if(e.target.files[0])check(e.target.files[0]);});
+</script></body></html>
