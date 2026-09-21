@@ -62,7 +62,9 @@
     c.fillStyle="#000";c.fillRect(0,0,112,112);c.drawImage(src,sx,sy,side,side,0,0,112,112);
     const px=c.getImageData(0,0,112,112).data,N=112*112,input=new Float32Array(3*N);
     for(let i=0,p=0;i<N;i++){const r=px[p++],g=px[p++],b=px[p++];p++;input[i]=(r-127.5)/128;input[N+i]=(g-127.5)/128;input[2*N+i]=(b-127.5)/128;}
-    const o=await recSess.run({input:new ort.Tensor("float32",input,[1,3,112,112])});return Array.from(o.embedding.data);
+    const o=await recSess.run({input:new ort.Tensor("float32",input,[1,3,112,112])});
+    const raw=Array.from(o.embedding.data);let norm=0;for(const x of raw)norm+=x*x;norm=Math.sqrt(norm)||1;
+    return raw.map(x=>x/norm);
   }
   async function analyze(src,{deep=true}={}){
     await load(); const {w,h}=sourceSize(src); if(!w||!h) throw new Error("ขนาดภาพไม่ถูกต้อง");
