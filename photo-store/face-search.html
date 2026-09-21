@@ -496,6 +496,7 @@
       }
     }
 </style>
+  <script src="js/face-engine-v2.js?v=20260921-v2"></script>
 </head>
 
 <body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-white transition safe-bottom">
@@ -1022,6 +1023,8 @@
       await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
       await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
 
+      try { if (window.KeitaFaceV2) await KeitaFaceV2.load(); } catch (v2Err) { console.warn("Face V2 unavailable; legacy fallback active", v2Err); }
+
       Swal.close();
     }
 
@@ -1176,6 +1179,29 @@
         });
 
         const img = await faceapi.bufferToImage(selectedFile);
+
+        if (window.KeitaFaceV2) {
+          try {
+            const v2Faces = await KeitaFaceV2.analyze(img, { deep: false });
+            if (v2Faces.length) {
+              const v2Descriptors = v2Faces.map(x => Array.from(x.descriptor));
+              const v2Data = await callFaceSearchFunction({
+                event_id: eventId, engine: "facex-v2",
+                descriptor: v2Descriptors[0], descriptors: v2Descriptors,
+                threshold: 0.62, max_results: 80, gap_limit: 0.14, strict: false
+              });
+              const v2Results = normalizeResults(v2Data.results || v2Data.matches || []);
+              if (v2Results.length) {
+                results = v2Results;
+                Swal.close();
+                renderResults();
+                return;
+              }
+            }
+          } catch (v2Err) {
+            console.warn("Face V2 search fallback:", v2Err);
+          }
+        }
 
         const detections = await detectSearchFaces(img);
 

@@ -890,6 +890,7 @@
       overflow-y: auto;
     }
   </style>
+  <script src="../js/face-engine-v2.js?v=20260921-v2"></script>
 </head>
 
 <body class="bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-white min-h-screen transition safe-bottom">
@@ -1455,6 +1456,8 @@
         faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
       ]);
 
+      try { if (window.KeitaFaceV2) { await KeitaFaceV2.load(); log("โหลด KEITA Face Engine V2 สำเร็จ"); } } catch (v2Err) { console.warn(v2Err); log("Face V2 โหลดไม่สำเร็จ — Ultra Recall v3 ยังทำงานต่อ", "warn"); }
+
       modelsLoaded = true;
 
       log("โหลด face-api model สำเร็จ");
@@ -1635,6 +1638,22 @@
       });
 
       await insertFaceRows(rows);
+
+      if (window.KeitaFaceV2) {
+        try {
+          const v2 = await KeitaFaceV2.analyze(img, { deep: true });
+          const v2Rows = v2.map((det, faceIndex) => buildFaceRow({
+            item, descriptor: det.descriptor, faceIndex, mediaType: "image",
+            imageUrl: safePreviewUrl, frameIndex: null, videoTimeSeconds: null, engine: "facex-v2"
+          }));
+          if (v2Rows.length) await insertFaceRows(v2Rows);
+          log(`Face V2: ${item.filename || item.id} พบ ${v2Rows.length} หน้า`);
+        } catch (v2Err) {
+          console.warn("Face V2 image scan skipped", v2Err);
+          log(`Face V2 ข้ามไฟล์นี้: ${v2Err.message || v2Err}`, "warn");
+        }
+      }
+
       await markFaceSyncComplete(item, rows.length);
 
       facesFoundCount += rows.length;
@@ -1734,7 +1753,8 @@
       mediaType,
       imageUrl,
       frameIndex,
-      videoTimeSeconds
+      videoTimeSeconds,
+      engine = "face-api-v3"
     }) {
       return {
         event_id: item.event_id,
@@ -1745,7 +1765,8 @@
         filename: item.filename || null,
         media_type: mediaType,
         frame_index: frameIndex,
-        video_time_seconds: videoTimeSeconds
+        video_time_seconds: videoTimeSeconds,
+        engine
       };
     }
 
@@ -1769,13 +1790,15 @@
           descriptor: row.descriptor,
           face_index: row.face_index,
           image_url: row.image_url,
-          filename: row.filename
+          filename: row.filename,
+          engine: row.engine
         })),
 
         rows.map(row => ({
           event_id: row.event_id,
           photo_id: row.photo_id,
-          descriptor: row.descriptor
+          descriptor: row.descriptor,
+          engine: row.engine
         }))
       ];
 
