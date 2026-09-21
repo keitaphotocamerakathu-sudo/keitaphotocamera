@@ -1205,9 +1205,13 @@
                   engine: "facex-v2",
                   descriptor,
                   descriptors: [descriptor],
-                  threshold: 0.42,
-                  max_results: 30,
+                  // Event retrieval must use an absolute identity threshold.
+                  // Do not let an exact copy of the uploaded photo (distance ~0)
+                  // shrink the accepted range and hide side/profile shots.
+                  threshold: 0.38,
+                  max_results: 50,
                   gap_limit: 0.08,
+                  use_gap: false,
                   strict: true
                 });
 
@@ -1291,18 +1295,22 @@
           title: t().loadingSearch
         });
 
-        // Search the legacy 128D index only as a profile rescue. Strict server
-        // limits are intentionally kept: threshold is effectively capped at
-        // 0.40 and gap at 0.06 by face-search.
+        // Profile rescue: if FaceX already anchored the identity, allow the
+        // legacy face-api index to search more broadly for side/profile shots.
+        // The old best-distance gap is explicitly disabled because an exact
+        // query photo otherwise makes the gap almost zero and removes every
+        // cross-pose match. If FaceX found nothing, keep this rescue strict.
+        const hasPrimaryIdentity = primaryFaceResults.length > 0;
         const rescueData = await callFaceSearchFunction({
           event_id: eventId,
           engine: "face-api-v3",
           descriptor: rescueDescriptors[0],
           descriptors: rescueDescriptors,
-          threshold: 0.40,
-          max_results: 30,
+          threshold: hasPrimaryIdentity ? 0.50 : 0.40,
+          max_results: hasPrimaryIdentity ? 50 : 30,
           gap_limit: 0.06,
-          strict: true
+          use_gap: false,
+          strict: !hasPrimaryIdentity
         });
 
         const rescueResults = normalizeResults(
