@@ -1224,63 +1224,98 @@
                 }
               }
 
-              if (bestV2?.faceResults?.length) {
-                results = bestV2.faceResults;
-                Swal.close();
-                renderResults();
-                return;
-              }
+              // Keep FaceX results as the primary high-precision set, but
+              // do NOT return yet. The legacy face-api index detects many more
+              // profile/side faces, so we run it as a conservative rescue pass
+              // and merge only unique photos afterwards.
+              window.__keitaPrimaryFaceResults = bestV2?.faceResults || [];
             }
           } catch (v2Err) {
             console.warn("Face V2 search fallback:", v2Err);
           }
         }
 
+        const primaryFaceResults = Array.isArray(window.__keitaPrimaryFaceResults)
+          ? window.__keitaPrimaryFaceResults
+          : [];
+        window.__keitaPrimaryFaceResults = [];
+
         const detections = await detectSearchFaces(img);
 
         if (!detections.length) {
+          if (primaryFaceResults.length) {
+            results = primaryFaceResults;
+            Swal.close();
+            renderResults();
+            return;
+          }
+
           Swal.fire(t().noFace, t().noFaceDesc, "warning");
           return;
         }
 
-        const descriptors = detections.map(item =>
-          Array.from(item.descriptor)
-        );
+        // Choose ONE identity for the legacy rescue too. This prevents a group
+        // photo from turning into an "any person in this image" search.
+        const detectionArea = item => {
+          const box = item?.detection?.box || item?.box || {};
+          const width = Number(box.width ?? ((box.x2 || 0) - (box.x1 || 0))) || 0;
+          const height = Number(box.height ?? ((box.y2 || 0) - (box.y1 || 0))) || 0;
+          return Math.max(0, width) * Math.max(0, height);
+        };
 
-        // Also inspect every face in the mirrored image. This helps
-        // side-facing / asymmetric poses while keeping the same strict
-        // server threshold.
+        const dominantDetection = [...detections]
+          .sort((a, b) => detectionArea(b) - detectionArea(a))[0];
+
+        const rescueDescriptors = [
+          Array.from(dominantDetection.descriptor)
+        ];
+
+        // Mirroring is useful for strong left/right profiles. Keep only the
+        // dominant mirrored face so another runner cannot leak into the query.
         try {
           const mirroredCanvas = createMirroredFaceCanvas(img);
 
           if (mirroredCanvas) {
             const mirroredDetections = await detectSearchFaces(mirroredCanvas);
-
-            for (const item of mirroredDetections) {
-              descriptors.push(Array.from(item.descriptor));
+            if (mirroredDetections.length) {
+              const dominantMirrored = [...mirroredDetections]
+                .sort((a, b) => detectionArea(b) - detectionArea(a))[0];
+              rescueDescriptors.push(Array.from(dominantMirrored.descriptor));
             }
           }
         } catch (mirrorErr) {
-          console.warn("Mirror face descriptors skipped:", mirrorErr);
+          console.warn("Mirror face descriptor skipped:", mirrorErr);
         }
-
-        const descriptor = descriptors[0];
 
         Swal.update({
           title: t().loadingSearch
         });
 
-        const data = await callFaceSearchFunction({
+        // Search the legacy 128D index only as a profile rescue. Strict server
+        // limits are intentionally kept: threshold is effectively capped at
+        // 0.40 and gap at 0.06 by face-search.
+        const rescueData = await callFaceSearchFunction({
           event_id: eventId,
-          descriptor,
-          descriptors,
-          threshold: 0.42,
-          max_results: 50,
+          engine: "face-api-v3",
+          descriptor: rescueDescriptors[0],
+          descriptors: rescueDescriptors,
+          threshold: 0.40,
+          max_results: 30,
           gap_limit: 0.06,
           strict: true
         });
 
-        results = normalizeResults(data.results || data.matches || []);
+        const rescueResults = normalizeResults(
+          rescueData.results || rescueData.matches || []
+        );
+
+        // FaceX stays first because it is the precision anchor. Legacy results
+        // only add photos not already returned by FaceX, which is specifically
+        // intended to recover profile/side shots.
+        results = dedupeResultsByPhotoId([
+          ...primaryFaceResults,
+          ...rescueResults
+        ]);
 
         Swal.close();
 
