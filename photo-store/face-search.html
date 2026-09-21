@@ -496,7 +496,7 @@
       }
     }
 </style>
-  <script src="js/face-engine-v2-stable1.js"></script>
+  <script src="js/face-engine-profile-v1.js"></script>
 </head>
 
 <body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-white transition safe-bottom">
@@ -1202,13 +1202,13 @@
                 const descriptor = Array.from(face.descriptor);
                 const data = await callFaceSearchFunction({
                   event_id: eventId,
-                  engine: "facex-v2",
+                  engine: "facex-profile-v1",
                   descriptor,
                   descriptors: [descriptor],
                   // Event retrieval must use an absolute identity threshold.
                   // Do not let an exact copy of the uploaded photo (distance ~0)
                   // shrink the accepted range and hide side/profile shots.
-                  threshold: 0.38,
+                  threshold: 0.48,
                   max_results: 50,
                   gap_limit: 0.08,
                   use_gap: false,

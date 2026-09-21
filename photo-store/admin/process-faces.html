@@ -890,7 +890,7 @@
       overflow-y: auto;
     }
   </style>
-  <script src="../js/face-engine-v2-stable1.js"></script>
+  <script src="../js/face-engine-profile-v1.js"></script>
 </head>
 
 <body class="bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-white min-h-screen transition safe-bottom">
@@ -1171,7 +1171,7 @@
       CONFIG.FACE_MODEL_URL ||
       "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
 
-    const FACE_SYNC_VERSION = "ultra-recall-v3+facex-v2";
+    const FACE_SYNC_VERSION = "ultra-recall-v4+facex-profile-v1";
 
     const eventSelect = document.getElementById("eventSelect");
     const eventHelp = document.getElementById("eventHelp");
@@ -1639,7 +1639,8 @@
       const { error } = await sb
         .from("faces")
         .delete()
-        .eq("photo_id", photoId);
+        .eq("photo_id", photoId)
+        .in("engine", ["face-api-v3", "facex-profile-v1"]);
 
       if (error) {
         throw new Error("ลบ faces เดิมไม่สำเร็จ: " + error.message);
@@ -1710,7 +1711,7 @@
           const v2 = await KeitaFaceV2.analyze(img, { deep: true });
           const v2Rows = v2.map((det, faceIndex) => buildFaceRow({
             item, descriptor: det.descriptor, faceIndex, mediaType: "image",
-            imageUrl: safePreviewUrl, frameIndex: null, videoTimeSeconds: null, engine: "facex-v2"
+            imageUrl: safePreviewUrl, frameIndex: null, videoTimeSeconds: null, engine: "facex-profile-v1"
           }));
           if (v2Rows.length) await insertFaceRows(v2Rows);
           log(`Face V2: ${item.filename || item.id} พบ ${v2Rows.length} หน้า`);
