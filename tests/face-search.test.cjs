@@ -58,3 +58,20 @@ test('every inline script and new JS file parses',()=>{
  }
  for(const p of ['face-data.js','face-search-free.js','face-engine-free-v1.js'])new vm.Script(fs.readFileSync('photo-store/js/'+p,'utf8'),{filename:p});
 });
+test('group selection queries only the clicked person; explicit refinement adds only that person and cancel adds nothing',async()=>{
+ const f1={box:{x1:20,y1:10,x2:70,y2:70},descriptor:vec()},f2={box:{x1:140,y1:10,x2:195,y2:70},descriptor:vec(0)};
+ const requests=[],legacyBoxes=[];let faces=[f1,f2],clickIndex=1,cancel=false,rendered=0;
+ function element(tag){return {tag,style:{},children:[],setAttribute(){},append(...nodes){this.children.push(...nodes)},addEventListener(type,fn){this[type]=fn},getContext:()=>({drawImage(){}})}}
+ const debug={textContent:''};const context={console,window:{},document:{createElement:element,getElementById:()=>debug},currentLang:'en',t:()=>({loadingFace:'Analyzing',loadingSearch:'Searching'}),eventId:eid,results:[],Swal:{fire:async o=>{if(o.html&&!cancel)o.html.children[clickIndex].click()},close(){},update(){},showLoading(){}},KeitaFaceFree:{engine:'sface-yunet-v1',analyze:async()=>({faces}),geometry:{iou:(a,b)=>a.x1===b.x1?1:0}},callFaceSearchFunction:async q=>{requests.push(q);return {total_faces:10,results:[]}},normalizeResults:x=>x,searchByFaceLegacy:async(img,box)=>{legacyBoxes.push(box);return []},renderResults:()=>rendered++,loadModels:async()=>{},detectSearchFaces:async()=>[]};
+ vm.runInNewContext(fs.readFileSync('photo-store/js/face-search-free.js','utf8'),context);
+ const img={naturalWidth:240,naturalHeight:100};await context.runSelectedFaceSearch(img);
+ assert.equal(requests.length,1);assert.deepEqual(Array.from(requests[0].descriptors[0]),f2.descriptor);assert.equal(requests[0].descriptors.length,1);assert.equal(legacyBoxes[0].x1,140);
+ faces=[f2];clickIndex=0;await context.runSelectedFaceSearch(img,{append:true});assert.equal(requests[1].descriptors.length,2);
+ cancel=true;await context.runSelectedFaceSearch(img,{append:true});assert.equal(requests.length,2);assert.equal(rendered,2);
+});
+test('cross-engine rescue refuses another face when the selected face is not detected',()=>{
+ const context={console,window:{},currentLang:'en'};vm.runInNewContext(fs.readFileSync('photo-store/js/face-engine-free-v1.js','utf8'),context);context.KeitaFaceFree=context.window.KeitaFaceFree;
+ vm.runInNewContext(fs.readFileSync('photo-store/js/face-search-free.js','utf8'),context);
+ const face={detection:{box:{x:10,y:10,width:30,height:30}}};assert.equal(context.matchSelectedFace([face],{x1:100,y1:100,x2:130,y2:130}),null);
+ assert.equal(context.matchSelectedFace([face],{x1:10,y1:10,x2:40,y2:40}),face);
+});
