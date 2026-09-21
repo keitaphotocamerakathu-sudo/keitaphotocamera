@@ -80,12 +80,12 @@
     const ca=Math.cos(ang)*scale, sa=Math.sin(ang)*scale;
     const smx=(le[0]+re[0])/2,smy=(le[1]+re[1])/2,tmx=(TL[0]+TR[0])/2,tmy=(TL[1]+TR[1])/2;
     const tx=tmx-(ca*smx-sa*smy), ty=tmy-(sa*smx+ca*smy);
-    // Canvas transforms source coordinates into destination coordinates.
-    // Apply the forward similarity transform calculated above. V3 used the
-    // inverse here, which misaligned recognition crops and hurt cross-pose recall.
+    // Keep the original FaceX V3 crop transform so query descriptors stay
+    // compatible with the already-populated facex-v2 index in production.
+    const inv=1/(scale||1),ica=Math.cos(ang)*inv,isa=Math.sin(ang)*inv;
     const cv=document.createElement("canvas");cv.width=112;cv.height=112;const c=cv.getContext("2d",{willReadFrequently:true});
     c.fillStyle="#000";c.fillRect(0,0,112,112);
-    c.setTransform(ca,sa,-sa,ca,tx,ty);
+    c.setTransform(ica,-isa,isa,ica,-ica*tx-isa*ty,isa*tx-ica*ty);
     c.drawImage(src,0,0);c.setTransform(1,0,0,1,0,0);
     const px=c.getImageData(0,0,112,112).data,N=112*112,input=new Float32Array(3*N);
     for(let i=0,p=0;i<N;i++){const r=px[p++],g=px[p++],b=px[p++];p++;input[i]=(r-127.5)/128;input[N+i]=(g-127.5)/128;input[2*N+i]=(b-127.5)/128;}
