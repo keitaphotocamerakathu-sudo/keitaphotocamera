@@ -1203,7 +1203,7 @@
                 // V3 XS + alignment separates identities much better than V2.
                 // Open recall moderately, while the tight best-match gap keeps
                 // unrelated runners from being pulled into the result set.
-                threshold: 0.38, max_results: 30, gap_limit: 0.08, strict: true
+                threshold: 0.48, max_results: 30, gap_limit: 0.16, strict: true
               });
               const v2Results = normalizeResults(v2Data.results || v2Data.matches || []);
               if (v2Results.length) {
