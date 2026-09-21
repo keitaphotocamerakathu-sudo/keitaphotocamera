@@ -497,6 +497,7 @@
     }
 </style>
   <script src="js/face-engine-profile-v2.js"></script>
+  <script src="js/face-engine-free-v1.js?v=20260921-free2"></script>
 </head>
 
 <body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-white transition safe-bottom">
@@ -898,7 +899,6 @@
           };
         }
 
-        await loadModels();
         await loadEvent();
 
         const faceInput = document.getElementById("faceInput");
@@ -1008,24 +1008,16 @@
       return params.get("event") || params.get("event_id") || params.get("id");
     }
 
+    let legacyModelPromise;
     async function loadModels() {
-      Swal.fire({
-        title: t().loadingSystem,
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        didOpen: () => Swal.showLoading()
-      });
-
-      const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
-
-      await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
-      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-      await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-      await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-
-      try { if (window.KeitaFaceV2) await KeitaFaceV2.load(); } catch (v2Err) { console.warn("Face V2 unavailable; legacy fallback active", v2Err); }
-
-      Swal.close();
+      if (!legacyModelPromise) legacyModelPromise = (async () => {
+        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model/';
+        await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+      })().catch(error=>{legacyModelPromise=null;throw error;});
+      await legacyModelPromise;
     }
 
     async function loadEvent() {
@@ -1045,7 +1037,10 @@
         data.title || data.name || t().pageTitle;
     }
 
+    let facePreviewUrl;
     function handleFile(e) {
+      window.resetFreeFaceSearch?.();
+      if(facePreviewUrl)URL.revokeObjectURL(facePreviewUrl);
       const file = e.target.files?.[0];
 
       updateFaceFileLabel();
@@ -1060,7 +1055,8 @@
       selectedFile = file;
 
       const img = document.getElementById("previewImage");
-      img.src = URL.createObjectURL(file);
+      facePreviewUrl=URL.createObjectURL(file);
+      img.src = facePreviewUrl;
       img.classList.remove("hidden");
 
       document.getElementById("searchBtn").disabled = false;
@@ -1164,9 +1160,9 @@
       return canvas;
     }
 
-    async function searchByFace() {
+    async function searchByFaceLegacy(img, targetBox) {
       try {
-        if (!selectedFile) {
+        if (!img) {
           Swal.fire(t().warningTitle, t().selectFileFirst, "warning");
           return;
         }
@@ -1178,7 +1174,8 @@
           didOpen: () => Swal.showLoading()
         });
 
-        const img = await faceapi.bufferToImage(selectedFile);
+        await loadModels();
+        let primaryFaceResults=[];
 
         if (window.KeitaFaceV2) {
           try {
@@ -1187,12 +1184,8 @@
               // Keep identities separate. A group photo must never become one
               // combined multi-person query. Try each detected face independently,
               // then keep only the strongest identity result.
-              const dominantFace = [...v2Faces].sort((a, b) => {
-                const ab=a.box||{},bb=b.box||{};
-                const aa=Math.max(0,(ab.x2||0)-(ab.x1||0))*Math.max(0,(ab.y2||0)-(ab.y1||0));
-                const ba=Math.max(0,(bb.x2||0)-(bb.x1||0))*Math.max(0,(bb.y2||0)-(bb.y1||0));
-                return ba-aa;
-              })[0];
+              const dominantFace = matchSelectedFace(v2Faces, targetBox);
+              if(!dominantFace)throw new Error('โมเดลเดิมไม่พบใบหน้าที่เลือก');
 
               const descriptor = Array.from(dominantFace.descriptor);
               const data = await callFaceSearchFunction({
@@ -1207,15 +1200,6 @@
                 strict: true
               });
 
-              if (Number(data.total_faces || 0) === 0) {
-                Swal.fire(
-                  "Profile Face Index ยังไม่ได้ Sync",
-                  "Event นี้ยังไม่มี facex-profile-v2 ในฐานข้อมูล กรุณาไปหน้า Admin Face Sync แล้ว Sync ใหม่ให้ครบก่อนค้นหา",
-                  "warning"
-                );
-                return;
-              }
-
               const faceResults = normalizeResults(data.results || data.matches || []);
               const d = Number(data.best_distance);
               const bestDistance = Number.isFinite(d)
@@ -1227,43 +1211,18 @@
               // do NOT return yet. The legacy face-api index detects many more
               // profile/side faces, so we run it as a conservative rescue pass
               // and merge only unique photos afterwards.
-              window.__keitaPrimaryFaceResults = bestV2?.faceResults || [];
+              primaryFaceResults = bestV2?.faceResults || [];
             }
           } catch (v2Err) {
             console.warn("Face V2 search fallback:", v2Err);
           }
         }
 
-        const primaryFaceResults = Array.isArray(window.__keitaPrimaryFaceResults)
-          ? window.__keitaPrimaryFaceResults
-          : [];
-        window.__keitaPrimaryFaceResults = [];
-
         const detections = await detectSearchFaces(img);
 
-        if (!detections.length) {
-          if (primaryFaceResults.length) {
-            results = primaryFaceResults;
-            Swal.close();
-            renderResults();
-            return;
-          }
-
-          Swal.fire(t().noFace, t().noFaceDesc, "warning");
-          return;
-        }
-
-        // Choose ONE identity for the legacy rescue too. This prevents a group
-        // photo from turning into an "any person in this image" search.
-        const detectionArea = item => {
-          const box = item?.detection?.box || item?.box || {};
-          const width = Number(box.width ?? ((box.x2 || 0) - (box.x1 || 0))) || 0;
-          const height = Number(box.height ?? ((box.y2 || 0) - (box.y1 || 0))) || 0;
-          return Math.max(0, width) * Math.max(0, height);
-        };
-
-        const dominantDetection = [...detections]
-          .sort((a, b) => detectionArea(b) - detectionArea(a))[0];
+        if (!detections.length) return primaryFaceResults.filter(item=>Number(item.distance)<=.40);
+        const dominantDetection = matchSelectedFace(detections, targetBox);
+        if(!dominantDetection)return primaryFaceResults.filter(item=>Number(item.distance)<=.40);
 
         const rescueDescriptors = [
           Array.from(dominantDetection.descriptor)
@@ -1277,9 +1236,9 @@
           if (mirroredCanvas) {
             const mirroredDetections = await detectSearchFaces(mirroredCanvas);
             if (mirroredDetections.length) {
-              const dominantMirrored = [...mirroredDetections]
-                .sort((a, b) => detectionArea(b) - detectionArea(a))[0];
-              rescueDescriptors.push(Array.from(dominantMirrored.descriptor));
+              const mirroredBox={x1:img.naturalWidth-targetBox.x2,x2:img.naturalWidth-targetBox.x1,y1:targetBox.y1,y2:targetBox.y2};
+              const dominantMirrored = matchSelectedFace(mirroredDetections, mirroredBox);
+              if(dominantMirrored)rescueDescriptors.push(Array.from(dominantMirrored.descriptor));
             }
           }
         } catch (mirrorErr) {
@@ -1296,7 +1255,7 @@
         // query photo otherwise makes the gap almost zero and removes every
         // cross-pose match. If FaceX found nothing, keep this rescue strict.
         const hasPrimaryIdentity = primaryFaceResults.length > 0;
-        const rescueData = await callFaceSearchFunction({
+        let rescueData = await callFaceSearchFunction({
           event_id: eventId,
           engine: "face-api-v4-clean",
           descriptor: rescueDescriptors[0],
@@ -1307,6 +1266,8 @@
           use_gap: false,
           strict: !hasPrimaryIdentity
         });
+
+        if(!Number(rescueData.total_faces))rescueData=await callFaceSearchFunction({event_id:eventId,engine:'face-api-v3',descriptors:rescueDescriptors,threshold:0.40,use_gap:false,strict:true,max_results:300});
 
         const rescueResults = normalizeResults(
           rescueData.results || rescueData.matches || []
@@ -1386,15 +1347,11 @@
           }))
         });
 
-        results = dedupeResultsByPhotoId(accepted);
-
-        Swal.close();
-
-        renderResults();
+        return dedupeResultsByPhotoId(accepted);
 
       } catch (err) {
         console.error(err);
-        Swal.fire(t().errorTitle, err.message || t().searchFailed, "error");
+        throw err;
       }
     }
 
@@ -1402,27 +1359,23 @@
       const functionName = "face-search";
       const url = `${CONFIG.SUPABASE_URL}/functions/v1/${functionName}`;
 
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: CONFIG.SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok || data?.success === false) {
-        throw new Error(
-          data?.message ||
-          data?.error ||
-          `${t().callFunctionFailed}: ${functionName}`
-        );
+      const matches=[];let offset=0,first;
+      for(;;){
+        const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),90000);
+        let data;
+        try{
+          const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json',apikey:CONFIG.SUPABASE_ANON_KEY,Authorization:`Bearer ${CONFIG.SUPABASE_ANON_KEY}`},body:JSON.stringify({...payload,max_results:300,offset}),signal:controller.signal});
+          data=await res.json();
+          if(!res.ok||data?.success===false)throw new Error(data?.error||t().callFunctionFailed);
+        }finally{clearTimeout(timer);}
+        if(!first)first=data;
+        matches.push(...(data.results||[]));
+        if(!data.has_more)break;
+        const next=Number(data.next_offset);
+        if(!Number.isInteger(next)||next<=offset)throw new Error('อ่านผลค้นหาหน้าถัดไปไม่สำเร็จ');
+        offset=next;
       }
-
-      return data || {};
+      return {...first,results:matches,matched_count:matches.length};
     }
 
     function normalizeResults(items) {
@@ -1670,6 +1623,7 @@
             >
               ${escapeHtml(t().addCart)}
             </button>
+            ${!mediaIsVideo ? `<button type="button" onclick="refineFaceSearch('${photoId}')" class="mt-2 w-full border border-emerald-500 text-emerald-600 rounded-2xl py-3 font-bold text-sm">${escapeHtml(faceText('refine'))}</button>` : ''}
           </div>
         `;
 
@@ -2223,5 +2177,7 @@
     }, true);
   </script>
 
+<script src="js/face-search-free.js?v=20260921-free2"></script>
 </body>
 </html>
+

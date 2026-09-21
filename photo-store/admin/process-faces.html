@@ -8,7 +8,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="../js/config.js?v=new-supabase-004"></script>
-  <script src="../js/face-engine-profile-v2.js?v=20260921-clean1"></script>
+  <script src="../js/face-engine-free-v1.js?v=20260921-free2"></script>
+  <script src="../js/face-data.js?v=20260921-free2"></script>
   <style>
     :root{color-scheme:dark;background:#0b0d10;color:#f4f7fb;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
     *{box-sizing:border-box} body{margin:0;background:#0b0d10;color:#f4f7fb}
@@ -35,10 +36,10 @@
   <div class="head">
     <div>
       <div class="muted">ADMIN · FACE INDEX</div>
-      <h1>SYNC FACES · Profile V2</h1>
-      <div class="sub">โหมดสะอาด: FaceX เท่านั้น · ไม่ใช้ face-api / TensorFlow / localStorage / IndexedDB</div>
+      <h1>SYNC FACES · FREE 2</h1>
+      <div class="sub">YuNet + SFace · จัดแนวใบหน้า 5 จุด · ประมวลผลบนเครื่อง ไม่มีค่า API เพิ่ม</div>
     </div>
-    <button class="secondary" onclick="location.href='upload.html'">UPLOAD</button>
+    <div><button class="secondary" onclick="location.href='upload.html'">UPLOAD</button><p><a style="color:#67b3ff" href="process-faces-legacy-v5.html">Face Sync รุ่นเดิม / Ultra Recall</a></p></div>
   </div>
 
   <div class="card">
@@ -91,22 +92,24 @@
 <script>
 (() => {
   "use strict";
-  const SYNC_VERSION="facex-profile-v2-clean-sync1";
-  const ENGINE="facex-profile-v2";
-  const sb=window.supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY);
+  const SYNC_VERSION=KeitaFaceFree.syncVersion;
+  const ENGINE=KeitaFaceFree.engine;
+  const sb=window.supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
   const $=id=>document.getElementById(id);
-  let items=[],running=false,stopRequested=false,done=0,faces=0,errors=0;
+  let items=[],running=false,stopRequested=false,done=0,faces=0,errors=0,startedAt=0,loadToken=0,starting=false;
 
   function log(msg){
     const line="["+new Date().toLocaleTimeString("th-TH")+"] "+msg;
-    $("log").textContent=line+"\n"+$("log").textContent;
+    $("log").textContent=(line+"\n"+$("log").textContent).split("\n").slice(0,150).join("\n");
     console.log("[FaceSync]",msg);
   }
   function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
   function updateProgress(current=""){
     const total=items.length,p=total?Math.round(done*100/total):0;
     $("bar").style.width=p+"%"; $("pct").textContent=p+"%";
-    $("detail").textContent=done.toLocaleString()+" / "+total.toLocaleString()+" ไฟล์";
+    const rate=done&&startedAt?done/((performance.now()-startedAt)/1000):0;
+    const eta=rate?Math.ceil((total-done)/rate):0;
+    $("detail").textContent=done.toLocaleString()+" / "+total.toLocaleString()+" ไฟล์"+(rate?" · "+rate.toFixed(2)+" ไฟล์/วินาที · เหลือประมาณ "+Math.floor(eta/60)+":"+String(eta%60).padStart(2,"0"):"");
     $("stTotal").textContent=total; $("stDone").textContent=done; $("stFaces").textContent=faces; $("stErr").textContent=errors;
     if(current) $("status").textContent="กำลังสแกน: "+current;
     else if(running) $("status").textContent="กำลัง Sync Faces...";
@@ -130,13 +133,7 @@
     if(m==="video"||/\.(mp4|mov|webm)$/.test(fn)) return "video";
     return "image";
   }
-  function loadImage(url){
-    return new Promise((resolve,reject)=>{
-      const img=new Image(); img.crossOrigin="anonymous"; img.referrerPolicy="no-referrer";
-      img.onload=()=>resolve(img); img.onerror=()=>reject(new Error("โหลดรูปไม่ได้ / CORS"));
-      img.src=url+(url.includes("?")?"&":"?")+"_fs="+Date.now();
-    });
-  }
+  function loadImage(url){return KeitaFaceFree.loadImage(url);}
   function loadVideo(url){
     return new Promise((resolve,reject)=>{
       const v=document.createElement("video"); v.crossOrigin="anonymous"; v.preload="auto"; v.muted=true;
@@ -146,10 +143,15 @@
     });
   }
   function seekVideo(v,t){
+    const target=Math.max(0,Math.min(t,Math.max(0,v.duration-0.05)));
+    if(Math.abs(v.currentTime-target)<0.01&&v.readyState>=2)return Promise.resolve();
     return new Promise((resolve,reject)=>{
-      const timer=setTimeout(()=>reject(new Error("seek timeout")),12000);
-      const ok=()=>{clearTimeout(timer);v.removeEventListener("seeked",ok);resolve()};
-      v.addEventListener("seeked",ok,{once:true}); v.currentTime=Math.max(0,Math.min(t,(v.duration||t)-0.05));
+      const cleanup=()=>{clearTimeout(timer);v.removeEventListener('seeked',ok);v.removeEventListener('loadeddata',ready);v.removeEventListener('error',fail);};
+      const ok=()=>{cleanup();resolve();};
+      const ready=()=>{if(Math.abs(v.currentTime-target)<0.01)ok();};
+      const fail=()=>{cleanup();reject(new Error('อ่านเฟรมวิดีโอไม่ได้'));};
+      const timer=setTimeout(()=>{cleanup();reject(new Error('seek timeout'));},15000);
+      v.addEventListener('seeked',ok);v.addEventListener('loadeddata',ready);v.addEventListener('error',fail);v.currentTime=target;
     });
   }
   function capture(v){
@@ -160,72 +162,63 @@
     const arr=String($("frameSeconds").value||"1,3,5,7,9").split(",").map(Number).filter(n=>Number.isFinite(n)&&n>=0);
     const max=Math.max(0,(v.duration||0)-0.05); return [...new Set(arr.map(n=>Math.min(n,max)))];
   }
-  async function insertRows(rows){
-    if(!rows.length) return;
-    for(let i=0;i<rows.length;i+=100){
-      const {error}=await sb.from("faces").insert(rows.slice(i,i+100));
-      if(error) throw error;
-    }
+  async function saveRows(p,rows){
+    const {data,error}=await sb.rpc('replace_keita_face_index',{p_photo_id:p.id,p_engine:ENGINE,p_version:SYNC_VERSION,p_faces:rows});
+    if(error)throw error;
+    const count=Number(data?.face_count);
+    if(!Number.isFinite(count)||count!==rows.length)throw new Error('ยืนยันการบันทึกไม่สำเร็จ กรุณาลอง Sync อีกครั้ง');
+    p.face_sync_version=SYNC_VERSION;p.face_count=count;return count;
   }
-  async function clearCurrent(photoId){
-    const {error}=await sb.from("faces").delete().eq("photo_id",photoId).eq("engine",ENGINE);
-    if(error) throw error;
-  }
-  function rowFor(p,d,faceIndex,extra={}){
-    return {
-      event_id:p.event_id, photo_id:p.id, descriptor:Array.from(d.descriptor||[]),
-      face_index:faceIndex, image_url:previewUrl(p)||imageUrl(p)||null, filename:p.filename||null,
-      media_type:extra.media_type||mediaType(p), frame_index:extra.frame_index??null,
-      video_time_seconds:extra.video_time_seconds??null, engine:ENGINE
-    };
-  }
-  async function markDone(p,count){
-    const {error}=await sb.from("photos").update({
-      face_sync_version:SYNC_VERSION,face_synced_at:new Date().toISOString(),face_count:count
-    }).eq("id",p.id);
-    if(error) throw error;
-    p.face_sync_version=SYNC_VERSION;p.face_count=count;
+  function rowsFor(scan,extra={}){
+    if(scan.skipped)throw new Error('มีใบหน้าที่จัดแนวไม่สำเร็จ เก็บข้อมูลเดิมไว้ กรุณาลองภาพที่ชัดขึ้น');
+    return scan.faces.map((d,i)=>({descriptor:d.descriptor,face_index:i,face_box:KeitaFaceFree.normalizedBox(d.box,scan.width,scan.height),media_type:'image',frame_index:null,video_time_seconds:null,...extra}));
   }
   async function scanImage(p){
-    const url=imageUrl(p); if(!url) throw new Error("ไม่พบ URL รูป");
-    await clearCurrent(p.id);
-    const img=await loadImage(url);
-    const found=await KeitaFaceV2.analyze(img,{deep:true});
-    const rows=found.map((d,i)=>rowFor(p,d,i,{media_type:"image"}));
-    await insertRows(rows); await markDone(p,rows.length); return rows.length;
+    const url=imageUrl(p);if(!url)throw new Error('ไม่พบ URL รูป');
+    let img,lastError;
+    const urls=[url,p.face_scan_url,p.r2_preview_url,p.preview_url,p.r2_watermark_url,p.watermark_url].filter(Boolean).map(normalizeUrl);
+    for(const candidate of [...new Set(urls)]){try{img=await loadImage(candidate);break;}catch(error){lastError=error;}}
+    if(!img)throw lastError||new Error('โหลดภาพไม่ได้');
+    try{
+      const scan=await KeitaFaceFree.analyze(img,{deep:true});
+      return await saveRows(p,rowsFor(scan));
+    }finally{img.src='';}
   }
   async function scanVideo(p){
-    const url=videoUrl(p); if(!url) throw new Error("ไม่พบ URL วิดีโอ");
-    await clearCurrent(p.id);
-    const v=await loadVideo(url),times=parseTimes(v),rows=[];
-    for(let i=0;i<times.length;i++){
-      if(stopRequested) break;
-      await seekVideo(v,times[i]);
-      const canvas=capture(v);
-      const found=await KeitaFaceV2.analyze(canvas,{deep:true});
-      found.forEach((d,j)=>rows.push(rowFor(p,d,j,{media_type:"video",frame_index:i,video_time_seconds:times[i]})));
-      await new Promise(r=>setTimeout(r,0));
-    }
-    try{v.pause();v.removeAttribute("src");v.load()}catch{}
-    await insertRows(rows); await markDone(p,rows.length); return rows.length;
+    const url=videoUrl(p);if(!url)throw new Error('ไม่พบ URL วิดีโอ');
+    const v=await loadVideo(url),rows=[];
+    try{
+      if(!Number.isFinite(v.duration)||v.duration<=0)throw new Error('อ่านความยาววิดีโอไม่ได้');
+      const times=parseTimes(v);if(!times.length)throw new Error('กรุณากำหนดวินาทีที่ต้องการสแกน');
+      if(times.length>16)throw new Error('กำหนดได้ไม่เกิน 16 เฟรมต่อวิดีโอ');
+      for(let i=0;i<times.length;i++){
+        await seekVideo(v,times[i]);const cv=capture(v);
+        try{
+          const scan=await KeitaFaceFree.analyze(cv,{deep:true});
+          rows.push(...rowsFor(scan,{media_type:'video',frame_index:i,video_time_seconds:times[i]}));
+        }finally{cv.width=cv.height=1;}
+      }
+      return await saveRows(p,rows);
+    }finally{v.pause();v.removeAttribute('src');v.load();}
   }
   function render(){
     if(!items.length){$("files").innerHTML="ไม่มีไฟล์ที่ต้อง Sync";return}
-    $("files").innerHTML=items.map(p=>'<div class="row"><div class="name">'+esc(p.filename||p.id)+'</div><div id="s-'+esc(p.id)+'" class="muted">'+(p.face_sync_version===SYNC_VERSION?'✅ Sync แล้ว':'รอ Sync')+'</div></div>').join("");
+    $("files").innerHTML=items.slice(0,250).map(p=>'<div class="row"><div class="name">'+esc(p.filename||p.id)+'</div><div id="s-'+esc(p.id)+'" class="muted">'+(p.face_sync_version===SYNC_VERSION?'✅ Sync แล้ว':'รอ Sync')+'</div></div>').join("");
   }
-  function setFile(p,msg,cls="work"){const el=$("s-"+p.id);if(el){el.textContent=msg;el.className=cls}}
+  function setFile(p,msg,cls="work"){let el=$("s-"+p.id);if(!el){const row=document.createElement("div");row.className="row";const name=document.createElement("div");name.className="name";name.textContent=p.filename||p.id;el=document.createElement("div");el.id="s-"+p.id;row.append(name,el);$("files").prepend(row);while($("files").children.length>250)$("files").lastElementChild.remove();}if(el){el.textContent=msg;el.className=cls}}
   async function loadEvents(){
-    const {data,error}=await sb.from("events").select("id,title,name,slug,created_at").order("created_at",{ascending:false});
-    if(error) throw error;
+    const data=await KeitaFaceData.readAll(()=>sb.from('events').select('id,title,slug,created_at'));
+    data.sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
     $("eventSelect").innerHTML='<option value="">เลือก Event</option>'+data.map(e=>'<option value="'+esc(e.id)+'">'+esc(e.title||e.name||e.slug||e.id)+'</option>').join("");
     const q=new URLSearchParams(location.search),eid=q.get("event")||q.get("event_id")||q.get("id");
     if(eid){$("eventSelect").value=eid;await loadFiles();}
   }
   async function loadFiles(){
+    if(running)return;const token=++loadToken;
     const eid=$("eventSelect").value;if(!eid){items=[];render();updateProgress();return}
     $("status").textContent="กำลังโหลดรายการไฟล์...";
-    const {data,error}=await sb.from("photos").select("*").eq("event_id",eid).eq("status","active").order("created_at",{ascending:false});
-    if(error) throw error;
+    const data=await KeitaFaceData.readAll(()=>sb.from('photos').select('*').eq('event_id',eid).eq('status','active'),{onPage:n=>{if(token===loadToken)$("status").textContent='กำลังโหลด '+n+' ไฟล์...';}});
+    if(token!==loadToken)return;
     const wantImg=$("imagesOnly").checked,wantVideo=$("videosAlso").checked,pending=$("pendingOnly").checked;
     items=(data||[]).filter(p=>{
       const t=mediaType(p); if(t==="image"&&!wantImg)return false;if(t==="video"&&!wantVideo)return false;
@@ -235,17 +228,18 @@
     log("โหลดไฟล์ "+items.length+" รายการ");
   }
   async function start(){
-    if(running) return;
+    if(running||starting) return;
     if(!$("eventSelect").value){await Swal.fire("กรุณาเลือก Event","","warning");return}
-    if(!items.length) await loadFiles();
+    starting=true;$("startBtn").disabled=true;
+    try{await loadFiles();}finally{starting=false;$("startBtn").disabled=false;}
     if(!items.length){await Swal.fire("ไม่มีไฟล์ที่ต้อง Sync","","info");return}
-    running=true;stopRequested=false;done=0;faces=0;errors=0;
+    running=true;stopRequested=false;done=0;faces=0;errors=0;startedAt=performance.now();
+    ["eventSelect","imagesOnly","videosAlso","pendingOnly","frameSeconds"].forEach(id=>$(id).disabled=true);
     $("startBtn").disabled=true;$("loadBtn").disabled=true;$("stopBtn").disabled=false;
-    updateProgress();$("status").textContent="กำลังโหลด FaceX Profile V2...";
+    updateProgress();$("status").textContent="กำลังโหลดโมเดลใบหน้า...";
     try{
-      if(!window.KeitaFaceV2) throw new Error("ไม่พบ FaceX Profile V2");
-      await KeitaFaceV2.load();
-      log("FaceX พร้อมใช้งาน");
+      await KeitaFaceFree.load({onProgress:p=>{$("status").textContent='กำลังโหลด '+p.model+' '+Math.round(p.received/p.total*100)+'%';}});
+      log('YuNet + SFace พร้อมใช้งาน');
       for(let i=0;i<items.length;i++){
         if(stopRequested) break;
         const p=items[i]; setFile(p,"กำลังสแกน...","work"); updateProgress(p.filename||p.id);
@@ -259,17 +253,18 @@
         done++;updateProgress();await new Promise(r=>setTimeout(r,0));
       }
       running=false;updateProgress();$("status").textContent=stopRequested?"หยุดแล้ว":"Sync เสร็จแล้ว";
-      await Swal.fire(stopRequested?"หยุดแล้ว":"Sync Faces เสร็จแล้ว","ประมวลผล "+done+" ไฟล์ · พบ "+faces+" ใบหน้า · Error "+errors,stopRequested?"info":"success");
+      await Swal.fire(stopRequested?"หยุดแล้ว":"Sync Faces เสร็จแล้ว","ประมวลผล "+done+" ไฟล์ · พบ "+faces+" ใบหน้า · Error "+errors,stopRequested?"info":(errors?"warning":"success"));
     }catch(err){
       running=false;console.error(err);$("status").textContent="Sync ไม่สำเร็จ: "+(err.message||err);
       await Swal.fire("Sync ไม่สำเร็จ",err.message||String(err),"error");
     }finally{
+      running=false;["eventSelect","imagesOnly","videosAlso","pendingOnly","frameSeconds"].forEach(id=>$(id).disabled=false);
       $("startBtn").disabled=false;$("loadBtn").disabled=false;$("stopBtn").disabled=true;
     }
   }
 
   $("loadBtn").addEventListener("click",()=>loadFiles().catch(e=>Swal.fire("โหลดไฟล์ไม่สำเร็จ",e.message||String(e),"error")));
-  $("startBtn").addEventListener("click",start);
+  $("startBtn").addEventListener("click",()=>start().catch(e=>Swal.fire("Sync ไม่สำเร็จ",e.message||String(e),"error")));
   $("stopBtn").addEventListener("click",()=>{stopRequested=true;$("status").textContent="กำลังหยุดหลังไฟล์ปัจจุบัน..."});
   $("eventSelect").addEventListener("change",()=>loadFiles().catch(e=>Swal.fire("โหลดไฟล์ไม่สำเร็จ",e.message||String(e),"error")));
   ["imagesOnly","videosAlso","pendingOnly"].forEach(id=>$(id).addEventListener("change",()=>loadFiles().catch(console.error)));

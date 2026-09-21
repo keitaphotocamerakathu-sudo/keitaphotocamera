@@ -243,7 +243,8 @@
     if(error)throw error;
     return Number(data?.face_count??rows.length);
   }
-  window.KeitaFaceFree={engine:ENGINE,syncVersion:SYNC_VERSION,build:'20260921-free1',load,analyze,loadImage,saveIndex,normalizedBox,
+  window.KeitaFaceFree={engine:ENGINE,syncVersion:SYNC_VERSION,build:'20260921-free2',load,analyze,loadImage,saveIndex,normalizedBox,
     // Pure geometry helpers are also exercised by the regression tests.
     geometry:{similarityTransform,regions,nms,iou,normalize}};
 })();
+

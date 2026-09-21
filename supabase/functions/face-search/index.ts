@@ -51,48 +51,40 @@ function roundNumber(value: number, digits = 4) {
 }
 
 function parseVector(raw: any): number[] {
-  if (Array.isArray(raw)) {
-    return raw
-      .map((v) => Number(v))
-      .filter((v) => Number.isFinite(v));
-  }
-
-  if (typeof raw === "string") {
-    return raw
-      .replace("[", "")
-      .replace("]", "")
-      .split(",")
-      .map((v) => Number(v.trim()))
-      .filter((v) => Number.isFinite(v));
-  }
-
-  if (raw?.descriptor && Array.isArray(raw.descriptor)) {
-    return raw.descriptor
-      .map((v: any) => Number(v))
-      .filter((v: number) => Number.isFinite(v));
-  }
-
-  return [];
+  try {
+    const value = typeof raw === 'string' ? JSON.parse(raw) : (raw?.descriptor ?? raw);
+    return Array.isArray(value) && value.every(v => typeof v === 'number' && Number.isFinite(v)) ? value : [];
+  } catch { return []; }
 }
 
-function isValidDescriptor(vector: number[]) {
+function isValidDescriptor(vector: number[], expectedDim = 128) {
   return (
     Array.isArray(vector) &&
-    vector.length === 128 &&
+    vector.length === expectedDim &&
     vector.every((v) => Number.isFinite(v))
   );
 }
 
-function euclideanDistance(a: number[], b: number[]) {
-  if (!isValidDescriptor(a) || !isValidDescriptor(b)) return 999;
+function vectorDistance(a: number[], b: number[], engine: string) {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length || !a.length) return 999;
+
+  if (engine === "sface-yunet-v1" || engine === "facex-v2" || engine === "facex-v3" || engine === "facex-v4" || engine === "facex-profile-v1" || engine === "facex-profile-v2") {
+    let dot = 0, na = 0, nb = 0;
+    for (let i = 0; i < a.length; i++) {
+      dot += a[i] * b[i];
+      na += a[i] * a[i];
+      nb += b[i] * b[i];
+    }
+    if (!na || !nb) return 999;
+    const cosine = dot / (Math.sqrt(na) * Math.sqrt(nb));
+    return 1 - Math.max(-1, Math.min(1, cosine));
+  }
 
   let sum = 0;
-
-  for (let i = 0; i < 128; i++) {
+  for (let i = 0; i < a.length; i++) {
     const diff = a[i] - b[i];
     sum += diff * diff;
   }
-
   return Math.sqrt(sum);
 }
 
@@ -202,14 +194,20 @@ Deno.serve(async (req) => {
     const body = await req.json();
 
     const event_id = body.event_id;
+    const engines = new Set(['sface-yunet-v1','facex-profile-v2','facex-profile-v1','facex-v4','facex-v3','facex-v2','face-api-v4-clean','face-api-v3']);
+    const engine = body.engine || 'face-api-v3';
+    if (!engines.has(engine)) return jsonResponse({success:false,error:'Unknown face engine'},400);
+    const isSFace = engine === 'sface-yunet-v1';
+    const expectedDim = (engine === "facex-v2" || engine === "facex-v3" || engine === "facex-v4" || engine === "facex-profile-v1" || engine === "facex-profile-v2") ? 512 : 128;
 
     const requestedDescriptors = Array.isArray(body.descriptors)
       ? body.descriptors
       : [body.descriptor];
 
+    if (!requestedDescriptors.length || requestedDescriptors.length > 6) return jsonResponse({success:false,error:'Provide 1 to 6 descriptors of the same person'},400);
     const inputDescriptors = requestedDescriptors
       .map((value: unknown) => parseVector(value))
-      .filter((value: number[]) => isValidDescriptor(value));
+      .filter((value: number[]) => isValidDescriptor(value, expectedDim));
 
     const inputDescriptor =
       inputDescriptors[0] ||
@@ -221,39 +219,44 @@ Deno.serve(async (req) => {
      */
     const strictMode = body.strict !== false;
 
+    /**
+     * Gap filtering is useful for single-best verification, but it hurts
+     * event-photo retrieval when the uploaded query image itself exists in
+     * the event: bestDistance can be ~0, causing valid side/profile shots to
+     * be discarded even though they pass the absolute identity threshold.
+     * Keep the old behaviour by default; callers may explicitly disable it.
+     */
+    const useGapFilter = !isSFace && body.use_gap !== false;
+
+    const isFaceXV2 = engine === "facex-v2" || engine === "facex-v3" || engine === "facex-v4" || engine === "facex-profile-v1" || engine === "facex-profile-v2";
     const requestedThreshold = Number(
       body.threshold ??
-        (strictMode ? STRICT_DEFAULT_THRESHOLD : NORMAL_DEFAULT_THRESHOLD)
+        (isSFace ? 0.45 : isFaceXV2 ? 0.62 : (strictMode ? STRICT_DEFAULT_THRESHOLD : NORMAL_DEFAULT_THRESHOLD))
     );
 
-    const threshold = strictMode
-      ? clampNumber(requestedThreshold, 0.30, STRICT_MAX_THRESHOLD)
-      : clampNumber(requestedThreshold, 0.30, NORMAL_MAX_THRESHOLD);
+    const threshold = isSFace ? clampNumber(requestedThreshold, 0.20, 0.55) : isFaceXV2
+      ? clampNumber(requestedThreshold, 0.30, 0.72)
+      : (strictMode
+          ? clampNumber(requestedThreshold, 0.30, STRICT_MAX_THRESHOLD)
+          : clampNumber(requestedThreshold, 0.30, NORMAL_MAX_THRESHOLD));
 
     const requestedGapLimit = Number(
       body.gap_limit ??
-        (strictMode ? STRICT_DEFAULT_GAP_LIMIT : NORMAL_DEFAULT_GAP_LIMIT)
+        (isFaceXV2 ? 0.14 : (strictMode ? STRICT_DEFAULT_GAP_LIMIT : NORMAL_DEFAULT_GAP_LIMIT))
     );
 
-    const gapLimit = strictMode
-      ? clampNumber(requestedGapLimit, 0.02, STRICT_MAX_GAP_LIMIT)
-      : clampNumber(requestedGapLimit, 0.02, NORMAL_MAX_GAP_LIMIT);
+    const gapLimit = isFaceXV2
+      ? clampNumber(requestedGapLimit, 0.03, 0.20)
+      : (strictMode
+          ? clampNumber(requestedGapLimit, 0.02, STRICT_MAX_GAP_LIMIT)
+          : clampNumber(requestedGapLimit, 0.02, NORMAL_MAX_GAP_LIMIT));
 
     const requestedMaxResults = Number(body.max_results || 30);
 
-    const maxResults = strictMode
-      ? clampNumber(requestedMaxResults, 1, MAX_ALLOWED_RESULTS_STRICT)
-      : clampNumber(requestedMaxResults, 1, MAX_ALLOWED_RESULTS_NORMAL);
-
-    if (!event_id) {
-      throw new Error("Missing event_id");
-    }
-
-    if (!inputDescriptors.length || !isValidDescriptor(inputDescriptor)) {
-      throw new Error(
-        `Invalid input descriptor length: ${inputDescriptor.length}`
-      );
-    }
+    const maxResults = Math.floor(clampNumber(requestedMaxResults, 1, 300));
+    const offset = Math.floor(clampNumber(Number(body.offset ?? 0), 0, 100000));
+    if (typeof event_id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(event_id)) return jsonResponse({success:false,error:'Invalid event_id'},400);
+    if (inputDescriptors.length !== requestedDescriptors.length || !inputDescriptors.every(v => isValidDescriptor(v, expectedDim) && v.some(x => x !== 0))) return jsonResponse({success:false,error:'Invalid face descriptor'},400);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -272,29 +275,29 @@ Deno.serve(async (req) => {
      * ใช้ faces(*), photos(*)
      * เพื่อให้รองรับ column ใหม่/เก่าได้ยืดหยุ่นกว่า select ราย column
      */
-    const { data: faces, error } = await supabase
-      .from("faces")
-      .select(`
-        *,
-        photos (*)
-      `)
-      .eq("event_id", event_id);
-
-    if (error) {
-      throw error;
+    // Read the entire event, including projects with a row cap below 500.
+    const rawFaces: any[] = [];
+    let cursor: string | null = null;
+    for (;;) {
+      let query = supabase.from('faces').select('*, photos (*)').eq('event_id', event_id).eq('engine', engine).order('id', {ascending:true}).limit(500);
+      if (cursor) query = query.gt('id', cursor);
+      const {data, error} = await query;
+      if (error) throw error;
+      if (!data?.length) break;
+      const next = data[data.length-1].id;
+      if (!next || next === cursor) throw new Error('Face index pagination failed');
+      rawFaces.push(...data); cursor = next;
     }
-
-    const rawFaces = faces || [];
 
     const checked = rawFaces
       .map((face: any) => {
         const storedDescriptor = parseVector(face.descriptor);
-        const descriptorValid = isValidDescriptor(storedDescriptor);
+        const descriptorValid = isValidDescriptor(storedDescriptor, expectedDim);
 
         const distance = descriptorValid
           ? Math.min(
               ...inputDescriptors.map((queryDescriptor: number[]) =>
-                euclideanDistance(queryDescriptor, storedDescriptor)
+                vectorDistance(queryDescriptor, storedDescriptor, engine)
               )
             )
           : 999;
@@ -334,13 +337,14 @@ Deno.serve(async (req) => {
           face_image_url: face.image_url || null,
           face_filename: face.filename || null,
 
+          face_box: face.face_box ?? null,
           photo_status: photo?.status || null,
           photo: cleanPhotoPayload(photo, mediaType),
         };
       })
       .filter((item) => item.descriptor_valid)
       .filter((item) => item.distance < 999)
-      .filter((item) => item.photo_id)
+      .filter((item) => item.photo_id && item.photo && item.photo.event_id === event_id)
       .filter((item) => {
         /**
          * ถ้า photos.status มีค่า และไม่ใช่ active ให้ตัดออก
@@ -389,9 +393,11 @@ Deno.serve(async (req) => {
        * ตัดผลที่ห่างจากอันดับ 1 เกิน gapLimit
        * ป้องกันลากคนอื่นเข้ามาเยอะ
        */
-      results = results.filter((item) => {
-        return item.distance <= bestDistance! + gapLimit;
-      });
+      if (useGapFilter) {
+        results = results.filter((item) => {
+          return item.distance <= bestDistance! + gapLimit;
+        });
+      }
 
       /**
        * โหมดเข้ม:
@@ -408,7 +414,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    results = results.slice(0, maxResults);
+    const matchedTotal = results.length;
+    results = results.slice(offset, offset + maxResults);
 
     /**
      * nearest เอาไว้ debug เท่านั้น
@@ -442,6 +449,8 @@ Deno.serve(async (req) => {
 
       media_type: item.media_type,
 
+      face_box: item.face_box,
+      engine,
       face_index: item.face_index,
       frame_index: item.frame_index,
       video_time_seconds:
@@ -459,6 +468,7 @@ Deno.serve(async (req) => {
       success: true,
 
       event_id,
+      engine,
 
       strict: strictMode,
       decision,
@@ -479,6 +489,10 @@ Deno.serve(async (req) => {
       within_threshold_faces: withinThreshold.length,
 
       matched_count: cleanResults.length,
+      matched_total: matchedTotal,
+      offset,
+      has_more: offset + cleanResults.length < matchedTotal,
+      next_offset: offset + cleanResults.length,
 
       nearest,
       results: cleanResults,
