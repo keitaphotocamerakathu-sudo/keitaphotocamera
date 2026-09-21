@@ -1062,6 +1062,27 @@
 
     </section>
 
+    <section id="syncProgressPanel" class="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow transition mb-5">
+      <div class="flex items-end justify-between gap-3 mb-3">
+        <div>
+          <p class="text-xs font-bold text-slate-500 dark:text-slate-400">SYNC PROGRESS</p>
+          <p id="syncProgressStatus" class="text-lg font-black mt-1">พร้อมทำงาน</p>
+          <p id="syncProgressDetail" class="text-xs text-slate-500 dark:text-slate-400 mt-1">0 / 0 ไฟล์</p>
+        </div>
+        <div class="text-right">
+          <p id="syncProgressPercent" class="text-3xl font-black text-emerald-600">0%</p>
+          <p id="syncProgressEta" class="text-xs text-slate-500 dark:text-slate-400">ETA --:--</p>
+        </div>
+      </div>
+      <div class="w-full h-4 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+        <div id="syncProgressBar" class="h-full bg-emerald-500 transition-all duration-300" style="width:0%"></div>
+      </div>
+      <div class="flex justify-between gap-3 mt-2 text-xs text-slate-500 dark:text-slate-400">
+        <span id="syncProgressRate">0.00 ไฟล์/วินาที</span>
+        <span id="syncProgressFaces">พบ 0 ใบหน้า</span>
+      </div>
+    </section>
+
     <section class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
 
       <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow">
@@ -1177,6 +1198,43 @@
 
     let processedCount = 0;
     let facesFoundCount = 0;
+    let syncStartedAt = 0;
+
+    function formatEta(seconds) {
+      if (!Number.isFinite(seconds) || seconds < 0) return "--:--";
+      const s = Math.max(0, Math.round(seconds));
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const ss = s % 60;
+      return h > 0
+        ? `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(ss).padStart(2,"0")}`
+        : `${String(m).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
+    }
+
+    function updateSyncProgress(currentFile = null) {
+      const total = mediaItems.length;
+      const done = Math.min(processedCount, total);
+      const percent = total ? Math.round((done / total) * 100) : 0;
+      const elapsed = syncStartedAt ? Math.max(0.001, (Date.now() - syncStartedAt) / 1000) : 0;
+      const rate = done > 0 && elapsed > 0 ? done / elapsed : 0;
+      const eta = rate > 0 ? (total - done) / rate : NaN;
+      const bar = document.getElementById("syncProgressBar");
+      const pct = document.getElementById("syncProgressPercent");
+      const detail = document.getElementById("syncProgressDetail");
+      const etaEl = document.getElementById("syncProgressEta");
+      const rateEl = document.getElementById("syncProgressRate");
+      const facesEl = document.getElementById("syncProgressFaces");
+      const status = document.getElementById("syncProgressStatus");
+      if (bar) bar.style.width = percent + "%";
+      if (pct) pct.textContent = percent + "%";
+      if (detail) detail.textContent = `${done.toLocaleString()} / ${total.toLocaleString()} ไฟล์`;
+      if (etaEl) etaEl.textContent = done >= total && total ? "เสร็จแล้ว" : `ETA ${formatEta(eta)}`;
+      if (rateEl) rateEl.textContent = `${rate.toFixed(2)} ไฟล์/วินาที`;
+      if (facesEl) facesEl.textContent = `พบ ${facesFoundCount.toLocaleString()} ใบหน้า`;
+      if (status) status.textContent = currentFile
+        ? `กำลังสแกน: ${currentFile}`
+        : (done >= total && total ? "Sync Faces เสร็จแล้ว" : (isProcessing ? "กำลัง Sync Faces..." : "พร้อมทำงาน"));
+    }
 
     document.addEventListener("DOMContentLoaded", async () => {
       initDarkMode();
@@ -1485,7 +1543,9 @@
       processedCount = 0;
       facesFoundCount = 0;
 
+      syncStartedAt = Date.now();
       updateStats();
+      updateSyncProgress();
       setProcessingUI(true);
 
       try {
@@ -1500,6 +1560,7 @@
           }
 
           const item = mediaItems[i];
+          updateSyncProgress(item.filename || item.id);
 
           try {
             if (item.media_type === "video") {
@@ -1510,13 +1571,19 @@
 
             processedCount++;
             updateStats();
+            updateSyncProgress();
 
           } catch (err) {
             console.error(err);
             setMediaStatus(item.id, `❌ ${err.message || String(err)}`, "error");
             log(`❌ ${item.filename || item.id}: ${err.message || String(err)}`, "error");
+            processedCount++;
+            updateStats();
+            updateSyncProgress();
           }
         }
+
+        updateSyncProgress();
 
         Swal.fire({
           icon: "success",
