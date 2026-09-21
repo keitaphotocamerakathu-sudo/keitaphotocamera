@@ -131,5 +131,5 @@
     return out;
   }
   function cosineDistance(a,b){if(!a||!b||a.length!==b.length)return 999;let dot=0,na=0,nb=0;for(let i=0;i<a.length;i++){dot+=a[i]*b[i];na+=a[i]*a[i];nb+=b[i]*b[i];}return na&&nb?1-dot/(Math.sqrt(na)*Math.sqrt(nb)):999;}
-  window.KeitaFaceV2={version:"facex-v4",load,analyze,cosineDistance};
+  window.KeitaFaceV2={version:"facex-v2",load,analyze,cosineDistance};
 })();

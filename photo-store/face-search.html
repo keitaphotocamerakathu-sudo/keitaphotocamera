@@ -496,7 +496,7 @@
       }
     }
 </style>
-  <script src="js/face-engine-v2.js?v=20260921-v4"></script>
+  <script src="js/face-engine-v2.js?v=20260921-v2"></script>
 </head>
 
 <body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-white transition safe-bottom">
@@ -1198,7 +1198,7 @@
               }, v2Faces[0]);
               const selectedV2Descriptor = Array.from(selectedV2Face.descriptor);
               const v2Data = await callFaceSearchFunction({
-                event_id: eventId, engine: "facex-v4",
+                event_id: eventId, engine: "facex-v2",
                 descriptor: selectedV2Descriptor, descriptors: [selectedV2Descriptor],
                 // V3 XS + alignment separates identities much better than V2.
                 // Open recall moderately, while the tight best-match gap keeps

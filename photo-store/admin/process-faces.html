@@ -890,7 +890,7 @@
       overflow-y: auto;
     }
   </style>
-  <script src="../js/face-engine-v2.js?v=20260921-v4"></script>
+  <script src="../js/face-engine-v2.js?v=20260921-v2"></script>
 </head>
 
 <body class="bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-white min-h-screen transition safe-bottom">
@@ -1171,7 +1171,7 @@
       CONFIG.FACE_MODEL_URL ||
       "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
 
-    const FACE_SYNC_VERSION = "ultra-recall-v3+facex-v4-xs-align";
+    const FACE_SYNC_VERSION = "ultra-recall-v3+facex-v2-xs-align";
 
     const eventSelect = document.getElementById("eventSelect");
     const eventHelp = document.getElementById("eventHelp");
@@ -1710,7 +1710,7 @@
           const v2 = await KeitaFaceV2.analyze(img, { deep: true });
           const v2Rows = v2.map((det, faceIndex) => buildFaceRow({
             item, descriptor: det.descriptor, faceIndex, mediaType: "image",
-            imageUrl: safePreviewUrl, frameIndex: null, videoTimeSeconds: null, engine: "facex-v4"
+            imageUrl: safePreviewUrl, frameIndex: null, videoTimeSeconds: null, engine: "facex-v2"
           }));
           if (v2Rows.length) await insertFaceRows(v2Rows);
           log(`Face V2: ${item.filename || item.id} พบ ${v2Rows.length} หน้า`);
