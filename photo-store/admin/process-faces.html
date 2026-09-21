@@ -791,10 +791,14 @@
 
       const isDark = html.classList.contains("dark");
 
-      localStorage.setItem(
-        "darkMode",
-        isDark ? "1" : "0"
-      );
+      try {
+        localStorage.setItem(
+          "darkMode",
+          isDark ? "1" : "0"
+        );
+      } catch (storageErr) {
+        console.warn("Browser storage unavailable; continue without saved theme", storageErr);
+      }
 
       updateDarkButton();
     }
@@ -813,7 +817,12 @@
     }
 
     function initDarkMode() {
-      const saved = localStorage.getItem("darkMode");
+      let saved = null;
+      try {
+        saved = localStorage.getItem("darkMode");
+      } catch (storageErr) {
+        console.warn("Browser storage unavailable; continue without saved theme", storageErr);
+      }
 
       if (saved === "1") {
         document.documentElement.classList.add("dark");
@@ -2506,7 +2515,12 @@
     }
 
     function initDarkMode() {
-      const saved = localStorage.getItem("darkMode");
+      let saved = null;
+      try {
+        saved = localStorage.getItem("darkMode");
+      } catch (storageErr) {
+        console.warn("Browser storage unavailable; continue without saved theme", storageErr);
+      }
 
       if (saved === "1") {
         document.documentElement.classList.add("dark");
