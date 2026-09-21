@@ -496,7 +496,7 @@
       }
     }
 </style>
-  <script src="js/face-engine-v2.js?v=20260921-v2"></script>
+  <script src="js/face-engine-v2.js?v=20260921-v2stable1"></script>
 </head>
 
 <body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-white transition safe-bottom">
@@ -1184,30 +1184,48 @@
           try {
             const v2Faces = await KeitaFaceV2.analyze(img, { deep: false });
             if (v2Faces.length) {
-              // Query only ONE identity. Sending every detected face makes a
-              // group photo search for several different runners at once.
-              // Default to the dominant/largest face in the uploaded photo.
-              const selectedV2Face = v2Faces.reduce((best, face) => {
-                const b = face.box || {};
-                const area = Math.max(0, (b.x2 || 0) - (b.x1 || 0)) *
-                             Math.max(0, (b.y2 || 0) - (b.y1 || 0));
-                const bb = best.box || {};
-                const bestArea = Math.max(0, (bb.x2 || 0) - (bb.x1 || 0)) *
-                                 Math.max(0, (bb.y2 || 0) - (bb.y1 || 0));
-                return area > bestArea ? face : best;
-              }, v2Faces[0]);
-              const selectedV2Descriptor = Array.from(selectedV2Face.descriptor);
-              const v2Data = await callFaceSearchFunction({
-                event_id: eventId, engine: "facex-v2",
-                descriptor: selectedV2Descriptor, descriptors: [selectedV2Descriptor],
-                // V3 XS + alignment separates identities much better than V2.
-                // Open recall moderately, while the tight best-match gap keeps
-                // unrelated runners from being pulled into the result set.
-                threshold: 0.48, max_results: 30, gap_limit: 0.16, strict: true
+              // Keep identities separate. A group photo must never become one
+              // combined multi-person query. Try each detected face independently,
+              // then keep only the strongest identity result.
+              const orderedFaces = [...v2Faces].sort((a, b) => {
+                const ab = a.box || {}, bb = b.box || {};
+                const aa = Math.max(0, (ab.x2 || 0) - (ab.x1 || 0)) *
+                           Math.max(0, (ab.y2 || 0) - (ab.y1 || 0));
+                const ba = Math.max(0, (bb.x2 || 0) - (bb.x1 || 0)) *
+                           Math.max(0, (bb.y2 || 0) - (bb.y1 || 0));
+                return ba - aa;
               });
-              const v2Results = normalizeResults(v2Data.results || v2Data.matches || []);
-              if (v2Results.length) {
-                results = v2Results;
+
+              let bestV2 = null;
+
+              for (const face of orderedFaces) {
+                const descriptor = Array.from(face.descriptor);
+                const data = await callFaceSearchFunction({
+                  event_id: eventId,
+                  engine: "facex-v2",
+                  descriptor,
+                  descriptors: [descriptor],
+                  threshold: 0.42,
+                  max_results: 30,
+                  gap_limit: 0.08,
+                  strict: true
+                });
+
+                const faceResults = normalizeResults(data.results || data.matches || []);
+                if (!faceResults.length) continue;
+
+                const d = Number(data.best_distance);
+                const bestDistance = Number.isFinite(d)
+                  ? d
+                  : Number((data.results || data.matches || [])[0]?.distance ?? 999);
+
+                if (!bestV2 || bestDistance < bestV2.bestDistance) {
+                  bestV2 = { bestDistance, faceResults };
+                }
+              }
+
+              if (bestV2?.faceResults?.length) {
+                results = bestV2.faceResults;
                 Swal.close();
                 renderResults();
                 return;

@@ -5,7 +5,7 @@
 (() => {
   const BASE = "https://facex-engine.github.io/facex/demo/";
   const ORT = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/";
-  let detSess=null, lmSess=null, recSess=null, loading=null;
+  let detSess=null, recSess=null, loading=null;
   const kp=new Uint8Array([0x42,0x8a,0x2f,0x98,0xd7,0x28,0xae,0x22,0x71,0x37,0x44,0x91,0x23,0xef,0x65,0xcd,0xb5,0xc0,0xfb,0xcf,0xec,0x4d,0x3b,0x2f,0xe9,0xb5,0xdb,0xa5,0x81,0x89,0xdb,0xbc]);
   const ko=new Uint8Array([0xb7,0x4d,0xb2,0x24,0xec,0x76,0x04,0xe4,0xcb,0x46,0xc8,0x02,0x97,0x3c,0x33,0xfa,0x8b,0xb0,0x11,0x60,0x0c,0xd5,0x02,0xf3,0xac,0xb8,0x62,0x0c,0xf3,0xad,0x54,0x01]);
 
@@ -24,13 +24,13 @@
     const s=await ort.InferenceSession.create(bytes,{executionProviders:["wasm"]}); bytes.fill(0); return s;
   }
   async function load(){
-    if(detSess&&lmSess&&recSess) return true;
+    if(detSess&&recSess) return true;
     if(loading) return loading;
     loading=(async()=>{
       await script(ORT+"ort.min.js");
       ort.env.wasm.wasmPaths=ORT; ort.env.wasm.numThreads=1;
       const k=new Uint8Array(32); for(let i=0;i<32;i++) k[i]=kp[i]^ko[i];
-      [detSess,lmSess,recSess]=await Promise.all([session("facex_detect.enc",k),session("facex_landmark.enc",k),session("facex_xs.enc",k)]);
+      [detSess,recSess]=await Promise.all([session("facex_detect.enc",k),session("facex_tiny.enc",k)]);
       k.fill(0); return true;
     })();
     try{return await loading;}finally{loading=null;}
@@ -56,37 +56,10 @@
       }
     } return nms(dets,.4);
   }
-  async function landmarks(src,box){
+  async function embed(src,box){
     const cv=document.createElement("canvas");cv.width=112;cv.height=112;const c=cv.getContext("2d",{willReadFrequently:true});
     const bw=box.x2-box.x1,bh=box.y2-box.y1,side=Math.max(bw,bh)*1.30,cx=(box.x1+box.x2)/2,cy=(box.y1+box.y2)/2,sx=cx-side/2,sy=cy-side/2;
     c.fillStyle="#000";c.fillRect(0,0,112,112);c.drawImage(src,sx,sy,side,side,0,0,112,112);
-    const px=c.getImageData(0,0,112,112).data,N=112*112,input=new Float32Array(3*N);
-    for(let i=0,p=0;i<N;i++){const r=px[p++],g=px[p++],b=px[p++];p++;input[i]=(r-127.5)/128;input[N+i]=(g-127.5)/128;input[2*N+i]=(b-127.5)/128;}
-    const o=await lmSess.run({input:new ort.Tensor("float32",input,[1,3,112,112])}),lm=o.landmarks.data,pts=new Array(98);
-    for(let i=0;i<98;i++)pts[i]=[sx+lm[i*2]*side,sy+lm[i*2+1]*side];
-    return pts;
-  }
-  function avgPts(pts,a,b){let x=0,y=0,n=0;for(let i=a;i<=b;i++){x+=pts[i][0];y+=pts[i][1];n++;}return [x/n,y/n];}
-  async function embed(src,box){
-    const pts=await landmarks(src,box);
-    const le=avgPts(pts,60,67), re=avgPts(pts,68,75);
-    const dx=re[0]-le[0],dy=re[1]-le[1],dist=Math.hypot(dx,dy);
-    if(!Number.isFinite(dist)||dist<2) throw new Error("landmark alignment failed");
-    // ArcFace 112x112 canonical eye centers. Similarity transform removes
-    // in-plane head tilt and normalizes face scale/translation before recognition.
-    const TL=[38.2946,51.6963],TR=[73.5318,51.5014];
-    const tdx=TR[0]-TL[0],tdy=TR[1]-TL[1],tdist=Math.hypot(tdx,tdy);
-    const scale=tdist/dist, ang=Math.atan2(tdy,tdx)-Math.atan2(dy,dx);
-    const ca=Math.cos(ang)*scale, sa=Math.sin(ang)*scale;
-    const smx=(le[0]+re[0])/2,smy=(le[1]+re[1])/2,tmx=(TL[0]+TR[0])/2,tmy=(TL[1]+TR[1])/2;
-    const tx=tmx-(ca*smx-sa*smy), ty=tmy-(sa*smx+ca*smy);
-    // Keep the original FaceX V3 crop transform so query descriptors stay
-    // compatible with the already-populated facex-v2 index in production.
-    const inv=1/(scale||1),ica=Math.cos(ang)*inv,isa=Math.sin(ang)*inv;
-    const cv=document.createElement("canvas");cv.width=112;cv.height=112;const c=cv.getContext("2d",{willReadFrequently:true});
-    c.fillStyle="#000";c.fillRect(0,0,112,112);
-    c.setTransform(ica,-isa,isa,ica,-ica*tx-isa*ty,isa*tx-ica*ty);
-    c.drawImage(src,0,0);c.setTransform(1,0,0,1,0,0);
     const px=c.getImageData(0,0,112,112).data,N=112*112,input=new Float32Array(3*N);
     for(let i=0,p=0;i<N;i++){const r=px[p++],g=px[p++],b=px[p++];p++;input[i]=(r-127.5)/128;input[N+i]=(g-127.5)/128;input[2*N+i]=(b-127.5)/128;}
     const o=await recSess.run({input:new ort.Tensor("float32",input,[1,3,112,112])});
