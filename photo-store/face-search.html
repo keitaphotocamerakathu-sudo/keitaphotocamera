@@ -1188,7 +1188,7 @@
               const v2Data = await callFaceSearchFunction({
                 event_id: eventId, engine: "facex-v2",
                 descriptor: v2Descriptors[0], descriptors: v2Descriptors,
-                threshold: 0.30, max_results: 50, gap_limit: 0.055, strict: true
+                threshold: 0.22, max_results: 30, gap_limit: 0.025, strict: true
               });
               const v2Results = normalizeResults(v2Data.results || v2Data.matches || []);
               if (v2Results.length) {
