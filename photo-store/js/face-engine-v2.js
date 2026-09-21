@@ -66,13 +66,39 @@
   }
   async function analyze(src,{deep=true}={}){
     await load(); const {w,h}=sourceSize(src); if(!w||!h) throw new Error("ขนาดภาพไม่ถูกต้อง");
-    let dets=await detectRegion(src,{x:0,y:0,w,h},.22);
+    // Fast pass first: one full-frame inference.
+    let dets=await detectRegion(src,{x:0,y:0,w,h},.20);
+
     if(deep){
-      const frac=.46, tw=w*frac,th=h*frac, xs=[0,(w-tw)/2,w-tw],ys=[0,(h-th)/2,h-th];
-      for(const y of ys)for(const x of xs)dets=dets.concat(await detectRegion(src,{x,y,w:tw,h:th},.18));
-      dets=nms(dets,.32);
+      // Rescue scan is intentionally selective. The old V2 always ran 9 tiles
+      // on every image, which made large events very slow. Only rescue images
+      // where the fast pass found no face, or where the image is large enough
+      // that distant/tiny faces are likely to be lost at 320px.
+      const longEdge=Math.max(w,h);
+      const needsRescue = dets.length===0 || longEdge>=3000;
+
+      if(needsRescue){
+        const frac=.58, tw=w*frac, th=h*frac;
+        // Four overlapping rescue tiles cover the frame with much less work
+        // than the previous 3x3 nine-tile scan.
+        const regions=[
+          {x:0,y:0,w:tw,h:th},
+          {x:w-tw,y:0,w:tw,h:th},
+          {x:0,y:h-th,w:tw,h:th},
+          {x:w-tw,y:h-th,w:tw,h:th}
+        ];
+        for(const region of regions){
+          dets=dets.concat(await detectRegion(src,region,.17));
+        }
+        dets=nms(dets,.32);
+      }
     }
-    const out=[];for(const d of dets){try{out.push({box:d,descriptor:await embed(src,d),score:d.score});}catch(e){console.warn("FaceX embed skipped",e);}}
+
+    const out=[];
+    for(const d of dets){
+      try{out.push({box:d,descriptor:await embed(src,d),score:d.score});}
+      catch(e){console.warn("FaceX embed skipped",e);}
+    }
     return out;
   }
   function cosineDistance(a,b){if(!a||!b||a.length!==b.length)return 999;let dot=0,na=0,nb=0;for(let i=0;i<a.length;i++){dot+=a[i]*b[i];na+=a[i]*a[i];nb+=b[i]*b[i];}return na&&nb?1-dot/(Math.sqrt(na)*Math.sqrt(nb)):999;}
