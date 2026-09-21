@@ -1215,6 +1215,18 @@
                   strict: true
                 });
 
+                // Do not silently fall back when the new profile index has
+                // never been built for this event. Otherwise the user sees a
+                // legacy result and assumes Profile V1 was tested.
+                if (Number(data.total_faces || 0) === 0) {
+                  Swal.fire(
+                    "Profile Face Index ยังไม่ได้ Sync",
+                    "Event นี้ยังไม่มี facex-profile-v1 ในฐานข้อมูล กรุณาไปหน้า Admin Face Sync แล้ว Sync ใหม่ให้ครบก่อนค้นหา",
+                    "warning"
+                  );
+                  return;
+                }
+
                 const faceResults = normalizeResults(data.results || data.matches || []);
                 if (!faceResults.length) continue;
 
