@@ -39,7 +39,7 @@ async function chooseSearchFace(img,faces,{confirm=false}={}){
   await Swal.fire({title:faceText(confirm?'confirm':'choose'),html:panel,showConfirmButton:false,showCancelButton:true,cancelButtonText:faceText('cancel')});
   return chosen;
 }
-function faceLoading(text=t().loadingFace){Swal.fire({title:text,allowOutsideClick:false,showConfirmButton:false,didOpen:()=>Swal.showLoading()});}
+function faceLoading(text=t().loadingSearch){Swal.fire({title:text,allowOutsideClick:false,showConfirmButton:false,didOpen:()=>Swal.showLoading()});}
 function lockFaceSearch(value){
   faceSearchBusy=value;document.getElementById('faceInput').disabled=value;
   document.getElementById('searchBtn').disabled=value||!selectedFile;
@@ -47,7 +47,7 @@ function lockFaceSearch(value){
 async function runSelectedFaceSearch(img,{append=false}={}){
   let scan,selected,notice='';
   try{
-    scan=await KeitaFaceFree.analyze(img,{deep:true,onProgress:p=>{if(p.stage==='download')Swal.update({title:p.model+' '+Math.round(p.received/p.total*100)+'%'});}});
+    scan=await KeitaFaceFree.analyze(img,{deep:true});
   }catch(error){console.warn('Free face model unavailable',error);notice=faceText('fallback');}
   if(scan?.faces.length)selected=await chooseSearchFace(img,scan.faces,{confirm:append});
   else{

@@ -708,9 +708,9 @@
         noResult: "ยังไม่พบภาพหรือวิดีโอ",
         noResultDesc: "ลองใช้รูปหน้าที่ชัดขึ้น",
 
-        loadingFace: "กำลังวิเคราะห์ใบหน้า...",
-        loadingSearch: "กำลังค้นหารูปและวิดีโอ...",
-        loadingSystem: "กำลังโหลดระบบค้นหาใบหน้า...",
+        loadingFace: "ค้นหาภาพ",
+        loadingSearch: "ค้นหาภาพ",
+        loadingSystem: "ค้นหาภาพ",
 
         noFace: "ไม่พบใบหน้า",
         noFaceDesc: "กรุณาใช้รูปที่เห็นใบหน้าชัดเจน",
@@ -765,9 +765,9 @@
         noResult: "No Photos or Videos Found",
         noResultDesc: "Try using a clearer face image",
 
-        loadingFace: "Analyzing face...",
-        loadingSearch: "Searching photos and videos...",
-        loadingSystem: "Loading face search system...",
+        loadingFace: "Searching photos",
+        loadingSearch: "Searching photos",
+        loadingSystem: "Searching photos",
 
         noFace: "Face not found",
         noFaceDesc: "Please use a clearer face photo",
@@ -822,9 +822,9 @@
         noResult: "Фото или видео не найдены",
         noResultDesc: "Попробуйте использовать более чёткое фото",
 
-        loadingFace: "Анализ лица...",
-        loadingSearch: "Поиск фото и видео...",
-        loadingSystem: "Загрузка системы поиска...",
+        loadingFace: "Поиск фото",
+        loadingSearch: "Поиск фото",
+        loadingSystem: "Поиск фото",
 
         noFace: "Лицо не найдено",
         noFaceDesc: "Пожалуйста, используйте более чёткое фото",
@@ -1623,7 +1623,6 @@
             >
               ${escapeHtml(t().addCart)}
             </button>
-            ${!mediaIsVideo ? `<button type="button" onclick="refineFaceSearch('${photoId}')" class="mt-2 w-full border border-emerald-500 text-emerald-600 rounded-2xl py-3 font-bold text-sm">${escapeHtml(faceText('refine'))}</button>` : ''}
           </div>
         `;
 
@@ -2177,7 +2176,6 @@
     }, true);
   </script>
 
-<script src="js/face-search-free.js?v=20260921-free2"></script>
+<script src="js/face-search-free.js?v=20260922-clean-ui1"></script>
 </body>
 </html>
-

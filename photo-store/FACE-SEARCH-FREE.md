@@ -10,7 +10,7 @@ The sync completes and saves one whole media file at a time through `replace_kei
 
 ## Search
 
-Upload a reference photo; select yourself when several faces are detected. Only the selected identity is queried. “ฉันอยู่ในภาพนี้ · ค้นหาเพิ่ม” lets the customer explicitly select another reference pose, up to six SFace references. Different models are queried separately; fallback detectors must overlap the selected face. Additional references are kept in memory for that search session.
+Upload a reference photo; select yourself when several faces are detected. Only the selected identity is queried. Result cards offer preview and add-to-cart actions; the additional-reference button is not shown. The loading dialog uses one plain search label throughout (Thai: “ค้นหาภาพ”), including model downloads. Different models are queried separately; fallback detectors must overlap the selected face.
 
 The new cosine-distance threshold defaults to 0.45. Scores are not a calibrated probability or an accuracy guarantee. Event photos with strong profiles, very small faces or occlusion still need real-event evaluation. Customers should use the existing LINE entry point; a direct external browser may require a correctly configured LINE redirect URI.
 
