@@ -99,6 +99,145 @@
       word-break: break-all;
     }
 
+    /* Photo search: one calm loading surface for every processing stage. */
+    .swal2-container.keita-search-backdrop {
+      padding: 24px;
+      background: rgba(15, 23, 42, .34);
+      backdrop-filter: blur(9px);
+      -webkit-backdrop-filter: blur(9px);
+    }
+
+    .swal2-popup.keita-search-loading {
+      --search-accent: #059669;
+      --search-soft: #ecfdf5;
+      --search-line: rgba(5, 150, 105, .20);
+      --search-ink: #263d39;
+      display: flex !important;
+      flex-direction: column;
+      align-items: center;
+      width: min(336px, calc(100vw - 48px));
+      padding: 38px 28px 34px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, .86);
+      border-radius: 28px;
+      background: #fff;
+      color: #172c26;
+      box-shadow: 0 24px 80px rgba(15, 23, 42, .18), 0 4px 16px rgba(15, 23, 42, .04);
+      font-family: inherit;
+    }
+
+    .keita-search-loading .swal2-html-container {
+      order: 0;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: visible;
+    }
+
+    .keita-search-loading .swal2-title {
+      order: 1;
+      margin: 23px 0 0;
+      padding: 0;
+      color: inherit;
+      font-size: 20px;
+      font-weight: 600;
+      line-height: 1.6;
+      letter-spacing: -.025em;
+    }
+
+    .keita-search-loading .swal2-actions,
+    .keita-search-loading .swal2-loader { display: none !important; }
+
+    .keita-search-mark {
+      position: relative;
+      width: 88px;
+      height: 88px;
+      margin: 0 auto;
+      isolation: isolate;
+    }
+
+    .keita-search-mark::before {
+      content: "";
+      position: absolute;
+      inset: 9px;
+      border: 1px solid var(--search-line);
+      border-radius: 21px;
+      background: var(--search-soft);
+    }
+
+    .keita-search-art {
+      position: absolute;
+      inset: 25px;
+      width: 38px;
+      height: 38px;
+      color: var(--search-ink);
+    }
+
+    .keita-search-corners {
+      position: absolute;
+      inset: 0;
+      width: 88px;
+      height: 88px;
+      color: var(--search-accent);
+      opacity: .7;
+    }
+
+    .keita-search-sweep {
+      position: absolute;
+      top: 14px;
+      left: 15px;
+      right: 15px;
+      height: 2px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, transparent, var(--search-accent) 28%, var(--search-accent) 72%, transparent);
+      box-shadow: 0 2px 9px var(--search-line);
+      animation: keita-search-scan 2.6s ease-in-out infinite;
+      will-change: transform, opacity;
+    }
+
+    .keita-search-loading::after {
+      content: "";
+      order: 2;
+      width: 28px;
+      height: 3px;
+      margin-top: 17px;
+      border-radius: 999px;
+      background: var(--search-accent);
+      opacity: .32;
+    }
+
+    .dark .swal2-container.keita-search-backdrop { background: rgba(2, 6, 23, .52); }
+    .dark .swal2-popup.keita-search-loading {
+      --search-accent: #6ee7b7;
+      --search-soft: rgba(52, 211, 153, .055);
+      --search-line: rgba(110, 231, 183, .17);
+      --search-ink: #c5dfd7;
+      border-color: rgba(148, 163, 184, .16);
+      background: #111d28;
+      color: #f1f5f9;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, .32), inset 0 1px 0 rgba(255, 255, 255, .025);
+    }
+
+    .keita-search-enter { animation: keita-search-in .24s cubic-bezier(.2, .8, .2, 1); }
+    .keita-search-exit { animation: keita-search-out .14s ease-in forwards; }
+    @keyframes keita-search-scan {
+      0%, 100% { transform: translateY(0); opacity: 0; }
+      18% { opacity: .82; }
+      72% { opacity: .82; }
+      90% { transform: translateY(58px); opacity: 0; }
+    }
+    @keyframes keita-search-in {
+      from { opacity: 0; transform: translateY(8px) scale(.975); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes keita-search-out {
+      to { opacity: 0; transform: translateY(3px) scale(.985); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .keita-search-enter, .keita-search-exit, .keita-search-sweep { animation: none; }
+      .keita-search-sweep { transform: translateY(28px); opacity: .55; }
+    }
+
     .photo-modal {
       position: fixed;
       inset: 0;
@@ -1167,12 +1306,7 @@
           return;
         }
 
-        Swal.fire({
-          title: t().loadingFace,
-          allowOutsideClick: false,
-          showConfirmButton: false,
-          didOpen: () => Swal.showLoading()
-        });
+        faceLoading(t().loadingSearch);
 
         await loadModels();
         let primaryFaceResults=[];
@@ -2176,6 +2310,6 @@
     }, true);
   </script>
 
-<script src="js/face-search-free.js?v=20260922-clean-ui1"></script>
+<script src="js/face-search-free.js?v=20260922-loader1"></script>
 </body>
 </html>

@@ -39,7 +39,40 @@ async function chooseSearchFace(img,faces,{confirm=false}={}){
   await Swal.fire({title:faceText(confirm?'confirm':'choose'),html:panel,showConfirmButton:false,showCancelButton:true,cancelButtonText:faceText('cancel')});
   return chosen;
 }
-function faceLoading(text=t().loadingSearch){Swal.fire({title:text,allowOutsideClick:false,showConfirmButton:false,didOpen:()=>Swal.showLoading()});}
+function faceLoading(text=t().loadingSearch){
+  // Keep the same dialog while detection, matching and fallback searches run.
+  if(Swal.getPopup?.()?.classList.contains('keita-search-loading')){
+    Swal.update({titleText:text});
+    return;
+  }
+  Swal.fire({
+    titleText:text,
+    html:`<div class="keita-search-mark" aria-hidden="true">
+      <svg class="keita-search-corners" viewBox="0 0 88 88" fill="none" focusable="false">
+        <path d="M19 3H12a9 9 0 0 0-9 9v7m66-16h7a9 9 0 0 1 9 9v7M3 69v7a9 9 0 0 0 9 9h7m50 0h7a9 9 0 0 0 9-9v-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <svg class="keita-search-art" viewBox="0 0 40 40" fill="none" focusable="false">
+        <rect x="5.5" y="7.5" width="29" height="25" rx="5" stroke="currentColor" stroke-width="1.5"/>
+        <circle cx="15" cy="16" r="2.5" stroke="currentColor" stroke-width="1.5"/>
+        <path d="m7 29 8-8 5 4 6-7 7 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="keita-search-sweep"></span>
+    </div>`,
+    customClass:{container:'keita-search-backdrop',popup:'keita-search-loading'},
+    showClass:{popup:'keita-search-enter'},
+    hideClass:{popup:'keita-search-exit'},
+    allowOutsideClick:false,
+    allowEscapeKey:false,
+    heightAuto:false,
+    showConfirmButton:false,
+    didOpen:popup=>{
+      popup.setAttribute('aria-busy','true');
+      const title=popup.querySelector('.swal2-title');
+      title?.setAttribute('role','status');
+      title?.setAttribute('aria-live','polite');
+    }
+  });
+}
 function lockFaceSearch(value){
   faceSearchBusy=value;document.getElementById('faceInput').disabled=value;
   document.getElementById('searchBtn').disabled=value||!selectedFile;
