@@ -107,10 +107,10 @@ function validAppearance(value: any) {
   });
 }
 
-function compatibleClothes(a: any, b: any) {
-  if (!validAppearance(a) || !validAppearance(b)) return false;
+function appearanceSimilarity(a: any, b: any) {
+  if (!validAppearance(a) || !validAppearance(b)) return null;
   const overlap = (part: string) => a[part].reduce((sum: number, x: number, i: number) => sum + Math.sqrt(x * b[part][i]), 0);
-  return overlap('upper') >= .65 && overlap('lower') >= .55;
+  return overlap('upper') * .60 + overlap('lower') * .40;
 }
 
 function cleanPersonBox(box: any) {
@@ -251,10 +251,10 @@ Deno.serve(async (req) => {
     const isFaceXV2 = engine === "facex-v2" || engine === "facex-v3" || engine === "facex-v4" || engine === "facex-profile-v1" || engine === "facex-profile-v2";
     const requestedThreshold = Number(
       body.threshold ??
-        (isPerson ? 0.20 : isSFace ? 0.45 : isFaceXV2 ? 0.62 : (strictMode ? STRICT_DEFAULT_THRESHOLD : NORMAL_DEFAULT_THRESHOLD))
+        (isPerson ? 0.30 : isSFace ? 0.45 : isFaceXV2 ? 0.62 : (strictMode ? STRICT_DEFAULT_THRESHOLD : NORMAL_DEFAULT_THRESHOLD))
     );
 
-    const threshold = isPerson ? clampNumber(requestedThreshold, 0.05, 0.22) : isSFace ? clampNumber(requestedThreshold, 0.20, 0.55) : isFaceXV2
+    const threshold = isPerson ? clampNumber(requestedThreshold, 0.05, 0.34) : isSFace ? clampNumber(requestedThreshold, 0.20, 0.55) : isFaceXV2
       ? clampNumber(requestedThreshold, 0.30, 0.72)
       : (strictMode
           ? clampNumber(requestedThreshold, 0.30, STRICT_MAX_THRESHOLD)
@@ -271,7 +271,7 @@ Deno.serve(async (req) => {
           ? clampNumber(requestedGapLimit, 0.02, STRICT_MAX_GAP_LIMIT)
           : clampNumber(requestedGapLimit, 0.02, NORMAL_MAX_GAP_LIMIT));
 
-    const requestedMaxResults = Number(body.max_results || 30);
+    const requestedMaxResults = Number(body.max_results ?? 300);
 
     const maxResults = Math.floor(clampNumber(requestedMaxResults, 1, 300));
     const offset = Math.floor(clampNumber(Number(body.offset ?? 0), 0, 100000));
@@ -315,8 +315,10 @@ Deno.serve(async (req) => {
     const checked = rawFaces
       .map((face: any) => {
         const storedDescriptor = parseVector(face.descriptor);
-        const descriptorValid = isValidDescriptor(storedDescriptor, expectedDim)
-          && (!isPerson || compatibleClothes(body.appearance, face.face_box?.appearance));
+        const descriptorValid = isValidDescriptor(storedDescriptor, expectedDim);
+        const appearance_similarity = isPerson
+          ? appearanceSimilarity(body.appearance, face.face_box?.appearance)
+          : null;
 
         const distance = descriptorValid
           ? Math.min(
@@ -337,6 +339,7 @@ Deno.serve(async (req) => {
 
           distance,
           confidence,
+          appearance_similarity,
           descriptor_length: storedDescriptor.length,
           descriptor_valid: descriptorValid,
 
@@ -377,7 +380,14 @@ Deno.serve(async (req) => {
         if (!item.photo_status) return true;
         return String(item.photo_status).toLowerCase() === "active";
       })
-      .sort((a, b) => a.distance - b.distance);
+      .sort((a, b) => {
+        if (isPerson) {
+          const aRank = a.distance - (a.appearance_similarity ?? 0) * .04;
+          const bRank = b.distance - (b.appearance_similarity ?? 0) * .04;
+          return aRank - bRank;
+        }
+        return a.distance - b.distance;
+      });
 
     /**
      * กรอง match ที่เกิน threshold ออกก่อน
@@ -455,6 +465,7 @@ Deno.serve(async (req) => {
       media_type: item.media_type,
       distance: roundNumber(item.distance),
       confidence: isPerson ? null : item.confidence,
+      ...(isPerson ? {appearance_similarity: roundNumber(item.appearance_similarity ?? 0)} : {}),
       descriptor_length: item.descriptor_length,
       frame_index: item.frame_index,
       video_time_seconds:
@@ -471,6 +482,7 @@ Deno.serve(async (req) => {
       distance: roundNumber(item.distance),
       confidence: isPerson ? null : item.confidence,
       match_type: isPerson ? 'appearance' : 'face',
+      ...(isPerson ? {appearance_similarity: roundNumber(item.appearance_similarity ?? 0)} : {}),
 
       media_type: item.media_type,
 
