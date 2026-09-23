@@ -112,7 +112,7 @@ async function runSelectedFaceSearch(img,{append=false}={}){
     if(nextReferences.length>=6)throw new Error(faceText('limit'));
     nextReferences.push(Array.from(selected.descriptor));
     try{
-      freeData=await callFaceSearchFunction({event_id:eventId,engine:KeitaFaceFree.engine,descriptors:nextReferences,threshold:.45,use_gap:false,strict:true});
+      freeData=await callFaceSearchFunction({event_id:eventId,engine:KeitaFaceFree.engine,descriptors:nextReferences,threshold:.50,use_gap:false,strict:true,max_results:300});
       freeMatches=normalizeResults(freeData.results||[]);completed++;
     }catch(error){lastError=error;notice=faceText('faceFailed');}
   }
@@ -122,7 +122,7 @@ async function runSelectedFaceSearch(img,{append=false}={}){
   }
   if(subject.person){
     try{
-      const data=await callFaceSearchFunction({event_id:eventId,engine:KeitaPerson.engine,descriptor:subject.person.descriptor,appearance:subject.person.appearance,threshold:.20,use_gap:false,strict:true});
+      const data=await callFaceSearchFunction({event_id:eventId,engine:KeitaPerson.engine,descriptor:subject.person.descriptor,appearance:subject.person.appearance,threshold:.32,use_gap:false,strict:false,max_results:300});
       appearanceMatches=normalizeResults(data.results||[]).map(row=>({...row,match_type:'appearance',confidence:null}));completed++;
     }catch(error){lastError=error;notice=faceText('appearanceFailed');console.warn('Appearance search unavailable',error);}
   }
