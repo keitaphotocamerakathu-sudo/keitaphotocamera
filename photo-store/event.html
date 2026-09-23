@@ -2908,6 +2908,48 @@
       params.get("event_id") ||
       params.get("id");
 
+    const FREE_EVENT_TEXT = {
+      th: {
+        event: "แจกฟรี • ดาวน์โหลดไฟล์ Original ได้ทันที",
+        free: "ฟรี",
+        download: "ดาวน์โหลดฟรี"
+      },
+      en: {
+        event: "Free event • Original files available for download",
+        free: "FREE",
+        download: "Free Download"
+      },
+      ru: {
+        event: "Бесплатно • Можно скачать оригинальный файл",
+        free: "БЕСПЛАТНО",
+        download: "Скачать бесплатно"
+      }
+    };
+
+    function freeText() {
+      return FREE_EVENT_TEXT[currentLang] || FREE_EVENT_TEXT.th;
+    }
+
+    function isFreeEvent() {
+      return currentEvent?.download_mode === "free";
+    }
+
+    function freeDownloadUrl(photoId) {
+      return `${CONFIG.SUPABASE_URL}/functions/v1/free-download?event_id=${encodeURIComponent(eventId)}&photo_id=${encodeURIComponent(photoId)}`;
+    }
+
+    function downloadFreePhoto(photoId) {
+      if (!isFreeEvent() || !photoId) return;
+
+      const link = document.createElement("a");
+      link.href = freeDownloadUrl(photoId);
+      link.target = "_blank";
+      link.rel = "noopener";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+
     const I18N = {
       th: {
         htmlLang: "th",
@@ -3116,6 +3158,10 @@
 
       currentEvent = data;
 
+      if (isFreeEvent()) {
+        localStorage.removeItem(getCartKey());
+      }
+
       document.getElementById("eventTitle").textContent =
         data.title || data.name || t("photoStore");
 
@@ -3234,8 +3280,9 @@
     function renderPhotoCard(photo) {
       const mediaIsVideo = isVideo(photo);
       const imgUrl = mediaIsVideo ? getVideoThumbnailUrl(photo) : getPhotoUrl(photo);
-      const price = getSalePrice(photo);
-      const isInCart = getCart().some(item => String(item.photo_id) === String(photo.id));
+      const freeEvent = isFreeEvent();
+      const price = freeEvent ? 0 : getSalePrice(photo);
+      const isInCart = !freeEvent && getCart().some(item => String(item.photo_id) === String(photo.id));
       const durationText = mediaIsVideo ? formatDuration(photo.duration_seconds) : "";
 
       return `
@@ -3285,16 +3332,16 @@
             </div>
 
             <div class="flex items-center justify-between gap-2">
-              <div class="font-bold text-sm">
-                ${formatMoney(price)} ฿
+              <div class="font-bold text-sm ${freeEvent ? "text-emerald-400" : ""}">
+                ${freeEvent ? escapeHtml(freeText().free) : `${formatMoney(price)} ฿`}
               </div>
 
               <button
-                onclick="toggleCart('${escapeAttr(photo.id)}')"
+                onclick="${freeEvent ? `downloadFreePhoto('${escapeAttr(photo.id)}')` : `toggleCart('${escapeAttr(photo.id)}')`}"
                 id="cartBtn-${escapeAttr(photo.id)}"
-                class="${isInCart ? "bg-red-500" : "bg-emerald-500"} text-white rounded-xl px-3 py-2 text-xs font-bold"
+                class="${freeEvent ? "bg-blue-600 hover:bg-blue-700" : (isInCart ? "bg-red-500" : "bg-emerald-500")} text-white rounded-xl px-3 py-2 text-xs font-bold"
               >
-                ${isInCart ? t("remove") : t("select")}
+                ${freeEvent ? escapeHtml(freeText().download) : (isInCart ? t("remove") : t("select"))}
               </button>
             </div>
           </div>
@@ -3511,6 +3558,11 @@
     }
 
     function toggleCart(photoId) {
+      if (isFreeEvent()) {
+        downloadFreePhoto(photoId);
+        return;
+      }
+
       const photo = photos.find(p => String(p.id) === String(photoId));
       if (!photo) return;
 
@@ -3551,6 +3603,8 @@
     }
 
     function updateSelectedUI() {
+      if (isFreeEvent()) return;
+
       const cart = getCart();
 
       photos.forEach(photo => {
@@ -3567,6 +3621,12 @@
 
     function updateCartBadge() {
       const badge = document.getElementById("cartBadge");
+
+      if (isFreeEvent()) {
+        badge.classList.add("hidden");
+        return;
+      }
+
       const count = getCart().length;
 
       badge.textContent = count;
@@ -3579,6 +3639,8 @@
     }
 
     function openCart() {
+      if (isFreeEvent()) return;
+
       const cart = getCart();
 
       if (!cart.length) {
@@ -3675,8 +3737,15 @@
       document.getElementById("imageModal").classList.add("flex");
       setTimeout(fitEventModalWatermark, 40);
 
-      document.getElementById("modalAddBtn").onclick = () => {
-        toggleCart(photo.id);
+      const modalAddBtn = document.getElementById("modalAddBtn");
+      modalAddBtn.textContent = isFreeEvent() ? freeText().download : t("modalAdd");
+      modalAddBtn.className = `flex-1 ${isFreeEvent() ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-500 hover:bg-emerald-600"} text-white rounded-2xl px-4 py-3 font-bold`;
+      modalAddBtn.onclick = () => {
+        if (isFreeEvent()) {
+          downloadFreePhoto(photo.id);
+        } else {
+          toggleCart(photo.id);
+        }
         closeImageModal();
       };
 
@@ -3746,12 +3815,33 @@
 
       if (!currentEvent) return;
 
+      const freeEvent = isFreeEvent();
       const price = Number(currentEvent.price || currentEvent.photo_price || CONFIG.DEFAULT_PHOTO_PRICE || 60);
 
-      document.getElementById("priceText").textContent =
-        text("priceText", {
-          price: formatMoney(price)
-        });
+      document.getElementById("priceText").textContent = freeEvent
+        ? freeText().event
+        : text("priceText", {
+            price: formatMoney(price)
+          });
+
+      const orderBtn = document.getElementById("orderBtn");
+      const navCartButton = document.getElementById("navCart")?.closest("button");
+      const navOrderButton = document.getElementById("navOrder")?.closest("button");
+      const navGrid = document.querySelector("nav > div");
+
+      orderBtn?.classList.toggle("hidden", freeEvent);
+      navCartButton?.classList.toggle("hidden", freeEvent);
+      navOrderButton?.classList.toggle("hidden", freeEvent);
+
+      if (navGrid) {
+        navGrid.classList.toggle("grid-cols-3", !freeEvent);
+        navGrid.classList.toggle("grid-cols-1", freeEvent);
+      }
+
+      const modalAddBtn = document.getElementById("modalAddBtn");
+      if (modalAddBtn) {
+        modalAddBtn.textContent = freeEvent ? freeText().download : t("modalAdd");
+      }
     }
 
     function updatePhotoCountText() {
