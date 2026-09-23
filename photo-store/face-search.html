@@ -808,8 +808,16 @@
           <p id="txtPreviewOnly" class="opacity-75">ตัวอย่างเท่านั้น · มีลายน้ำ</p>
         </div>
 
-        <div class="font-bold shrink-0">฿<span id="photoModalPrice">0.00</span></div>
+        <div id="photoModalPriceBox" class="font-bold shrink-0">฿<span id="photoModalPrice">0.00</span></div>
       </div>
+
+      <button
+        id="photoModalFreeDownloadBtn"
+        type="button"
+        class="hidden mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white rounded-2xl py-3 font-bold"
+      >
+        ดาวน์โหลดฟรี
+      </button>
     </div>
   </div>
 
@@ -827,6 +835,48 @@
     let eventData = null;
     let selectedFile = null;
     let results = [];
+
+    const FREE_SEARCH_TEXT = {
+      th: { free: "ฟรี", download: "ดาวน์โหลดฟรี" },
+      en: { free: "FREE", download: "Free Download" },
+      ru: { free: "БЕСПЛАТНО", download: "Скачать бесплатно" }
+    };
+
+    function freeSearchText() {
+      return FREE_SEARCH_TEXT[currentLang] || FREE_SEARCH_TEXT.th;
+    }
+
+    function isFreeEvent() {
+      return eventData?.download_mode === "free";
+    }
+
+    function freeDownloadUrl(photoId) {
+      return `${CONFIG.SUPABASE_URL}/functions/v1/free-download?event_id=${encodeURIComponent(eventId)}&photo_id=${encodeURIComponent(photoId)}`;
+    }
+
+    function downloadFreePhoto(photoId) {
+      if (!isFreeEvent() || !photoId) return;
+
+      const link = document.createElement("a");
+      link.href = freeDownloadUrl(photoId);
+      link.target = "_blank";
+      link.rel = "noopener";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+
+    function updateFreeSearchUI() {
+      const freeEvent = isFreeEvent();
+      const cartButton = document.getElementById("txtGoCart")?.closest("button");
+      cartButton?.classList.toggle("hidden", freeEvent);
+
+      if (eventData) {
+        const title = eventData.title || eventData.name || t().pageTitle;
+        document.getElementById("eventText").textContent =
+          freeEvent ? `${title} · ${freeSearchText().free}` : title;
+      }
+    }
 
     const LANG = {
       th: {
@@ -1084,6 +1134,7 @@
       setText("txtSearchResult", x.searchResult);
       setText("txtPhotoUnit", x.photoUnit);
       setText("txtGoCart", x.goCart);
+      updateFreeSearchUI();
 
       setText("txtNoResult", x.noResult);
       setText("txtNoResultDesc", x.noResultDesc);
@@ -1175,9 +1226,7 @@
       }
 
       eventData = data;
-
-      document.getElementById("eventText").textContent =
-        data.title || data.name || t().pageTitle;
+      updateFreeSearchUI();
     }
 
     let facePreviewUrl;
@@ -1674,7 +1723,8 @@
         const mediaIsVideo = isVideo(photo);
 
         const img = getSafePreviewUrl(photo);
-        const price = getPhotoPrice(photo);
+        const freeEvent = isFreeEvent();
+        const price = freeEvent ? 0 : getPhotoPrice(photo);
         const fileName = escapeHtml(photo.filename || photo.file_name || photo.name || photo.id || t().photoFallback);
         const photoId = escapeAttribute(photo.id || "");
         const durationText = mediaIsVideo ? formatDuration(photo.duration_seconds || item.video_time_seconds || photo.video_time_seconds) : "";
@@ -1751,15 +1801,15 @@
             }
 
             <p class="mt-1 font-bold text-emerald-600">
-              ฿${formatMoney(price)}
+              ${freeEvent ? escapeHtml(freeSearchText().free) : `฿${formatMoney(price)}`}
             </p>
 
             <button
               type="button"
-              onclick="addToCart('${photoId}')"
-              class="mt-3 w-full bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-2xl py-3 font-bold text-sm"
+              onclick="${freeEvent ? `downloadFreePhoto('${photoId}')` : `addToCart('${photoId}')`}"
+              class="mt-3 w-full ${freeEvent ? "bg-blue-600 hover:bg-blue-700" : "bg-slate-900 dark:bg-white dark:text-slate-900"} text-white rounded-2xl py-3 font-bold text-sm"
             >
-              ${escapeHtml(t().addCart)}
+              ${escapeHtml(freeEvent ? freeSearchText().download : t().addCart)}
             </button>
           </div>
         `;
@@ -1802,6 +1852,11 @@
     }
 
     function addToCart(photoId) {
+      if (isFreeEvent()) {
+        downloadFreePhoto(photoId);
+        return;
+      }
+
       const item = results.find(r => String(r.photo?.id) === String(photoId));
 
       if (!item?.photo) return;
@@ -1923,6 +1978,7 @@
     }
 
     function goCart() {
+      if (isFreeEvent()) return;
       window.location.href = `cart.html?event=${encodeURIComponent(eventId || "")}`;
     }
 
@@ -2134,8 +2190,22 @@
       document.getElementById("photoModalName").textContent =
         photo.filename || photo.file_name || photo.name || photo.id || t().photoFallback;
 
-      document.getElementById("photoModalPrice").textContent =
-        formatMoney(getPhotoPrice(photo));
+      const modalPriceBox = document.getElementById("photoModalPriceBox");
+      const modalPrice = document.getElementById("photoModalPrice");
+      const freeDownloadBtn = document.getElementById("photoModalFreeDownloadBtn");
+
+      if (isFreeEvent()) {
+        modalPriceBox.textContent = freeSearchText().free;
+        freeDownloadBtn.textContent = freeSearchText().download;
+        freeDownloadBtn.classList.remove("hidden");
+        freeDownloadBtn.onclick = () => downloadFreePhoto(photo.id);
+      } else {
+        modalPriceBox.innerHTML = '฿<span id="photoModalPrice"></span>';
+        document.getElementById("photoModalPrice").textContent =
+          formatMoney(getPhotoPrice(photo));
+        freeDownloadBtn.classList.add("hidden");
+        freeDownloadBtn.onclick = null;
+      }
 
       document.getElementById("photoModal").classList.add("show");
       document.body.style.overflow = "hidden";
