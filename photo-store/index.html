@@ -470,12 +470,18 @@
           event.created_at
         );
 
-        const price = Number(
-          event.price ||
-          event.photo_price ||
-          CONFIG.DEFAULT_PHOTO_PRICE ||
-          0
-        );
+        const freeEvent = event.download_mode === "free";
+        const price = freeEvent
+          ? 0
+          : Number(
+              event.price ||
+              event.photo_price ||
+              CONFIG.DEFAULT_PHOTO_PRICE ||
+              0
+            );
+        const priceLabel = freeEvent
+          ? (currentLang === "en" ? "FREE" : currentLang === "ru" ? "БЕСПЛАТНО" : "ฟรี")
+          : `฿${formatMoney(price)}`;
 
         const card = document.createElement("article");
 
@@ -519,8 +525,8 @@
 
                 </div>
 
-                <span class="shrink-0 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold px-3 py-1">
-                  ฿${formatMoney(price)}
+                <span class="${freeEvent ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200"} shrink-0 rounded-full text-xs font-bold px-3 py-1">
+                  ${escapeHtml(priceLabel)}
                 </span>
 
               </div>
