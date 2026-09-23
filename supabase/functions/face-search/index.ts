@@ -30,10 +30,13 @@ const NORMAL_MAX_GAP_LIMIT = 0.12;
 const MAX_ALLOWED_RESULTS_STRICT = 30;
 const MAX_ALLOWED_RESULTS_NORMAL = 80;
 
-// Recall rescue for side/back views: only widen the OSNet window when
-// clothing remains consistent with the user's selected reference.
-const PERSON_RESCUE_DISTANCE = 0.48;
-const PERSON_RESCUE_APPEARANCE = 0.45;
+// Precision-preserving rescue for side/back views.
+// Strong clothing agreement can tolerate a larger pose change;
+// medium agreement gets only a small extension beyond the main OSNet gate.
+const PERSON_RESCUE_STRONG_DISTANCE = 0.46;
+const PERSON_RESCUE_STRONG_APPEARANCE = 0.72;
+const PERSON_RESCUE_MEDIUM_DISTANCE = 0.40;
+const PERSON_RESCUE_MEDIUM_APPEARANCE = 0.58;
 
 function jsonResponse(data: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -401,8 +404,11 @@ Deno.serve(async (req) => {
     const withinThreshold = checked.filter((item) => {
       if (!isPerson) return item.distance <= threshold;
       if (item.distance <= threshold) return true;
-      return item.distance <= PERSON_RESCUE_DISTANCE
-        && (item.appearance_similarity ?? 0) >= PERSON_RESCUE_APPEARANCE;
+      const appearance = item.appearance_similarity ?? 0;
+      return (
+        (appearance >= PERSON_RESCUE_STRONG_APPEARANCE && item.distance <= PERSON_RESCUE_STRONG_DISTANCE) ||
+        (appearance >= PERSON_RESCUE_MEDIUM_APPEARANCE && item.distance <= PERSON_RESCUE_MEDIUM_DISTANCE)
+      );
     });
 
     /**
@@ -420,9 +426,14 @@ Deno.serve(async (req) => {
       }
     }
 
-    let results = Array.from(bestByPhotoId.values()).sort(
-      (a, b) => a.distance - b.distance
-    );
+    let results = Array.from(bestByPhotoId.values()).sort((a, b) => {
+      if (isPerson) {
+        const aRank = a.distance - (a.appearance_similarity ?? 0) * .06;
+        const bRank = b.distance - (b.appearance_similarity ?? 0) * .06;
+        return aRank - bRank;
+      }
+      return a.distance - b.distance;
+    });
 
     let decision = "NO_MATCH";
     let decisionReason = isPerson ? "ไม่พบภาพที่คล้ายกันตามเกณฑ์" : "ไม่พบใบหน้าที่ตรงตามค่าความแม่นยำ";
@@ -524,8 +535,10 @@ Deno.serve(async (req) => {
       gap_limit: gapLimit,
       max_results: maxResults,
       ...(isPerson ? {
-        person_rescue_distance: PERSON_RESCUE_DISTANCE,
-        person_rescue_appearance: PERSON_RESCUE_APPEARANCE,
+        person_rescue_strong_distance: PERSON_RESCUE_STRONG_DISTANCE,
+        person_rescue_strong_appearance: PERSON_RESCUE_STRONG_APPEARANCE,
+        person_rescue_medium_distance: PERSON_RESCUE_MEDIUM_DISTANCE,
+        person_rescue_medium_appearance: PERSON_RESCUE_MEDIUM_APPEARANCE,
       } : {}),
 
       best_distance:
