@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>ดาวน์โหลดภาพฟรี</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/config.js?v=free-download-bridge-20260924-1"></script>
+  <style>
+    body { min-height: 100vh; }
+    button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  </style>
+</head>
+<body class="bg-slate-950 text-white">
+  <main class="min-h-screen flex items-center justify-center p-5">
+    <section class="w-full max-w-md rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl text-center">
+      <div class="mx-auto w-16 h-16 rounded-2xl bg-emerald-500/15 flex items-center justify-center text-3xl">↓</div>
+      <h1 class="mt-4 text-2xl font-black">ดาวน์โหลดภาพ Original</h1>
+      <p id="statusText" class="mt-2 text-sm text-slate-400">
+        กำลังเริ่มดาวน์โหลด...
+      </p>
+
+      <button
+        id="downloadBtn"
+        type="button"
+        class="mt-6 w-full rounded-2xl bg-emerald-500 hover:bg-emerald-600 px-5 py-4 font-black text-white"
+      >
+        ดาวน์โหลดอีกครั้ง
+      </button>
+
+      <button
+        type="button"
+        onclick="window.close()"
+        class="mt-3 w-full rounded-2xl bg-white/10 hover:bg-white/15 px-5 py-3 font-bold text-white"
+      >
+        ปิดหน้านี้
+      </button>
+
+      <p class="mt-5 text-xs text-slate-500">
+        หากเบราว์เซอร์ถามสิทธิ์ดาวน์โหลด กรุณาเลือกอนุญาต
+      </p>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      const eventId = String(params.get("event") || params.get("event_id") || "").trim();
+      const photoId = String(params.get("photo") || params.get("photo_id") || "").trim();
+      const statusText = document.getElementById("statusText");
+      const downloadBtn = document.getElementById("downloadBtn");
+
+      function validUuid(value) {
+        return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+      }
+
+      function getDownloadUrl() {
+        if (!window.CONFIG?.SUPABASE_URL) {
+          throw new Error("ไม่พบการตั้งค่า Supabase");
+        }
+
+        const url = new URL(
+          window.CONFIG.SUPABASE_URL.replace(/\/+$/, "") + "/functions/v1/free-download"
+        );
+        url.searchParams.set("event_id", eventId);
+        url.searchParams.set("photo_id", photoId);
+        return url.toString();
+      }
+
+      function startDownload() {
+        try {
+          if (!validUuid(eventId) || !validUuid(photoId)) {
+            throw new Error("ข้อมูล Event หรือรูปภาพไม่ถูกต้อง");
+          }
+
+          const url = getDownloadUrl();
+          statusText.textContent = "กำลังส่งไฟล์ไปยังตัวดาวน์โหลดของเบราว์เซอร์...";
+
+          // Navigate to an attachment response. On Chrome/Safari this starts
+          // the normal browser download flow while preserving the external-browser handoff.
+          window.location.href = url;
+        } catch (error) {
+          console.error(error);
+          statusText.textContent = error?.message || "เริ่มดาวน์โหลดไม่สำเร็จ";
+        }
+      }
+
+      downloadBtn.addEventListener("click", startDownload);
+
+      // The user has already explicitly tapped Download on the previous page.
+      // Start once automatically, while keeping a visible retry button in case
+      // a browser blocks or cancels the first handoff.
+      setTimeout(startDownload, 450);
+    })();
+  </script>
+</body>
+</html>
