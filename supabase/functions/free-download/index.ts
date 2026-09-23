@@ -229,7 +229,6 @@ Deno.serve(async (req) => {
     const headers = new Headers(corsHeaders);
 
     for (const headerName of [
-      "content-type",
       "content-length",
       "content-range",
       "accept-ranges",
@@ -240,6 +239,9 @@ Deno.serve(async (req) => {
       if (value) headers.set(headerName, value);
     }
 
+    // Force a real file download. Keeping image/jpeg lets some mobile
+    // browsers / LINE IAB render the image instead of saving it.
+    headers.set("Content-Type", "application/octet-stream");
     headers.set(
       "Content-Disposition",
       `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
