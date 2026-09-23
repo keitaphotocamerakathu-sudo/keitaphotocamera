@@ -65,7 +65,7 @@ test('group selection queries only the clicked person; explicit refinement adds 
  const debug={textContent:''};const context={console,window:{},document:{createElement:element,getElementById:()=>debug},currentLang:'en',t:()=>({loadingFace:'Analyzing',loadingSearch:'Searching'}),eventId:eid,results:[],Swal:{fire:async o=>{if(o.html?.children&&!cancel)o.html.children[clickIndex].click()},close(){},update(){},showLoading(){}},KeitaFaceFree:{engine:'sface-yunet-v1',analyze:async()=>({faces}),geometry:{iou:(a,b)=>a.x1===b.x1?1:0}},callFaceSearchFunction:async q=>{requests.push(q);return {total_faces:10,results:[]}},normalizeResults:x=>x,searchByFaceLegacy:async(img,box)=>{legacyBoxes.push(box);return []},renderResults:()=>rendered++,loadModels:async()=>{},detectSearchFaces:async()=>[]};
  vm.runInNewContext(fs.readFileSync('photo-store/js/face-search-free.js','utf8'),context);
  const img={naturalWidth:240,naturalHeight:100};await context.runSelectedFaceSearch(img);
- assert.equal(requests.length,1);assert.deepEqual(Array.from(requests[0].descriptors[0]),f2.descriptor);assert.equal(requests[0].descriptors.length,1);assert.equal(legacyBoxes[0].x1,140);
+ assert.equal(requests.length,1);assert.deepEqual(Array.from(requests[0].descriptors[0]),f2.descriptor);assert.equal(requests[0].descriptors.length,1);assert.equal(requests[0].max_results,300);assert.equal(requests[0].threshold,.50);assert.equal(legacyBoxes[0].x1,140);
  faces=[f2];clickIndex=0;await context.runSelectedFaceSearch(img,{append:true});assert.equal(requests[1].descriptors.length,2);
  cancel=true;await context.runSelectedFaceSearch(img,{append:true});assert.equal(requests.length,2);assert.equal(rendered,2);
 });
@@ -80,11 +80,11 @@ const pv=(cos=1)=>[cos,Math.sqrt(1-cos*cos),...Array(510).fill(0)];
 const hist=(bin=0)=>Array.from({length:11},(_,i)=>i===bin?1:0);
 const outfit=(bin=0)=>({upper:hist(bin),lower:hist(8)});
 const personRow=(i,cos=1,bin=0)=>({...row(i,'person-osnet-x025-v1'),descriptor:pv(cos),face_box:{x:.1,y:.1,width:.2,height:.7,appearance:outfit(bin)}});
-test('appearance requires matching colors, clamps threshold and never mixes FaceX or identity confidence',async()=>{
+test('appearance uses clothing as ranking support, keeps pose matches, clamps threshold and never mixes FaceX',async()=>{
  const old=row(4,'facex-profile-v2');old.descriptor=pv();
  const run=edge([personRow(1),personRow(2,.81),personRow(3,.99,4),old,personRow(5,.7)]);
  const a=await run({engine:'person-osnet-x025-v1',descriptor:pv(),appearance:outfit(),threshold:100});
- assert.equal(a.threshold,.22);assert.equal(a.total_faces,4);assert.deepEqual(a.results.map(x=>x.photo_id),['p1','p2']);
+ assert.equal(a.threshold,.34);assert.equal(a.total_faces,4);assert.deepEqual(a.results.map(x=>x.photo_id),['p1','p3','p2','p5']);
  assert.equal(a.decision,'SIMILAR_APPEARANCE');assert.equal(a.results[0].confidence,null);assert.equal(a.results[0].match_type,'appearance');
  assert.equal(a.results[0].face_box,null);assert.deepEqual(a.results[0].person_box,{x:.1,y:.1,width:.2,height:.7});
  assert.ok(!JSON.stringify(a.results).includes('descriptor'));assert.ok(!JSON.stringify(a.results).includes('upper'));assert.ok(!JSON.stringify(a).includes('PRIVATE'));
@@ -114,7 +114,7 @@ test('body-only group search uses only selected body, preserves face-first order
  function el(){return {style:{},children:[],setAttribute(){},append(...x){this.children.push(...x)},addEventListener(k,f){this[k]=f},getContext:()=>({drawImage(){}})}}
  const context={console,window:{},document:{createElement:el,getElementById:()=>({})},currentLang:'en',eventId:eid,t:()=>({loadingSearch:'Searching'}),results:[],KeitaFaceFree:{analyze:async()=>({faces:[]})},KeitaPerson:{...bodyGeometry(),analyze:async()=>({persons:[a,b]})},loadModels:async()=>{},detectSearchFaces:async()=>[],Swal:{fire:async o=>{if(o.html?.children&&!cancel)o.html.children[1].click()},close(){}},normalizeResults:x=>x,callFaceSearchFunction:async q=>{requests.push(q);return {results:[{photo:{id:'p1'},confidence:99}]};},searchByFaceLegacy:async()=>{throw new Error('Must not search another face')},renderResults:()=>rendered++};
  vm.runInNewContext(fs.readFileSync('photo-store/js/face-search-free.js','utf8'),context);
- await context.runSelectedFaceSearch({naturalWidth:200,naturalHeight:200});assert.equal(requests.length,1);assert.equal(requests[0].descriptor,b.descriptor);assert.equal(context.results[0].match_type,'appearance');assert.equal(context.results[0].confidence,null);
+ await context.runSelectedFaceSearch({naturalWidth:200,naturalHeight:200});assert.equal(requests.length,1);assert.equal(requests[0].descriptor,b.descriptor);assert.equal(requests[0].max_results,300);assert.equal(requests[0].threshold,.32);assert.equal(requests[0].strict,false);assert.equal(context.results[0].match_type,'appearance');assert.equal(context.results[0].confidence,null);
  cancel=true;await context.runSelectedFaceSearch({naturalWidth:200,naturalHeight:200});assert.equal(requests.length,1);assert.equal(rendered,1);
 });
 test('person sync requires the server to acknowledge the complete count',async()=>{
