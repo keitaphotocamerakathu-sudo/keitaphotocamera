@@ -56,6 +56,7 @@ type EventRow = {
   stripe_platform_fee_percent?: number | string | null;
   price?: number | string | null;
   photo_price?: number | string | null;
+  download_mode?: string | null;
   [key: string]: unknown;
 };
 
@@ -209,6 +210,13 @@ Deno.serve(async (req) => {
     }
 
     const event = eventData as EventRow;
+
+    if (cleanString(event.download_mode).toLowerCase() === "free") {
+      throw new HttpError(
+        409,
+        "This Event is configured for free downloads and does not require payment",
+      );
+    }
 
     // Event price is authoritative for normal photo pricing.
     const eventPhotoPrice = positiveNumber(
