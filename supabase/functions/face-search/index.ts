@@ -30,6 +30,11 @@ const NORMAL_MAX_GAP_LIMIT = 0.12;
 const MAX_ALLOWED_RESULTS_STRICT = 30;
 const MAX_ALLOWED_RESULTS_NORMAL = 80;
 
+// Recall rescue for side/back views: only widen the OSNet window when
+// clothing remains consistent with the user's selected reference.
+const PERSON_RESCUE_DISTANCE = 0.48;
+const PERSON_RESCUE_APPEARANCE = 0.45;
+
 function jsonResponse(data: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -394,7 +399,10 @@ Deno.serve(async (req) => {
      * ถ้าเป็นคนที่ไม่มีใน Event ส่วนนี้ควรเหลือ 0
      */
     const withinThreshold = checked.filter((item) => {
-      return item.distance <= threshold;
+      if (!isPerson) return item.distance <= threshold;
+      if (item.distance <= threshold) return true;
+      return item.distance <= PERSON_RESCUE_DISTANCE
+        && (item.appearance_similarity ?? 0) >= PERSON_RESCUE_APPEARANCE;
     });
 
     /**
@@ -515,6 +523,10 @@ Deno.serve(async (req) => {
       threshold,
       gap_limit: gapLimit,
       max_results: maxResults,
+      ...(isPerson ? {
+        person_rescue_distance: PERSON_RESCUE_DISTANCE,
+        person_rescue_appearance: PERSON_RESCUE_APPEARANCE,
+      } : {}),
 
       best_distance:
         bestDistance === null ? null : roundNumber(bestDistance),
