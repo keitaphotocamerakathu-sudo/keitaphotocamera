@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>ค้นหาภาพด้วยใบหน้า</title>
+  <title>ค้นหาภาพ</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -636,7 +636,7 @@
     }
 </style>
   <script src="js/face-engine-profile-v2.js"></script>
-  <script src="js/face-engine-free-v1.js?v=20260921-free2"></script>
+  <script src="js/face-engine-free-v1.js?v=20260923-person2"></script>
 </head>
 
 <body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-white transition safe-bottom">
@@ -647,7 +647,7 @@
       <div class="flex justify-between items-start gap-3">
         <div class="min-w-0">
           <p id="txtMiniApp" class="text-xs text-slate-500 dark:text-slate-400">LINE Mini App</p>
-          <h1 id="txtPageTitle" class="text-2xl font-black">ค้นหาภาพด้วยใบหน้า</h1>
+          <h1 id="txtPageTitle" class="text-2xl font-black">ค้นหาภาพ</h1>
           <p id="eventText" class="text-sm text-slate-500 dark:text-slate-400 mt-1">กำลังโหลดข้อมูล...</p>
         </div>
 
@@ -682,10 +682,10 @@
     </header>
 
     <section class="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-sm mb-4 transition">
-      <h2 id="txtUploadTitle" class="font-bold text-lg">อัปโหลดรูปใบหน้า</h2>
+      <h2 id="txtUploadTitle" class="font-bold text-lg">อัปโหลดรูปของคุณ</h2>
 
       <p id="txtUploadDesc" class="text-sm text-slate-500 dark:text-slate-400 mt-1">
-        กรุณาใช้รูปที่เห็นใบหน้าชัดเจน
+        ใช้รูปใบหน้าหรือรูปเต็มตัวในชุดที่ใส่วันงาน
       </p>
 
       <div class="custom-file-box">
@@ -829,12 +829,12 @@
     const LANG = {
       th: {
         miniApp: "LINE Mini App",
-        pageTitle: "ค้นหาภาพด้วยใบหน้า",
+        pageTitle: "ค้นหาภาพ",
         eventLoading: "กำลังโหลดข้อมูล...",
         back: "กลับ",
 
-        uploadTitle: "อัปโหลดรูปใบหน้า",
-        uploadDesc: "กรุณาใช้รูปที่เห็นใบหน้าชัดเจน",
+        uploadTitle: "อัปโหลดรูปของคุณ",
+        uploadDesc: "ใช้รูปใบหน้าหรือรูปเต็มตัวในชุดที่ใส่วันงาน",
         chooseFile: "เลือกไฟล์",
         noFile: "ไม่ได้เลือกไฟล์ใด",
         fileSelected: "เลือกไฟล์แล้ว",
@@ -852,7 +852,7 @@
         loadingSystem: "ค้นหาภาพ",
 
         noFace: "ไม่พบใบหน้า",
-        noFaceDesc: "กรุณาใช้รูปที่เห็นใบหน้าชัดเจน",
+        noFaceDesc: "ใช้รูปใบหน้าหรือรูปเต็มตัวในชุดที่ใส่วันงาน",
 
         addSuccess: "เพิ่มลงตะกร้าแล้ว",
         goCartConfirm: "ไปตะกร้า",
@@ -886,12 +886,12 @@
 
       en: {
         miniApp: "LINE Mini App",
-        pageTitle: "Face Search",
+        pageTitle: "Photo Search",
         eventLoading: "Loading event...",
         back: "Back",
 
-        uploadTitle: "Upload Face Photo",
-        uploadDesc: "Please use a clear face photo",
+        uploadTitle: "Upload Your Photo",
+        uploadDesc: "Use a clear face photo or a full-body photo in your event outfit",
         chooseFile: "Choose File",
         noFile: "No file chosen",
         fileSelected: "File selected",
@@ -943,12 +943,12 @@
 
       ru: {
         miniApp: "LINE Мини-приложение",
-        pageTitle: "Поиск по лицу",
+        pageTitle: "Поиск фото",
         eventLoading: "Загрузка события...",
         back: "Назад",
 
-        uploadTitle: "Загрузить фото лица",
-        uploadDesc: "Пожалуйста, используйте чёткое фото лица",
+        uploadTitle: "Загрузите своё фото",
+        uploadDesc: "Используйте фото лица или фото в полный рост в одежде с мероприятия",
         chooseFile: "Выбрать файл",
         noFile: "Файл не выбран",
         fileSelected: "Файл выбран",
@@ -1024,7 +1024,9 @@
         }
 
         try {
-          if (window.AppLIFF) {
+          // Public search also works in a normal browser. Only restore a LINE
+          // session when one exists, or initialize inside the LINE app.
+          if (window.AppLIFF && (window.liff?.isInClient() || window.liff?.isLoggedIn())) {
             profile = await AppLIFF.init();
           }
         } catch (liffErr) {
@@ -1733,7 +1735,7 @@
 
           <div class="p-3">
             <p class="text-xs text-slate-500 dark:text-slate-400">
-              ${escapeHtml(t().similarity)} : ${formatConfidence(item.confidence, item.distance)}
+              ${item.match_type === 'appearance' ? escapeHtml(faceText('similar')) : escapeHtml(t().similarity) + ' : ' + formatConfidence(item.confidence, item.distance)}
             </p>
 
             ${
@@ -2310,6 +2312,7 @@
     }, true);
   </script>
 
-<script src="js/face-search-free.js?v=20260922-loader1"></script>
+<script src="js/person-engine-v1.js?v=20260923-person2"></script>
+<script src="js/face-search-free.js?v=20260923-person2"></script>
 </body>
 </html>

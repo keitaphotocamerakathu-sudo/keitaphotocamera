@@ -68,7 +68,7 @@ function isValidDescriptor(vector: number[], expectedDim = 128) {
 function vectorDistance(a: number[], b: number[], engine: string) {
   if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length || !a.length) return 999;
 
-  if (engine === "sface-yunet-v1" || engine === "facex-v2" || engine === "facex-v3" || engine === "facex-v4" || engine === "facex-profile-v1" || engine === "facex-profile-v2") {
+  if (engine === "person-osnet-x025-v1" || engine === "sface-yunet-v1" || engine === "facex-v2" || engine === "facex-v3" || engine === "facex-v4" || engine === "facex-profile-v1" || engine === "facex-profile-v2") {
     let dot = 0, na = 0, nb = 0;
     for (let i = 0; i < a.length; i++) {
       dot += a[i] * b[i];
@@ -97,6 +97,25 @@ function confidenceFromDistance(distance: number) {
   if (distance >= 1) return 0;
 
   return Math.max(0, Math.min(100, Math.round((1 - distance) * 100)));
+}
+
+function validAppearance(value: any) {
+  return ['upper','lower'].every(part => {
+    const bins = value?.[part];
+    return Array.isArray(bins) && bins.length === 11 && bins.every(v => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1)
+      && Math.abs(bins.reduce((a,b) => a+b, 0)-1) <= .01;
+  });
+}
+
+function compatibleClothes(a: any, b: any) {
+  if (!validAppearance(a) || !validAppearance(b)) return false;
+  const overlap = (part: string) => a[part].reduce((sum: number, x: number, i: number) => sum + Math.sqrt(x * b[part][i]), 0);
+  return overlap('upper') >= .65 && overlap('lower') >= .55;
+}
+
+function cleanPersonBox(box: any) {
+  if (!box || !['x','y','width','height'].every(k => typeof box[k] === 'number' && Number.isFinite(box[k]))) return null;
+  return {x:box.x,y:box.y,width:box.width,height:box.height};
 }
 
 function getMediaType(face: any, photo: any) {
@@ -194,11 +213,12 @@ Deno.serve(async (req) => {
     const body = await req.json();
 
     const event_id = body.event_id;
-    const engines = new Set(['sface-yunet-v1','facex-profile-v2','facex-profile-v1','facex-v4','facex-v3','facex-v2','face-api-v4-clean','face-api-v3']);
+    const engines = new Set(['person-osnet-x025-v1','sface-yunet-v1','facex-profile-v2','facex-profile-v1','facex-v4','facex-v3','facex-v2','face-api-v4-clean','face-api-v3']);
     const engine = body.engine || 'face-api-v3';
     if (!engines.has(engine)) return jsonResponse({success:false,error:'Unknown face engine'},400);
     const isSFace = engine === 'sface-yunet-v1';
-    const expectedDim = (engine === "facex-v2" || engine === "facex-v3" || engine === "facex-v4" || engine === "facex-profile-v1" || engine === "facex-profile-v2") ? 512 : 128;
+    const isPerson = engine === 'person-osnet-x025-v1';
+    const expectedDim = (isPerson || engine === "facex-v2" || engine === "facex-v3" || engine === "facex-v4" || engine === "facex-profile-v1" || engine === "facex-profile-v2") ? 512 : 128;
 
     const requestedDescriptors = Array.isArray(body.descriptors)
       ? body.descriptors
@@ -226,15 +246,15 @@ Deno.serve(async (req) => {
      * be discarded even though they pass the absolute identity threshold.
      * Keep the old behaviour by default; callers may explicitly disable it.
      */
-    const useGapFilter = !isSFace && body.use_gap !== false;
+    const useGapFilter = !isPerson && !isSFace && body.use_gap !== false;
 
     const isFaceXV2 = engine === "facex-v2" || engine === "facex-v3" || engine === "facex-v4" || engine === "facex-profile-v1" || engine === "facex-profile-v2";
     const requestedThreshold = Number(
       body.threshold ??
-        (isSFace ? 0.45 : isFaceXV2 ? 0.62 : (strictMode ? STRICT_DEFAULT_THRESHOLD : NORMAL_DEFAULT_THRESHOLD))
+        (isPerson ? 0.20 : isSFace ? 0.45 : isFaceXV2 ? 0.62 : (strictMode ? STRICT_DEFAULT_THRESHOLD : NORMAL_DEFAULT_THRESHOLD))
     );
 
-    const threshold = isSFace ? clampNumber(requestedThreshold, 0.20, 0.55) : isFaceXV2
+    const threshold = isPerson ? clampNumber(requestedThreshold, 0.05, 0.22) : isSFace ? clampNumber(requestedThreshold, 0.20, 0.55) : isFaceXV2
       ? clampNumber(requestedThreshold, 0.30, 0.72)
       : (strictMode
           ? clampNumber(requestedThreshold, 0.30, STRICT_MAX_THRESHOLD)
@@ -257,6 +277,9 @@ Deno.serve(async (req) => {
     const offset = Math.floor(clampNumber(Number(body.offset ?? 0), 0, 100000));
     if (typeof event_id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(event_id)) return jsonResponse({success:false,error:'Invalid event_id'},400);
     if (inputDescriptors.length !== requestedDescriptors.length || !inputDescriptors.every(v => isValidDescriptor(v, expectedDim) && v.some(x => x !== 0))) return jsonResponse({success:false,error:'Invalid face descriptor'},400);
+    // Only one directly selected body reference. No automatic identity expansion.
+    if (isPerson && (inputDescriptors.length !== 1 || !validAppearance(body.appearance)
+      || Math.abs(inputDescriptors[0].reduce((sum,x) => sum+x*x,0)-1) > .01)) return jsonResponse({success:false,error:'Invalid appearance reference'},400);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -292,7 +315,8 @@ Deno.serve(async (req) => {
     const checked = rawFaces
       .map((face: any) => {
         const storedDescriptor = parseVector(face.descriptor);
-        const descriptorValid = isValidDescriptor(storedDescriptor, expectedDim);
+        const descriptorValid = isValidDescriptor(storedDescriptor, expectedDim)
+          && (!isPerson || compatibleClothes(body.appearance, face.face_box?.appearance));
 
         const distance = descriptorValid
           ? Math.min(
@@ -337,7 +361,7 @@ Deno.serve(async (req) => {
           face_image_url: face.image_url || null,
           face_filename: face.filename || null,
 
-          face_box: face.face_box ?? null,
+          face_box: isPerson ? cleanPersonBox(face.face_box) : face.face_box ?? null,
           photo_status: photo?.status || null,
           photo: cleanPhotoPayload(photo, mediaType),
         };
@@ -383,7 +407,7 @@ Deno.serve(async (req) => {
     );
 
     let decision = "NO_MATCH";
-    let decisionReason = "ไม่พบใบหน้าที่ตรงตามค่าความแม่นยำ";
+    let decisionReason = isPerson ? "ไม่พบภาพที่คล้ายกันตามเกณฑ์" : "ไม่พบใบหน้าที่ตรงตามค่าความแม่นยำ";
     let bestDistance: number | null = null;
 
     if (results.length > 0) {
@@ -409,8 +433,8 @@ Deno.serve(async (req) => {
         decision = "NO_MATCH";
         decisionReason = "best distance สูงกว่า threshold";
       } else {
-        decision = "MATCH_FOUND";
-        decisionReason = "พบใบหน้าที่ใกล้เคียงในช่วง strict threshold";
+        decision = isPerson ? "SIMILAR_APPEARANCE" : "MATCH_FOUND";
+        decisionReason = isPerson ? "ภาพที่มีเสื้อผ้าและรูปร่างคล้ายกัน ไม่ใช่การยืนยันตัวบุคคล" : "พบใบหน้าที่ใกล้เคียงในช่วง strict threshold";
       }
     }
 
@@ -430,7 +454,7 @@ Deno.serve(async (req) => {
         null,
       media_type: item.media_type,
       distance: roundNumber(item.distance),
-      confidence: item.confidence,
+      confidence: isPerson ? null : item.confidence,
       descriptor_length: item.descriptor_length,
       frame_index: item.frame_index,
       video_time_seconds:
@@ -445,11 +469,13 @@ Deno.serve(async (req) => {
       photo_id: item.photo_id,
 
       distance: roundNumber(item.distance),
-      confidence: item.confidence,
+      confidence: isPerson ? null : item.confidence,
+      match_type: isPerson ? 'appearance' : 'face',
 
       media_type: item.media_type,
 
-      face_box: item.face_box,
+      face_box: isPerson ? null : item.face_box,
+      ...(isPerson ? {person_box:item.face_box} : {}),
       engine,
       face_index: item.face_index,
       frame_index: item.frame_index,

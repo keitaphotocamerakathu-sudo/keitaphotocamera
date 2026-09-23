@@ -1,9 +1,9 @@
 /* One selected identity per query. Additional reference faces require a click. */
 'use strict';
 const FACE_TEXT = {
-  th:{choose:'เลือกใบหน้าของคุณ',person:'คนที่',cancel:'ยกเลิก',use:'ใช้ใบหน้านี้',refine:'ฉันอยู่ในภาพนี้ · ค้นหาเพิ่ม',confirm:'เลือกตัวคุณเพื่อค้นหาภาพเพิ่มเติม',legacy:'กำลังค้นจากดัชนีเดิม อัลบั้มนี้ยังต้อง Sync รุ่นใหม่ให้ครบ',fallback:'โหลดโมเดลใหม่ไม่ได้ กำลังค้นด้วยระบบเดิม',limit:'ใช้ภาพอ้างอิงได้สูงสุด 6 ภาพ กรุณาเริ่มค้นหาใหม่',none:'ไม่พบใบหน้าที่ชัดพอ กรุณาเลือกภาพอื่น',failed:'ค้นหาไม่สำเร็จ'},
-  en:{choose:'Select your face',person:'Person',cancel:'Cancel',use:'Use this face',refine:'I am in this photo · Find more',confirm:'Select yourself to find more photos',legacy:'Searching the previous index. This album still needs the new Face Sync.',fallback:'New model unavailable. Searching with the previous system.',limit:'Up to 6 reference photos. Start a new search to reset.',none:'No clear face found. Please choose another photo.',failed:'Search failed'},
-  ru:{choose:'Выберите своё лицо',person:'Человек',cancel:'Отмена',use:'Выбрать это лицо',refine:'Я на этом фото · Найти ещё',confirm:'Выберите себя, чтобы найти больше фото',legacy:'Поиск по прежнему индексу. Нужна новая синхронизация.',fallback:'Новая модель недоступна. Используется прежняя система.',limit:'Не более 6 образцов. Начните новый поиск.',none:'Лицо не найдено. Выберите другое фото.',failed:'Ошибка поиска'}
+  th:{choose:'เลือกใบหน้าของคุณ',choosePerson:'เลือกตัวคุณในภาพ',similar:'เสื้อผ้าและรูปร่างคล้ายกัน',appearanceFailed:'ค้นหาจากเสื้อผ้าไม่สำเร็จ กรุณาลองใหม่',faceFailed:'ค้นหาจากใบหน้าบางส่วนไม่สำเร็จ',person:'คนที่',cancel:'ยกเลิก',use:'ใช้ใบหน้านี้',refine:'ฉันอยู่ในภาพนี้ · ค้นหาเพิ่ม',confirm:'เลือกตัวคุณเพื่อค้นหาภาพเพิ่มเติม',legacy:'กำลังค้นจากดัชนีเดิม อัลบั้มนี้ยังต้อง Sync รุ่นใหม่ให้ครบ',fallback:'โหลดโมเดลใหม่ไม่ได้ กำลังค้นด้วยระบบเดิม',limit:'ใช้ภาพอ้างอิงได้สูงสุด 6 ภาพ กรุณาเริ่มค้นหาใหม่',none:'ไม่พบใบหน้าหรือรูปร่างที่ชัดพอ กรุณาเลือกภาพอื่น',failed:'ค้นหาไม่สำเร็จ'},
+  en:{choose:'Select your face',choosePerson:'Select yourself in the photo',similar:'Similar appearance',appearanceFailed:'Clothing search unavailable. Please try again.',faceFailed:'Some face searches were unavailable.',person:'Person',cancel:'Cancel',use:'Use this face',refine:'I am in this photo · Find more',confirm:'Select yourself to find more photos',legacy:'Searching the previous index. This album still needs the new Face Sync.',fallback:'New model unavailable. Searching with the previous system.',limit:'Up to 6 reference photos. Start a new search to reset.',none:'No clear face or person found. Please choose another photo.',failed:'Search failed'},
+  ru:{choose:'Выберите своё лицо',choosePerson:'Выберите себя на фото',similar:'Похожие фотографии',appearanceFailed:'Поиск по одежде недоступен. Повторите попытку.',faceFailed:'Часть поиска по лицу недоступна.',person:'Человек',cancel:'Отмена',use:'Выбрать это лицо',refine:'Я на этом фото · Найти ещё',confirm:'Выберите себя, чтобы найти больше фото',legacy:'Поиск по прежнему индексу. Нужна новая синхронизация.',fallback:'Новая модель недоступна. Используется прежняя система.',limit:'Не более 6 образцов. Начните новый поиск.',none:'Лицо или человек не найдены. Выберите другое фото.',failed:'Ошибка поиска'}
 };
 function faceText(key){return (FACE_TEXT[currentLang]||FACE_TEXT.th)[key];}
 let freeReferences=[], faceSearchBusy=false;
@@ -18,7 +18,7 @@ function matchSelectedFace(faces,box){
   for(const face of faces){const overlap=KeitaFaceFree.geometry.iou(boxOfFace(face),box);if(overlap>score){score=overlap;best=face;}}
   return best;
 }
-async function chooseSearchFace(img,faces,{confirm=false}={}){
+async function chooseSearchFace(img,faces,{confirm=false,persons=false}={}){
   if(!faces.length)return null;
   if(faces.length===1&&!confirm)return faces[0];
   // The full source stays local; thumbnails identify the user's choice only.
@@ -36,7 +36,7 @@ async function chooseSearchFace(img,faces,{confirm=false}={}){
     const label=document.createElement('div');label.textContent=faceText('person')+' '+(i+1);button.append(cv,label);
     button.addEventListener('click',()=>{chosen=face;Swal.close();});panel.append(button);
   });
-  await Swal.fire({title:faceText(confirm?'confirm':'choose'),html:panel,showConfirmButton:false,showCancelButton:true,cancelButtonText:faceText('cancel')});
+  await Swal.fire({title:faceText(confirm?'confirm':persons?'choosePerson':'choose'),html:panel,showConfirmButton:false,showCancelButton:true,cancelButtonText:faceText('cancel')});
   return chosen;
 }
 function faceLoading(text=t().loadingSearch){
@@ -77,38 +77,61 @@ function lockFaceSearch(value){
   faceSearchBusy=value;document.getElementById('faceInput').disabled=value;
   document.getElementById('searchBtn').disabled=value||!selectedFile;
 }
+function searchSubjects(faces,persons){
+  const linked=new Set();
+  const subjects=persons.map(person=>{
+    const candidates=faces.filter(face=>KeitaPerson.personForFace(boxOfFace(face),persons)===person);
+    const face=candidates.length===1?candidates[0]:null;if(face)linked.add(face);
+    return {box:person.box,face,person};
+  });
+  for(const face of faces)if(!linked.has(face))subjects.push({box:boxOfFace(face),face,person:null});
+  return subjects;
+}
 async function runSelectedFaceSearch(img,{append=false}={}){
-  let scan,selected,notice='';
-  try{
-    scan=await KeitaFaceFree.analyze(img,{deep:true});
-  }catch(error){console.warn('Free face model unavailable',error);notice=faceText('fallback');}
-  if(scan?.faces.length)selected=await chooseSearchFace(img,scan.faces,{confirm:append});
-  else{
-    await loadModels();const detections=await detectSearchFaces(img);
-    if(!detections.length)throw new Error(faceText('none'));
-    selected=await chooseSearchFace(img,detections,{confirm:append});
+  let scan,bodyScan,notice='',faces=[];
+  try{scan=await KeitaFaceFree.analyze(img,{deep:true});faces=scan.faces;}
+  catch(error){console.warn('Face model unavailable',error);notice=faceText('faceFailed');}
+  if(!faces.length){
+    try{await loadModels();faces=await detectSearchFaces(img);}
+    catch(error){console.warn('Legacy detector unavailable',error);}
   }
-  if(!selected)return;
-  const selectedBox=boxOfFace(selected);
+  if(typeof KeitaPerson!=='undefined'&&!append){
+    try{bodyScan=await KeitaPerson.analyze(img,{deep:true});}
+    catch(error){console.warn('Appearance model unavailable',error);notice=faceText('appearanceFailed');}
+  }
+  const persons=bodyScan?.persons||[];
+  const subjects=persons.length?searchSubjects(faces,persons):faces.map(face=>({box:boxOfFace(face),face,person:null}));
+  if(!subjects.length)throw new Error(faceText('none'));
+  const subject=await chooseSearchFace(img,subjects,{confirm:append,persons:persons.length>0});
+  if(!subject)return; // Cancellation never falls through to another person.
+  const selected=subject.face,selectedBox=selected?boxOfFace(selected):null;
   faceLoading(t().loadingSearch);
-  let nextReferences=append?[...freeReferences]:[],freeMatches=[],legacyMatches=[];
-  let freeData=null;
-  // Only descriptors from the selected SFace detection enter this vector space.
-  if(scan?.faces.includes(selected)){
+  let nextReferences=append?[...freeReferences]:[],freeMatches=[],legacyMatches=[],appearanceMatches=[];
+  let freeData=null,completed=0,lastError;
+  if(selected&&scan?.faces.includes(selected)){
     if(nextReferences.length>=6)throw new Error(faceText('limit'));
     nextReferences.push(Array.from(selected.descriptor));
-    freeData=await callFaceSearchFunction({event_id:eventId,engine:KeitaFaceFree.engine,descriptors:nextReferences,threshold:.45,use_gap:false,strict:true});
-    freeMatches=normalizeResults(freeData.results||[]);
+    try{
+      freeData=await callFaceSearchFunction({event_id:eventId,engine:KeitaFaceFree.engine,descriptors:nextReferences,threshold:.45,use_gap:false,strict:true});
+      freeMatches=normalizeResults(freeData.results||[]);completed++;
+    }catch(error){lastError=error;notice=faceText('faceFailed');}
   }
-  // Preserve access to existing indexes while the new event index is built.
-  // The legacy detector must overlap the selected face, including after mirroring.
-  try{legacyMatches=await searchByFaceLegacy(img,selectedBox)||[];}
-  catch(error){if(!freeData)throw error;console.warn('Legacy face search unavailable',error);}
-  if(!freeData?.total_faces)notice=notice||faceText('legacy');
-  const combined=[...freeMatches,...legacyMatches];
-  // Distances from different models cannot be ranked against one another.
-  const unique=new Map();for(const row of [...combined,...(append?results:[])]){const id=String(row.photo?.id||row.photo_id||'');if(id&&!unique.has(id))unique.set(id,row);}
-  results=Array.from(unique.values());freeReferences=nextReferences;
+  if(selected){
+    try{legacyMatches=await searchByFaceLegacy(img,selectedBox)||[];completed++;}
+    catch(error){lastError=error;notice=faceText('faceFailed');console.warn('Legacy face search unavailable',error);}
+  }
+  if(subject.person){
+    try{
+      const data=await callFaceSearchFunction({event_id:eventId,engine:KeitaPerson.engine,descriptor:subject.person.descriptor,appearance:subject.person.appearance,threshold:.20,use_gap:false,strict:true});
+      appearanceMatches=normalizeResults(data.results||[]).map(row=>({...row,match_type:'appearance',confidence:null}));completed++;
+    }catch(error){lastError=error;notice=faceText('appearanceFailed');console.warn('Appearance search unavailable',error);}
+  }
+  if(!completed)throw lastError||new Error(faceText('failed'));
+  // Face results always rank first. Appearance scores are not identity confidence.
+  const combined=[...freeMatches,...legacyMatches,...(append?results:[]),...appearanceMatches];
+  const unique=new Map();for(const row of combined){const id=String(row.photo?.id||row.photo_id||'');if(id&&!unique.has(id))unique.set(id,row);}
+  results=Array.from(unique.values()).sort((a,b)=>Number(a.match_type==='appearance')-Number(b.match_type==='appearance'));
+  freeReferences=nextReferences;
   Swal.close();renderResults();document.getElementById('debugText').textContent=notice;
 }
 async function searchByFace(){

@@ -43,7 +43,11 @@
       user-select: none;
     }
   </style>
-  <script src="../js/face-engine-profile-v2.js"></script>\n</head>
+  <script src="../js/face-engine-profile-v2.js"></script>
+  <script src="../js/face-engine-free-v1.js?v=20260923-person2"></script>
+  <script src="../js/person-engine-v1.js?v=20260923-person2"></script>
+  <script src="../js/photo-index-upload.js?v=20260923-person2"></script>
+</head>
 
 <body class="bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-white min-h-screen transition safe-bottom">
 
@@ -625,7 +629,8 @@
       return dedupeUploadFaces(all, 0.16);
     }
 
-    async function autoSyncUploadedImage(photo, faceScanFile, previewUrl) {
+    // Retained for rollback to the previous face-api / Ultra Recall pipeline.
+    async function autoSyncUploadedImageLegacy(photo, faceScanFile, previewUrl) {
       try {
         const detections = await detectUploadFaces(faceScanFile);
 
@@ -1255,17 +1260,17 @@
 
         if (!isVideo && faceScanFile) {
           statusDiv.innerHTML = `
-            <div class="font-bold">กำลัง Auto Sync ใบหน้า ${index}/${total}</div>
+            <div class="font-bold">กำลังเตรียมข้อมูลค้นหาภาพ ${index}/${total}</div>
             <div class="break-all">${escapeHtml(file.name)}</div>
             <div class="text-xs text-slate-500 mt-1">
-              ตรวจหลายรอบเพื่อจับใบหน้าเล็ก/ไกล
+              สแกนใบหน้า เสื้อผ้า และรูปร่าง
             </div>
           `;
 
-          faceSyncResult = await autoSyncUploadedImage(
+          faceSyncResult = await KeitaPhotoIndex.sync(
+            supabaseClient,
             savedMedia,
-            faceScanFile,
-            previewUrl
+            file
           );
         }
 
@@ -1311,8 +1316,8 @@
                     }">
                       ${
                         faceSyncResult?.success
-                          ? `Face Sync: ${faceSyncResult.faceCount} หน้า`
-                          : `Face Sync รอทำใหม่: ${escapeHtml(faceSyncResult?.error || "ไม่สำเร็จ")}`
+                          ? `พร้อมค้นหา: ${faceSyncResult.faceCount} ใบหน้า · ${faceSyncResult.personCount} รูปร่าง`
+                          : `อัปโหลดแล้ว · ข้อมูลค้นหาบางส่วนรอ Sync: ${escapeHtml(faceSyncResult?.error || "ไม่สำเร็จ")}`
                       }
                     </div>`
                   : ""

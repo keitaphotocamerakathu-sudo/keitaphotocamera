@@ -237,14 +237,15 @@
   function normalizedBox(box,w,h){return {x:Math.max(0,box.x1/w),y:Math.max(0,box.y1/h),width:Math.min(1,(box.x2-box.x1)/w),height:Math.min(1,(box.y2-box.y1)/h)};}
   async function saveIndex(db,photo,scan,{signal}={}) {
     aborted(signal);
-    if(scan.skipped&&!scan.faces.length)throw new Error('พบเค้าโครงใบหน้า แต่จัดแนวไม่ได้ กรุณาลองใช้ภาพที่ชัดขึ้น');
+    if(scan.skipped)throw new Error('มีใบหน้าที่จัดแนวไม่สำเร็จ เก็บข้อมูลเดิมไว้ กรุณาลองภาพที่ชัดขึ้น');
     const rows=scan.faces.map((face,i)=>({descriptor:face.descriptor,face_index:i,face_box:normalizedBox(face.box,scan.width,scan.height),media_type:'image',frame_index:null,video_time_seconds:null}));
     const {data,error}=await db.rpc('replace_keita_face_index',{p_photo_id:photo.id,p_engine:ENGINE,p_version:SYNC_VERSION,p_faces:rows});
     if(error)throw error;
-    return Number(data?.face_count??rows.length);
+    const count=Number(data?.face_count);
+    if(!Number.isInteger(count)||count!==rows.length)throw new Error('ยืนยันการบันทึกใบหน้าไม่สำเร็จ กรุณาลอง Sync อีกครั้ง');
+    return count;
   }
-  window.KeitaFaceFree={engine:ENGINE,syncVersion:SYNC_VERSION,build:'20260921-free2',load,analyze,loadImage,saveIndex,normalizedBox,
+  window.KeitaFaceFree={engine:ENGINE,syncVersion:SYNC_VERSION,build:'20260921-free2',load,loadRuntime:runtime,analyze,loadImage,saveIndex,normalizedBox,
     // Pure geometry helpers are also exercised by the regression tests.
     geometry:{similarityTransform,regions,nms,iou,normalize}};
 })();
-
