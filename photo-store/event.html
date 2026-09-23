@@ -2941,10 +2941,27 @@
     function downloadFreePhoto(photoId) {
       if (!isFreeEvent() || !photoId) return;
 
+      const url = freeDownloadUrl(photoId);
+
+      // Same behavior as paid downloads: leave LINE and open the
+      // device's normal external browser for the actual file download.
+      if (
+        window.liff &&
+        typeof liff.isInClient === "function" &&
+        liff.isInClient() &&
+        typeof liff.openWindow === "function"
+      ) {
+        liff.openWindow({
+          url,
+          external: true
+        });
+        return;
+      }
+
       const link = document.createElement("a");
-      link.href = freeDownloadUrl(photoId);
+      link.href = url;
       link.target = "_blank";
-      link.rel = "noopener";
+      link.rel = "noopener noreferrer";
       document.body.appendChild(link);
       link.click();
       link.remove();
