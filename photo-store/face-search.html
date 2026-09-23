@@ -854,39 +854,31 @@
       return `${CONFIG.SUPABASE_URL}/functions/v1/free-download?event_id=${encodeURIComponent(eventId)}&photo_id=${encodeURIComponent(photoId)}`;
     }
 
-    function freeDownloadBridgeUrl(photoId) {
-      const url = new URL("free-download.html", window.location.href);
-      url.searchParams.set("event", String(eventId || ""));
-      url.searchParams.set("photo", String(photoId || ""));
-      return url.toString();
-    }
-
     function downloadFreePhoto(photoId) {
       if (!isFreeEvent() || !photoId) return;
 
-      const bridgeUrl = freeDownloadBridgeUrl(photoId);
+      const url = freeDownloadUrl(photoId);
 
-      // Open a normal web page outside LINE first. Direct attachment URLs can
-      // be swallowed by LINE IAB / Android Download Manager with no visible UI.
+      // Open the forced-attachment endpoint directly outside LINE.
+      // The Edge Function returns application/octet-stream + attachment,
+      // so the external browser saves the file instead of previewing it.
       if (
         window.liff &&
-        typeof liff.isInClient === "function" &&
-        liff.isInClient() &&
         typeof liff.openWindow === "function"
       ) {
         try {
           liff.openWindow({
-            url: bridgeUrl,
+            url,
             external: true
           });
           return;
         } catch (error) {
-          console.warn("LIFF external download bridge failed:", error);
+          console.warn("LIFF direct download failed:", error);
         }
       }
 
       const link = document.createElement("a");
-      link.href = bridgeUrl;
+      link.href = url;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
       document.body.appendChild(link);
