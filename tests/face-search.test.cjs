@@ -82,9 +82,9 @@ const outfit=(bin=0)=>({upper:hist(bin),lower:hist(8)});
 const personRow=(i,cos=1,bin=0)=>({...row(i,'person-osnet-x025-v1'),descriptor:pv(cos),face_box:{x:.1,y:.1,width:.2,height:.7,appearance:outfit(bin)}});
 test('appearance uses clothing as ranking support, keeps pose matches, clamps threshold and never mixes FaceX',async()=>{
  const old=row(4,'facex-profile-v2');old.descriptor=pv();
- const run=edge([personRow(1),personRow(2,.81),personRow(3,.99,4),old,personRow(5,.7)]);
+ const run=edge([personRow(1),personRow(2,.81),personRow(3,.99,4),old,personRow(5,.7),personRow(6,.55),personRow(7,.55,3)]);
  const a=await run({engine:'person-osnet-x025-v1',descriptor:pv(),appearance:outfit(),threshold:100});
- assert.equal(a.threshold,.34);assert.equal(a.total_faces,4);assert.deepEqual(a.results.map(x=>x.photo_id),['p1','p3','p2','p5']);
+ assert.equal(a.threshold,.34);assert.equal(a.total_faces,6);assert.deepEqual(a.results.map(x=>x.photo_id),['p1','p3','p2','p5','p6']);assert.equal(a.person_rescue_distance,.48);
  assert.equal(a.decision,'SIMILAR_APPEARANCE');assert.equal(a.results[0].confidence,null);assert.equal(a.results[0].match_type,'appearance');
  assert.equal(a.results[0].face_box,null);assert.deepEqual(a.results[0].person_box,{x:.1,y:.1,width:.2,height:.7});
  assert.ok(!JSON.stringify(a.results).includes('descriptor'));assert.ok(!JSON.stringify(a.results).includes('upper'));assert.ok(!JSON.stringify(a).includes('PRIVATE'));
