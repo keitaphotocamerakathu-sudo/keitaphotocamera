@@ -111,8 +111,21 @@ async function must(label: string, promise: Promise<any>) {
   return result;
 }
 
-async function countRows(query: any) {
-  const { count, error } = await query.select("id", { count: "exact", head: true });
+async function countRowsEq(supabase: any, table: string, column: string, value: any) {
+  const { count, error } = await supabase
+    .from(table)
+    .select("id", { count: "exact", head: true })
+    .eq(column, value);
+  if (error) throw error;
+  return Number(count || 0);
+}
+
+async function countRowsIn(supabase: any, table: string, column: string, values: any[]) {
+  if (!values.length) return 0;
+  const { count, error } = await supabase
+    .from(table)
+    .select("id", { count: "exact", head: true })
+    .in(column, values);
   if (error) throw error;
   return Number(count || 0);
 }
@@ -221,20 +234,15 @@ Deno.serve(async (req) => {
     await must("delete event", supabase.from("events").delete().eq("id", eventId));
 
     const verification: Record<string, number> = {};
-    verification.events = await countRows(supabase.from("events").eq("id", eventId));
-    verification.photos = await countRows(supabase.from("photos").eq("event_id", eventId));
-    verification.faces = await countRows(supabase.from("faces").eq("event_id", eventId));
-    verification.orders = await countRows(supabase.from("orders").eq("event_id", eventId));
-    verification.order_items = await countRows(supabase.from("order_items").eq("event_id", eventId));
-    verification.webhooks_by_event = await countRows(supabase.from("stripe_webhook_events").eq("event_id", eventId));
+    verification.events = await countRowsEq(supabase, "events", "id", eventId);
+    verification.photos = await countRowsEq(supabase, "photos", "event_id", eventId);
+    verification.faces = await countRowsEq(supabase, "faces", "event_id", eventId);
+    verification.orders = await countRowsEq(supabase, "orders", "event_id", eventId);
+    verification.order_items = await countRowsEq(supabase, "order_items", "event_id", eventId);
+    verification.webhooks_by_event = await countRowsEq(supabase, "stripe_webhook_events", "event_id", eventId);
 
-    if (orderIds.length) {
-      verification.payments = await countRows(supabase.from("payments").in("order_id", orderIds));
-      verification.webhooks_by_order = await countRows(supabase.from("stripe_webhook_events").in("order_id", orderIds));
-    } else {
-      verification.payments = 0;
-      verification.webhooks_by_order = 0;
-    }
+    verification.payments = await countRowsIn(supabase, "payments", "order_id", orderIds);
+    verification.webhooks_by_order = await countRowsIn(supabase, "stripe_webhook_events", "order_id", orderIds);
 
     const remaining = Object.entries(verification).filter(([, count]) => count > 0);
     if (remaining.length) {
