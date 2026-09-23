@@ -125,11 +125,26 @@
         </div>
 
         <div>
+          <label class="font-semibold block mb-2">รูปแบบ Event</label>
+          <select
+            id="downloadMode"
+            onchange="applyDownloadModeUI()"
+            class="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white rounded-xl p-3"
+          >
+            <option value="paid">ขายภาพ / ชำระเงิน</option>
+            <option value="free">แจกฟรี / ดาวน์โหลด Original ได้ทันที</option>
+          </select>
+          <p id="downloadModeHelp" class="text-xs text-slate-500 mt-1">
+            โหมดขายภาพจะใช้ตะกร้าและ Stripe
+          </p>
+        </div>
+
+        <div id="priceField">
           <label class="font-semibold block mb-2">ราคา / รูป</label>
           <input
             id="price"
             type="number"
-            value="50"
+            value="60"
             min="0"
             class="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white rounded-xl p-3"
           />
@@ -274,7 +289,9 @@
     const titleInput = document.getElementById("title");
     const slugInput = document.getElementById("slug");
     const eventDateInput = document.getElementById("eventDate");
+    const downloadModeInput = document.getElementById("downloadMode");
     const priceInput = document.getElementById("price");
+    let lastPaidPrice = Number(CONFIG.DEFAULT_PHOTO_PRICE || 60);
     const statusInput = document.getElementById("status");
     const descriptionInput = document.getElementById("description");
     const coverInput = document.getElementById("coverInput");
@@ -299,6 +316,36 @@
         if (found) fillForm(found);
       }
     });
+
+    function applyDownloadModeUI() {
+      const isFree = downloadModeInput?.value === "free";
+      const priceField = document.getElementById("priceField");
+      const help = document.getElementById("downloadModeHelp");
+
+      if (isFree) {
+        const current = Number(priceInput.value || 0);
+        if (current > 0) lastPaidPrice = current;
+
+        priceInput.value = "0";
+        priceInput.disabled = true;
+        priceField?.classList.add("opacity-60");
+
+        if (help) {
+          help.textContent = "แจกฟรี: ลูกค้าดาวน์โหลดไฟล์ Original ได้ทันที ไม่สร้าง Order และไม่ผ่าน Stripe";
+        }
+      } else {
+        priceInput.disabled = false;
+        priceField?.classList.remove("opacity-60");
+
+        if (Number(priceInput.value || 0) <= 0) {
+          priceInput.value = String(lastPaidPrice > 0 ? lastPaidPrice : Number(CONFIG.DEFAULT_PHOTO_PRICE || 60));
+        }
+
+        if (help) {
+          help.textContent = "ขายภาพ: ใช้ตะกร้าและ Stripe ตามปกติ";
+        }
+      }
+    }
 
     function autoSlug() {
       if (slugTouched) return;
@@ -378,7 +425,11 @@
 
     function renderEventItem(event) {
       const cover = normalizeImageUrl(event.cover_url || "");
-      const price = Number(event.price || CONFIG.DEFAULT_PHOTO_PRICE || 50);
+      const downloadMode = event.download_mode === "free" ? "free" : "paid";
+      const price = downloadMode === "free"
+        ? 0
+        : Number(event.price ?? CONFIG.DEFAULT_PHOTO_PRICE ?? 60);
+      const modeLabel = downloadMode === "free" ? "แจกฟรี" : "ขายภาพ";
       const status = event.status || "draft";
       const statusClass = getStatusClass(status);
 
@@ -411,7 +462,7 @@
                   </p>
 
                   <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    วันที่: ${escapeHtml(event.event_date || "-")} | ราคา: ${price} บาท
+                    วันที่: ${escapeHtml(event.event_date || "-")} | โหมด: ${modeLabel} | ${downloadMode === "free" ? "ฟรี" : `ราคา: ${price} บาท`}
                   </p>
 
                   <p class="text-[10px] text-slate-400 mt-1 break-all">
@@ -479,7 +530,13 @@
       titleInput.value = event.title || event.name || "";
       slugInput.value = event.slug || "";
       eventDateInput.value = event.event_date || "";
-      priceInput.value = event.price || CONFIG.DEFAULT_PHOTO_PRICE || 50;
+      downloadModeInput.value = event.download_mode === "free" ? "free" : "paid";
+
+      const storedPrice = Number(event.price ?? CONFIG.DEFAULT_PHOTO_PRICE ?? 60);
+      if (storedPrice > 0) lastPaidPrice = storedPrice;
+      priceInput.value = String(downloadModeInput.value === "free" ? 0 : (storedPrice > 0 ? storedPrice : lastPaidPrice));
+      applyDownloadModeUI();
+
       statusInput.value = event.status || "draft";
       descriptionInput.value = event.description || "";
 
@@ -504,7 +561,10 @@
       titleInput.value = "";
       slugInput.value = "";
       eventDateInput.value = "";
-      priceInput.value = CONFIG.DEFAULT_PHOTO_PRICE || 50;
+      downloadModeInput.value = "paid";
+      lastPaidPrice = Number(CONFIG.DEFAULT_PHOTO_PRICE || 60);
+      priceInput.value = String(lastPaidPrice);
+      applyDownloadModeUI();
       statusInput.value = "draft";
       descriptionInput.value = "";
       coverUrlInput.value = "";
@@ -577,7 +637,10 @@
       const title = titleInput.value.trim();
       const slug = toSlug(slugInput.value || title);
       const eventDate = eventDateInput.value || null;
-      const price = Number(priceInput.value || CONFIG.DEFAULT_PHOTO_PRICE || 50);
+      const downloadMode = downloadModeInput.value === "free" ? "free" : "paid";
+      const price = downloadMode === "free"
+        ? 0
+        : Number(priceInput.value || CONFIG.DEFAULT_PHOTO_PRICE || 60);
       const status = statusInput.value || "draft";
       const description = descriptionInput.value.trim();
       let coverUrl = coverUrlInput.value || null;
@@ -609,6 +672,7 @@
               title,
               slug,
               event_date: eventDate,
+              download_mode: downloadMode,
               price,
               status,
               description,
@@ -629,6 +693,7 @@
               title,
               slug,
               event_date: eventDate,
+              download_mode: downloadMode,
               price,
               status,
               description,
