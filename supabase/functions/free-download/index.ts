@@ -92,21 +92,35 @@ function extractR2Key(value: unknown) {
 }
 
 function resolveOriginalKey(photo: any) {
-  const candidates = isVideo(photo)
-    ? [
-        photo?.video_path,
-        photo?.r2_video_key,
-        photo?.r2_original_key,
-        photo?.r2_key,
-        photo?.original_path,
-        photo?.video_url,
-        photo?.r2_video_url,
-      ]
-    : [
-        photo?.r2_original_key,
-        photo?.original_path,
-        photo?.r2_key,
-      ];
+  const candidates = [
+    photo?.video_path,
+    photo?.r2_video_key,
+    photo?.r2_original_key,
+    photo?.r2_key,
+    photo?.original_path,
+    photo?.video_url,
+    photo?.r2_video_url,
+  ];
+
+  for (const candidate of candidates) {
+    const key = extractR2Key(candidate);
+    if (key) return key;
+  }
+
+  return "";
+}
+
+function resolveFreeImageSourceKey(photo: any) {
+  // Never decode a 42MP original inside Supabase Edge Runtime.
+  // The upload flow already creates a high-quality face-scan derivative
+  // (long edge ~3600px) specifically to keep image processing bounded.
+  const candidates = [
+    photo?.face_scan_path,
+    photo?.face_scan_url,
+    photo?.preview_path,
+    photo?.preview_url,
+    photo?.r2_preview_url,
+  ];
 
   for (const candidate of candidates) {
     const key = extractR2Key(candidate);
@@ -435,14 +449,22 @@ Deno.serve(async (req) => {
       }
     }
 
-    const key = resolveOriginalKey(photo);
+    const key = mediaVideo
+      ? resolveOriginalKey(photo)
+      : resolveFreeImageSourceKey(photo);
+
     if (!key) {
-      return errorResponse("Original file is unavailable", 404);
+      return errorResponse(
+        mediaVideo
+          ? "Original file is unavailable"
+          : "Free-download source is unavailable",
+        404,
+      );
     }
 
     if (!key.startsWith(eventPrefix)) {
-      console.error("Rejected original key outside event prefix:", key);
-      return errorResponse("Original file is unavailable", 403);
+      console.error("Rejected file key outside event prefix:", key);
+      return errorResponse("File is unavailable", 403);
     }
 
     if (mediaVideo) {
