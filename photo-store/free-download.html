@@ -3,41 +3,50 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>ดาวน์โหลดภาพฟรี</title>
+  <title>กำลังดาวน์โหลดภาพ</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="js/config.js?v=free-download-bridge-20260924-1"></script>
+  <script src="js/config.js?v=free-download-bridge-20260924-2"></script>
   <style>
     body { min-height: 100vh; }
     button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
   </style>
 </head>
-<body class="bg-slate-950 text-white">
+<body class="bg-slate-100 text-slate-900">
   <main class="min-h-screen flex items-center justify-center p-5">
-    <section class="w-full max-w-md rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl text-center">
-      <div class="mx-auto w-16 h-16 rounded-2xl bg-emerald-500/15 flex items-center justify-center text-3xl">↓</div>
-      <h1 class="mt-4 text-2xl font-black">ดาวน์โหลดภาพ Original</h1>
-      <p id="statusText" class="mt-2 text-sm text-slate-400">
-        กำลังเริ่มดาวน์โหลด...
+    <section class="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl text-center border border-slate-200">
+      <div id="iconBox" class="mx-auto w-16 h-16 rounded-2xl bg-violet-100 flex items-center justify-center text-3xl">
+        ↓
+      </div>
+
+      <h1 class="mt-4 text-2xl font-black">กำลังเตรียมไฟล์ดาวน์โหลด</h1>
+
+      <p id="statusText" class="mt-2 text-sm text-slate-500 min-h-[42px]">
+        กรุณารอสักครู่ ระบบกำลังเตรียมภาพพร้อมโลโก้ KEITA
       </p>
+
+      <div class="mt-5 h-2 overflow-hidden rounded-full bg-slate-100">
+        <div id="progressBar" class="h-full w-1/4 rounded-full bg-violet-600 transition-all duration-300"></div>
+      </div>
 
       <button
         id="downloadBtn"
         type="button"
-        class="mt-6 w-full rounded-2xl bg-emerald-500 hover:bg-emerald-600 px-5 py-4 font-black text-white"
+        disabled
+        class="mt-6 w-full rounded-2xl bg-violet-600 px-5 py-4 font-black text-white disabled:opacity-50"
       >
-        ดาวน์โหลดอีกครั้ง
+        กำลังเตรียมไฟล์...
       </button>
 
       <button
+        id="closeBtn"
         type="button"
-        onclick="window.close()"
-        class="mt-3 w-full rounded-2xl bg-white/10 hover:bg-white/15 px-5 py-3 font-bold text-white"
+        class="mt-3 w-full rounded-2xl bg-slate-100 px-5 py-3 font-bold text-slate-700"
       >
-        ปิดหน้านี้
+        ปิด
       </button>
 
-      <p class="mt-5 text-xs text-slate-500">
-        หากเบราว์เซอร์ถามสิทธิ์ดาวน์โหลด กรุณาเลือกอนุญาต
+      <p class="mt-5 text-xs text-slate-400">
+        ไฟล์จะถูกดาวน์โหลดลงเครื่อง ไม่เปิดเป็นหน้ารูปภาพ
       </p>
     </section>
   </main>
@@ -47,8 +56,16 @@
       const params = new URLSearchParams(window.location.search);
       const eventId = String(params.get("event") || params.get("event_id") || "").trim();
       const photoId = String(params.get("photo") || params.get("photo_id") || "").trim();
+
       const statusText = document.getElementById("statusText");
       const downloadBtn = document.getElementById("downloadBtn");
+      const closeBtn = document.getElementById("closeBtn");
+      const progressBar = document.getElementById("progressBar");
+      const iconBox = document.getElementById("iconBox");
+
+      let readyBlobUrl = "";
+      let readyFilename = "KEITA-photo.jpg";
+      let preparing = false;
 
       function validUuid(value) {
         return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -62,35 +79,142 @@
         const url = new URL(
           window.CONFIG.SUPABASE_URL.replace(/\/+$/, "") + "/functions/v1/free-download"
         );
+
         url.searchParams.set("event_id", eventId);
         url.searchParams.set("photo_id", photoId);
         return url.toString();
       }
 
-      function startDownload() {
+      function parseFilename(disposition) {
+        const value = String(disposition || "");
+        const utf = value.match(/filename\*=UTF-8''([^;]+)/i);
+
+        if (utf?.[1]) {
+          try {
+            return decodeURIComponent(utf[1].replace(/^"|"$/g, ""));
+          } catch (_) {}
+        }
+
+        const plain = value.match(/filename="?([^";]+)"?/i);
+        return plain?.[1] || "KEITA-photo.jpg";
+      }
+
+      function triggerSave() {
+        if (!readyBlobUrl) return false;
+
+        const a = document.createElement("a");
+        a.href = readyBlobUrl;
+        a.download = readyFilename;
+        a.style.display = "none";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        return true;
+      }
+
+      function setReady() {
+        progressBar.style.width = "100%";
+        iconBox.textContent = "✓";
+        iconBox.className =
+          "mx-auto w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-3xl font-black";
+        statusText.textContent =
+          "ไฟล์พร้อมแล้ว หากไม่เริ่มดาวน์โหลดอัตโนมัติ ให้กดปุ่มด้านล่าง";
+        downloadBtn.disabled = false;
+        downloadBtn.textContent = "ดาวน์โหลดลงเครื่อง";
+        downloadBtn.className =
+          "mt-6 w-full rounded-2xl bg-emerald-600 hover:bg-emerald-700 px-5 py-4 font-black text-white";
+      }
+
+      function setError(message) {
+        progressBar.style.width = "100%";
+        progressBar.className = "h-full w-full rounded-full bg-red-500";
+        iconBox.textContent = "!";
+        iconBox.className =
+          "mx-auto w-16 h-16 rounded-2xl bg-red-100 text-red-700 flex items-center justify-center text-3xl font-black";
+        statusText.textContent = message || "เตรียมไฟล์ไม่สำเร็จ กรุณาลองอีกครั้ง";
+        downloadBtn.disabled = false;
+        downloadBtn.textContent = "ลองดาวน์โหลดอีกครั้ง";
+        downloadBtn.className =
+          "mt-6 w-full rounded-2xl bg-red-600 hover:bg-red-700 px-5 py-4 font-black text-white";
+      }
+
+      async function prepareAndDownload() {
+        if (preparing) return;
+
         try {
           if (!validUuid(eventId) || !validUuid(photoId)) {
             throw new Error("ข้อมูล Event หรือรูปภาพไม่ถูกต้อง");
           }
 
-          const url = getDownloadUrl();
-          statusText.textContent = "กำลังส่งไฟล์ไปยังตัวดาวน์โหลดของเบราว์เซอร์...";
+          preparing = true;
+          downloadBtn.disabled = true;
+          downloadBtn.textContent = "กำลังเตรียมไฟล์...";
+          statusText.textContent = "กำลังเตรียมภาพและฝังโลโก้ KEITA...";
+          progressBar.style.width = "55%";
 
-          // Navigate to an attachment response. On Chrome/Safari this starts
-          // the normal browser download flow while preserving the external-browser handoff.
-          window.location.href = url;
+          const response = await fetch(getDownloadUrl(), {
+            method: "GET",
+            cache: "no-store",
+          });
+
+          if (!response.ok) {
+            const text = await response.text().catch(() => "");
+            throw new Error(
+              text || "ดาวน์โหลดไม่สำเร็จ (" + response.status + ")"
+            );
+          }
+
+          const blob = await response.blob();
+          readyFilename = parseFilename(response.headers.get("content-disposition"));
+
+          if (readyBlobUrl) {
+            URL.revokeObjectURL(readyBlobUrl);
+          }
+
+          readyBlobUrl = URL.createObjectURL(blob);
+          setReady();
+
+          // First attempt is automatic. If Safari/Chrome blocks the synthetic
+          // click, the same Blob remains ready for the visible button.
+          setTimeout(() => {
+            try {
+              triggerSave();
+            } catch (error) {
+              console.warn("Automatic save was blocked:", error);
+            }
+          }, 80);
         } catch (error) {
-          console.error(error);
-          statusText.textContent = error?.message || "เริ่มดาวน์โหลดไม่สำเร็จ";
+          console.error("Free download bridge error:", error);
+          readyBlobUrl = "";
+          setError(error?.message || "เตรียมไฟล์ไม่สำเร็จ");
+        } finally {
+          preparing = false;
         }
       }
 
-      downloadBtn.addEventListener("click", startDownload);
+      downloadBtn.addEventListener("click", () => {
+        if (readyBlobUrl) {
+          triggerSave();
+        } else {
+          prepareAndDownload();
+        }
+      });
 
-      // The user has already explicitly tapped Download on the previous page.
-      // Start once automatically, while keeping a visible retry button in case
-      // a browser blocks or cancels the first handoff.
-      setTimeout(startDownload, 450);
+      closeBtn.addEventListener("click", () => {
+        if (history.length > 1) {
+          history.back();
+        } else {
+          window.close();
+        }
+      });
+
+      window.addEventListener("pagehide", () => {
+        if (readyBlobUrl) {
+          URL.revokeObjectURL(readyBlobUrl);
+        }
+      });
+
+      prepareAndDownload();
     })();
   </script>
 </body>
