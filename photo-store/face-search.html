@@ -16,7 +16,7 @@
   <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 
   <script src="js/config.js?v=prod-stripe-20260918-1"></script>
-  <script src="js/liff-helper.js?v=prod-stripe-20260918-1"></script>
+  <script src="js/liff-helper.js?v=free-download-external-20260924-3"></script>
 
   <style>
     * {
@@ -858,31 +858,34 @@
       const url = new URL("free-download.html", window.location.href);
       url.searchParams.set("event", String(eventId || ""));
       url.searchParams.set("photo", String(photoId || ""));
-      url.searchParams.set("v", "20260924-2");
+      url.searchParams.set("v", "20260924-3");
       return url.toString();
     }
 
-    function downloadFreePhoto(photoId) {
+    async function downloadFreePhoto(photoId) {
       if (!isFreeEvent() || !photoId) return;
 
       const url = freeDownloadBridgeUrl(photoId);
 
-      // Open a normal HTML page outside LINE first. That page fetches the
-      // binary file and saves it as a Blob, avoiding the blank/black screen
-      // caused by navigating directly to application/octet-stream.
-      if (
-        window.liff &&
-        typeof liff.openWindow === "function"
-      ) {
-        try {
+      try {
+        if (window.AppLIFF) {
+          await AppLIFF.init();
+        }
+
+        if (
+          window.liff &&
+          typeof liff.isInClient === "function" &&
+          liff.isInClient() &&
+          typeof liff.openWindow === "function"
+        ) {
           liff.openWindow({
             url,
             external: true
           });
           return;
-        } catch (error) {
-          console.warn("LIFF external download page failed:", error);
         }
+      } catch (error) {
+        console.warn("LIFF external download page failed:", error);
       }
 
       const link = document.createElement("a");
