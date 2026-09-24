@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>กำลังดาวน์โหลดภาพ</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="js/config.js?v=free-download-bridge-20260924-2"></script>
+  <script src="https://static.line-scdn.net/liff/edge/versions/2.29.0/sdk.js"></script>
+  <script src="js/config.js?v=free-download-bridge-20260924-3"></script>
   <style>
     body { min-height: 100vh; }
     button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
@@ -138,6 +139,52 @@
           "mt-6 w-full rounded-2xl bg-red-600 hover:bg-red-700 px-5 py-4 font-black text-white";
       }
 
+      async function ensureExternalBrowser() {
+        const alreadyExternal = params.get("external") === "1";
+
+        if (alreadyExternal) {
+          return false;
+        }
+
+        try {
+          if (
+            window.liff &&
+            window.CONFIG?.LIFF_ID &&
+            typeof liff.init === "function"
+          ) {
+            await liff.init({
+              liffId: CONFIG.LIFF_ID
+            });
+
+            if (
+              typeof liff.isInClient === "function" &&
+              liff.isInClient() &&
+              typeof liff.openWindow === "function"
+            ) {
+              const externalUrl = new URL(window.location.href);
+              externalUrl.searchParams.set("external", "1");
+              externalUrl.searchParams.set("v", "20260924-3");
+
+              statusText.textContent = "กำลังเปิด Safari / Chrome เพื่อดาวน์โหลด...";
+              progressBar.style.width = "35%";
+              downloadBtn.disabled = true;
+              downloadBtn.textContent = "กำลังเปิดเบราว์เซอร์...";
+
+              liff.openWindow({
+                url: externalUrl.toString(),
+                external: true
+              });
+
+              return true;
+            }
+          }
+        } catch (error) {
+          console.warn("Unable to reopen download outside LINE:", error);
+        }
+
+        return false;
+      }
+
       async function prepareAndDownload() {
         if (preparing) return;
 
@@ -147,6 +194,12 @@
           }
 
           preparing = true;
+
+          const handedOff = await ensureExternalBrowser();
+          if (handedOff) {
+            return;
+          }
+
           downloadBtn.disabled = true;
           downloadBtn.textContent = "กำลังเตรียมไฟล์...";
           statusText.textContent = "กำลังเตรียมภาพและฝังโลโก้ KEITA...";
@@ -188,7 +241,20 @@
           readyBlobUrl = "";
           setError(error?.message || "เตรียมไฟล์ไม่สำเร็จ");
         } finally {
-          preparing = false;
+          // If LINE handed the page off to Safari/Chrome, keep this page idle.
+          // Otherwise allow retrying the Blob download normally.
+          if (params.get("external") === "1" || !window.liff || !window.CONFIG?.LIFF_ID) {
+            preparing = false;
+          } else {
+            try {
+              preparing = Boolean(
+                typeof liff.isInClient === "function" &&
+                liff.isInClient()
+              );
+            } catch (_) {
+              preparing = false;
+            }
+          }
         }
       }
 
