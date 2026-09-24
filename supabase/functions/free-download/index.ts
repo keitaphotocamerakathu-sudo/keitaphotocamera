@@ -14,8 +14,8 @@ const R2_PUBLIC_BASE_URL =
 // This is the same KEITA PHOTO CAMERA transparent logo already stored
 // in this repository. The user supplied the same logo for free downloads.
 const FREE_WATERMARK_URL =
-  "https://keitaphotocamerakathu-sudo.github.io/keitaphotocamera/sony-video-review-pro-keita-watermark/keita-logo.png";
-const FREE_WATERMARK_VERSION = "keita-logo-v1";
+  "https://keitaphotocamerakathu-sudo.github.io/keitaphotocamera/photo-store/assets/keita-free-download-logo-v2.png";
+const FREE_WATERMARK_VERSION = "keita-logo-v2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
