@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Image } from "https://deno.land/x/imagescript@1.2.15/mod.ts";
 
 const SUPABASE_URL = mustEnv("SUPABASE_URL");
 const SERVICE_ROLE_KEY = mustEnv("SUPABASE_SERVICE_ROLE_KEY");
@@ -10,6 +11,11 @@ const R2_WORKER_URL =
 const R2_PUBLIC_BASE_URL =
   "https://pub-897300534774433b18d20c62be9f282.r2.dev";
 
+// This is the same KEITA PHOTO CAMERA transparent logo already stored
+// in this repository. The user supplied the same logo for free downloads.
+const FREE_WATERMARK_URL =
+  "https://keitaphotocamerakathu-sudo.github.io/keitaphotocamera/sony-video-review-pro-keita-watermark/keita-logo.png";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "range, content-type",
@@ -17,6 +23,8 @@ const corsHeaders = {
   "Access-Control-Expose-Headers":
     "Content-Length, Content-Range, Accept-Ranges, Content-Disposition",
 };
+
+let watermarkBytesPromise: Promise<Uint8Array> | null = null;
 
 function mustEnv(name: string) {
   const value = String(Deno.env.get(name) || "").trim();
@@ -124,6 +132,86 @@ function errorResponse(message: string, status: number) {
   });
 }
 
+function originalR2Url(key: string) {
+  return `${R2_WORKER_URL.replace(/\/+$/, "")}/file/${key
+    .split("/")
+    .map((part) => encodeURIComponent(part))
+    .join("/")}`;
+}
+
+async function getWatermarkBytes() {
+  if (!watermarkBytesPromise) {
+    watermarkBytesPromise = (async () => {
+      const response = await fetch(FREE_WATERMARK_URL, {
+        redirect: "follow",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Unable to load KEITA watermark (${response.status})`,
+        );
+      }
+
+      return new Uint8Array(await response.arrayBuffer());
+    })().catch((error) => {
+      watermarkBytesPromise = null;
+      throw error;
+    });
+  }
+
+  return await watermarkBytesPromise;
+}
+
+async function createWatermarkedPhoto(
+  sourceBytes: Uint8Array,
+  sourceContentType: string,
+  filename: string,
+) {
+  const image = await Image.decode(sourceBytes);
+  const watermark = await Image.decode(await getWatermarkBytes());
+
+  // Keep the logo visible but unobtrusive in the lower-right corner.
+  // Cap it so large Sony originals do not get an oversized watermark.
+  const targetWidth = Math.max(
+    220,
+    Math.min(900, Math.round(image.width * 0.17)),
+  );
+
+  if (watermark.width !== targetWidth) {
+    watermark.resize(targetWidth, Image.RESIZE_AUTO);
+  }
+
+  const shortEdge = Math.min(image.width, image.height);
+  const padding = Math.max(28, Math.round(shortEdge * 0.018));
+
+  const x = Math.max(0, image.width - watermark.width - padding);
+  const y = Math.max(0, image.height - watermark.height - padding);
+
+  image.composite(watermark, x, y);
+
+  const lowerName = filename.toLowerCase();
+  const sourceType = clean(sourceContentType).toLowerCase();
+
+  if (sourceType.includes("png") || lowerName.endsWith(".png")) {
+    return {
+      bytes: new Uint8Array(await image.encode()),
+      filename: lowerName.endsWith(".png")
+        ? filename
+        : filename.replace(/\.[^.]+$/, "") + ".png",
+    };
+  }
+
+  return {
+    bytes: new Uint8Array(await image.encodeJPEG(92)),
+    filename: /\.jpe?g$/i.test(filename)
+      ? filename
+      : filename.replace(/\.[^.]+$/, "") + ".jpg",
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -196,66 +284,101 @@ Deno.serve(async (req) => {
       return errorResponse("Original file is unavailable", 403);
     }
 
-    const upstreamUrl =
-      `${R2_WORKER_URL.replace(/\/+$/, "")}/file/${key
-        .split("/")
-        .map((part) => encodeURIComponent(part))
-        .join("/")}`;
-
-    const upstreamHeaders = new Headers();
-    const range = req.headers.get("range");
-    if (range) upstreamHeaders.set("Range", range);
-
-    const upstream = await fetch(upstreamUrl, {
-      method: req.method,
-      headers: upstreamHeaders,
-      redirect: "follow",
-    });
-
-    if (!upstream.ok && upstream.status !== 206) {
-      console.error("R2 free download failed:", upstream.status, upstreamUrl);
-      return errorResponse(
-        "Unable to retrieve file",
-        upstream.status === 404 ? 404 : 502,
-      );
-    }
-
     const mediaVideo = isVideo(photo);
     const filename = safeFilename(
       photo.filename,
       mediaVideo ? "video.mp4" : "photo.jpg",
     );
 
-    const headers = new Headers(corsHeaders);
-
-    for (const headerName of [
-      "content-length",
-      "content-range",
-      "accept-ranges",
-      "etag",
-      "last-modified",
-    ]) {
-      const value = upstream.headers.get(headerName);
-      if (value) headers.set(headerName, value);
+    // HEAD only verifies access. The transformed byte size is unknown until
+    // processing finishes, so avoid doing expensive image work here.
+    if (req.method === "HEAD") {
+      return new Response(null, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/octet-stream",
+          "Content-Disposition":
+            `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+          "Cache-Control": "private, no-store, max-age=0",
+          "X-Content-Type-Options": "nosniff",
+        },
+      });
     }
 
-    // Force a real file download. Keeping image/jpeg lets some mobile
-    // browsers / LINE IAB render the image instead of saving it.
+    const upstreamHeaders = new Headers();
+
+    // Video is not modified, so byte ranges are still safe.
+    if (mediaVideo) {
+      const range = req.headers.get("range");
+      if (range) upstreamHeaders.set("Range", range);
+    }
+
+    const upstream = await fetch(originalR2Url(key), {
+      method: "GET",
+      headers: upstreamHeaders,
+      redirect: "follow",
+    });
+
+    if (!upstream.ok && upstream.status !== 206) {
+      console.error(
+        "R2 free download failed:",
+        upstream.status,
+        key,
+      );
+      return errorResponse(
+        "Unable to retrieve file",
+        upstream.status === 404 ? 404 : 502,
+      );
+    }
+
+    const headers = new Headers(corsHeaders);
     headers.set("Content-Type", "application/octet-stream");
-    headers.set(
-      "Content-Disposition",
-      `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
-    );
     headers.set("Cache-Control", "private, no-store, max-age=0");
     headers.set("X-Content-Type-Options", "nosniff");
 
-    return new Response(
-      req.method === "HEAD" ? null : upstream.body,
-      {
+    if (mediaVideo) {
+      for (const headerName of [
+        "content-length",
+        "content-range",
+        "accept-ranges",
+        "etag",
+        "last-modified",
+      ]) {
+        const value = upstream.headers.get(headerName);
+        if (value) headers.set(headerName, value);
+      }
+
+      headers.set(
+        "Content-Disposition",
+        `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+      );
+
+      return new Response(upstream.body, {
         status: upstream.status,
         headers,
-      },
+      });
+    }
+
+    // Free image downloads always get the KEITA logo baked into the file.
+    const sourceBytes = new Uint8Array(await upstream.arrayBuffer());
+    const transformed = await createWatermarkedPhoto(
+      sourceBytes,
+      upstream.headers.get("content-type") || "image/jpeg",
+      filename,
     );
+
+    headers.set(
+      "Content-Disposition",
+      `attachment; filename*=UTF-8''${encodeURIComponent(transformed.filename)}`,
+    );
+    headers.set("Content-Length", String(transformed.bytes.byteLength));
+    headers.set("X-KEITA-Free-Watermark", "1");
+
+    return new Response(transformed.bytes, {
+      status: 200,
+      headers,
+    });
   } catch (error) {
     console.error("free-download error:", error);
     return errorResponse(
