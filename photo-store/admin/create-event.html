@@ -63,6 +63,13 @@
         >
           UPLOAD
         </button>
+
+        <button
+          onclick="goProcessFacesSelected()"
+          class="bg-violet-500 hover:bg-violet-600 text-white rounded-2xl px-4 py-3 font-bold transition"
+        >
+          FACE SYNC
+        </button>
       </div>
     </div>
   </header>
@@ -952,6 +959,16 @@
         window.location.href = `upload.html?event=${encodeURIComponent(id)}`;
       } else {
         window.location.href = "upload.html";
+      }
+    }
+
+    function goProcessFacesSelected() {
+      const id = eventIdInput.value;
+
+      if (id) {
+        window.location.href = `process-faces.html?event=${encodeURIComponent(id)}`;
+      } else {
+        window.location.href = "process-faces.html";
       }
     }
 
