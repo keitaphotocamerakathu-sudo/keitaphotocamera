@@ -135,6 +135,7 @@
                 </div>
               </div>
               <div class="light-dock-actions">
+                <span class="clip-setting-chip">ต่อคลิป</span>
                 <span id="lightQualityChip" class="quality-chip">OFF = LOSSLESS</span>
                 <button id="lightCollapseBtn" class="btn ghost compact light-collapse-btn" type="button" aria-expanded="true" title="ซ่อน/แสดงตัวปรับแสง">⌃ ซ่อน</button>
                 <button id="resetLightBtn" class="btn ghost compact light-reset-btn" type="button">Reset</button>
@@ -157,6 +158,15 @@
                   <input id="videoSaturation" type="range" min="-100" max="100" step="1" value="0" />
                 </label>
               </div>
+
+              <div class="light-batch-actions">
+                <button id="beforeAfterBtn" class="btn ghost compact light-before-btn" type="button" title="กดค้างเพื่อดูภาพต้นฉบับ">◐ กดค้างดู Before</button>
+                <button id="copyLightBtn" class="btn ghost compact" type="button">คัดลอกค่า</button>
+                <button id="pasteLightBtn" class="btn ghost compact" type="button">วางค่า</button>
+                <button id="applyLightSelectedBtn" class="btn ghost compact" type="button">ใช้กับที่เลือก</button>
+                <button id="applyLightAllBtn" class="btn ghost compact" type="button">ใช้กับทั้งหมด</button>
+              </div>
+              <div id="lightActionStatus" class="light-action-status">แต่ละคลิปจำค่าของตัวเอง</div>
 
               <div class="light-dock-note">
                 <span>ⓘ</span>
@@ -393,6 +403,6 @@
     </footer>
   </main>
 
-  <script type="module" src="app.js?v=20260920-light-collapse-v3"></script>
+  <script type="module" src="app.js?v=20260929-perclip-light-v4"></script>
 </body>
 </html>
