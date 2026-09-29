@@ -1004,3 +1004,51 @@ body.review-mode .editor-layout { grid-template-columns:minmax(0,2.4fr) minmax(2
 @media (max-width: 640px) {
   .light-collapse-btn { min-width: 68px; }
 }
+
+/* Per-clip Light / Color workflow */
+.clip-setting-chip {
+  padding: 5px 8px;
+  border: 1px solid rgba(167,139,250,.18);
+  border-radius: 999px;
+  background: rgba(139,92,246,.07);
+  color: #c4b5fd;
+  font-size: .61rem;
+  font-weight: 800;
+  letter-spacing: .055em;
+  white-space: nowrap;
+}
+.light-batch-actions {
+  display: grid;
+  grid-template-columns: 1.25fr repeat(4, minmax(0,1fr));
+  gap: 7px;
+  margin-top: 10px;
+}
+.light-batch-actions .btn {
+  min-width: 0;
+  padding: 7px 8px;
+  font-size: .66rem;
+  border-radius: 9px;
+}
+.light-before-btn.is-previewing {
+  border-color: rgba(244,63,94,.55);
+  background: rgba(225,29,72,.12);
+  color: #fecdd3;
+}
+.light-action-status {
+  min-height: 18px;
+  margin-top: 7px;
+  color: #85858f;
+  font-size: .64rem;
+  line-height: 1.35;
+}
+.light-action-status.success { color: #86efac; }
+.light-action-status.warn { color: #fcd34d; }
+
+@media (max-width: 1080px) {
+  .light-batch-actions { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  .light-batch-actions .light-before-btn { grid-column: span 2; }
+}
+@media (max-width: 640px) {
+  .light-batch-actions { grid-template-columns: 1fr 1fr; }
+  .light-batch-actions .light-before-btn { grid-column: 1 / -1; }
+}
