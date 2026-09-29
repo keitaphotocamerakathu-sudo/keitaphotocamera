@@ -52,7 +52,7 @@ const els = {
   photographerCode: $('#photographerCode'), sequenceStart: $('#sequenceStart'), sequenceDigits: $('#sequenceDigits'), filenamePreview: $('#filenamePreview'), outputDestinationText: $('#outputDestinationText'),
   queueSelected: $('#queueSelected'), queueFavorite: $('#queueFavorite'), queueReject: $('#queueReject'), queueErrors: $('#queueErrors'), queueWatermarks: $('#queueWatermarks'),
   watermarkLayer: $('#watermarkLayer'), watermarkEnabled: $('#watermarkEnabled'), addWatermarkBtn: $('#addWatermarkBtn'), addKeitaWatermarkBtn: $('#addKeitaWatermarkBtn'), watermarkFileInput: $('#watermarkFileInput'), watermarkEmpty: $('#watermarkEmpty'), watermarkList: $('#watermarkList'), watermarkEditor: $('#watermarkEditor'), selectedWatermarkName: $('#selectedWatermarkName'), selectedWatermarkIndex: $('#selectedWatermarkIndex'), wmSize: $('#wmSize'), wmOpacity: $('#wmOpacity'), wmX: $('#wmX'), wmY: $('#wmY'), wmSizeText: $('#wmSizeText'), wmOpacityText: $('#wmOpacityText'), wmXText: $('#wmXText'), wmYText: $('#wmYText'), duplicateWatermarkBtn: $('#duplicateWatermarkBtn'), deleteWatermarkBtn: $('#deleteWatermarkBtn'),
-  lightAdjustEnabled: $('#lightAdjustEnabled'), lightAdjustPanel: $('#lightAdjustPanel'), lightAdjustBody: $('#lightAdjustBody'), lightCollapseBtn: $('#lightCollapseBtn'), lightQualityChip: $('#lightQualityChip'), videoBrightness: $('#videoBrightness'), videoContrast: $('#videoContrast'), videoSaturation: $('#videoSaturation'), videoBrightnessText: $('#videoBrightnessText'), videoContrastText: $('#videoContrastText'), videoSaturationText: $('#videoSaturationText'), resetLightBtn: $('#resetLightBtn'),
+  lightAdjustEnabled: $('#lightAdjustEnabled'), lightAdjustPanel: $('#lightAdjustPanel'), lightAdjustBody: $('#lightAdjustBody'), lightCollapseBtn: $('#lightCollapseBtn'), lightQualityChip: $('#lightQualityChip'), videoBrightness: $('#videoBrightness'), videoContrast: $('#videoContrast'), videoSaturation: $('#videoSaturation'), videoBrightnessText: $('#videoBrightnessText'), videoContrastText: $('#videoContrastText'), videoSaturationText: $('#videoSaturationText'), resetLightBtn: $('#resetLightBtn'), beforeAfterBtn: $('#beforeAfterBtn'), copyLightBtn: $('#copyLightBtn'), pasteLightBtn: $('#pasteLightBtn'), applyLightSelectedBtn: $('#applyLightSelectedBtn'), applyLightAllBtn: $('#applyLightAllBtn'), lightActionStatus: $('#lightActionStatus'),
   startBtn: $('#startBtn'), retryFailedBtn: $('#retryFailedBtn'), cancelBtn: $('#cancelBtn'), openOutputBtn: $('#openOutputBtn'), processMessage: $('#processMessage'),
   progressBar: $('#progressBar'), progressText: $('#progressText'), progressCount: $('#progressCount'),
 };
@@ -85,8 +85,9 @@ const state = {
   watermarkEnabled: false,
   selectedWatermarkId: null,
   watermarkSeq: 0,
-  lightAdjustEnabled: false,
   lightAdjustCollapsed: false,
+  lightClipboard: null,
+  beforePreviewActive: false,
 };
 
 const supported = 'showDirectoryPicker' in window && window.isSecureContext;
@@ -122,6 +123,28 @@ function currentItem() { return state.files[state.previewIndex] || null; }
 function selectedFiles() { return state.files.filter(f => f.selected !== false); }
 function percentOf(v, total) { return total > 0 ? clamp((v / total) * 100, 0, 100) : 0; }
 function safeNumber(input, fallback, min, max) { const n = Number(input.value); return Number.isFinite(n) ? clamp(n, min, max) : fallback; }
+function defaultLightAdjust(){return{enabled:false,brightness:0,contrast:0,saturation:0};}
+function normalizeLightAdjust(value){
+  const v=value||{};
+  return{
+    enabled:Boolean(v.enabled),
+    brightness:clamp(Number(v.brightness)||0,-50,50),
+    contrast:clamp(Number(v.contrast)||0,-50,50),
+    saturation:clamp(Number(v.saturation)||0,-100,100),
+  };
+}
+function cloneLightAdjust(value){return{...normalizeLightAdjust(value)};}
+function getLightAdjust(item=currentItem()){
+  if(!item)return defaultLightAdjust();
+  item.lightAdjust=normalizeLightAdjust(item.lightAdjust);
+  return item.lightAdjust;
+}
+function setLightStatus(message,type=''){
+  if(!els.lightActionStatus)return;
+  els.lightActionStatus.textContent=message;
+  els.lightActionStatus.classList.remove('success','warn');
+  if(type)els.lightActionStatus.classList.add(type);
+}
 
 function visibleIndexes() {
   const filter = els.filterSelect.value;
@@ -313,39 +336,94 @@ function applyPreviewRotation(){
 }
 function setRotation(r){ const item=currentItem(); if(!item||state.processing)return; item.rotation=r; applyPreviewRotation(); renderFiles(); }
 
-function readLightAdjustments(){
+function lightAdjustFromControls(){
   return {
-    enabled:Boolean(state.lightAdjustEnabled),
+    enabled:Boolean(els.lightAdjustEnabled?.checked),
     brightness:clamp(Number(els.videoBrightness?.value)||0,-50,50),
     contrast:clamp(Number(els.videoContrast?.value)||0,-50,50),
     saturation:clamp(Number(els.videoSaturation?.value)||0,-100,100),
   };
 }
+function readLightAdjustments(item=currentItem()){return cloneLightAdjust(getLightAdjust(item));}
 function applyPreviewLightAdjustments(){
   if(!els.previewVideo)return;
-  const a=readLightAdjustments();
+  if(state.beforePreviewActive){els.previewVideo.style.filter='none';return;}
+  const a=getLightAdjust();
   if(!a.enabled){els.previewVideo.style.filter='none';return;}
   const brightness=clamp(1+a.brightness/100,.5,1.5);
   const contrast=clamp(1+a.contrast/100,.5,1.5);
   const saturation=clamp(1+a.saturation/100,0,2);
   els.previewVideo.style.filter=`brightness(${brightness}) contrast(${contrast}) saturate(${saturation})`;
 }
-function updateLightAdjustmentUI(){
-  state.lightAdjustEnabled=Boolean(els.lightAdjustEnabled?.checked);
-  const a=readLightAdjustments();
+function syncLightControlsFromItem(){
+  const item=currentItem();
+  const a=item?getLightAdjust(item):defaultLightAdjust();
+  if(els.lightAdjustEnabled)els.lightAdjustEnabled.checked=a.enabled;
+  if(els.videoBrightness)els.videoBrightness.value=String(a.brightness);
+  if(els.videoContrast)els.videoContrast.value=String(a.contrast);
+  if(els.videoSaturation)els.videoSaturation.value=String(a.saturation);
   if(els.videoBrightnessText)els.videoBrightnessText.textContent=`${a.brightness>0?'+':''}${a.brightness}%`;
   if(els.videoContrastText)els.videoContrastText.textContent=`${a.contrast>0?'+':''}${a.contrast}%`;
   if(els.videoSaturationText)els.videoSaturationText.textContent=`${a.saturation>0?'+':''}${a.saturation}%`;
-  els.lightAdjustPanel?.classList.toggle('controls-disabled',!state.lightAdjustEnabled);
-  if(els.lightQualityChip)els.lightQualityChip.textContent=state.lightAdjustEnabled?'ON = ENCODE 1×':'OFF = LOSSLESS';
+  els.lightAdjustPanel?.classList.toggle('controls-disabled',!a.enabled);
+  if(els.lightQualityChip)els.lightQualityChip.textContent=a.enabled?'ON = ENCODE 1×':'OFF = LOSSLESS';
+  [els.lightAdjustEnabled,els.videoBrightness,els.videoContrast,els.videoSaturation,els.resetLightBtn,els.copyLightBtn,els.pasteLightBtn,els.applyLightSelectedBtn,els.applyLightAllBtn,els.beforeAfterBtn].forEach(el=>{if(el)el.disabled=!item||state.processing;});
+  if(els.pasteLightBtn)els.pasteLightBtn.disabled=!item||state.processing||!state.lightClipboard;
   applyPreviewLightAdjustments();
   updateSelectionUI();
 }
+function commitLightControlsToCurrent(){
+  const item=currentItem();
+  if(!item||state.processing)return;
+  item.lightAdjust=normalizeLightAdjust(lightAdjustFromControls());
+  item.status=item.status==='error'?item.status:'ready';
+  syncLightControlsFromItem();
+  renderFiles();
+  setLightStatus(`บันทึกค่าปรับแสงสำหรับ ${item.name} แล้ว`,'success');
+}
+function updateLightAdjustmentUI(){syncLightControlsFromItem();}
 function resetLightAdjustments(){
-  if(els.videoBrightness)els.videoBrightness.value='0';
-  if(els.videoContrast)els.videoContrast.value='0';
-  if(els.videoSaturation)els.videoSaturation.value='0';
-  updateLightAdjustmentUI();
+  const item=currentItem();if(!item||state.processing)return;
+  item.lightAdjust=defaultLightAdjust();
+  syncLightControlsFromItem();renderFiles();
+  setLightStatus(`Reset ${item.name} เป็นค่าเดิมแล้ว`,'success');
+}
+function copyCurrentLightAdjust(){
+  const item=currentItem();if(!item||state.processing)return;
+  state.lightClipboard=cloneLightAdjust(getLightAdjust(item));
+  syncLightControlsFromItem();
+  setLightStatus(`คัดลอกค่าจาก ${item.name} แล้ว`,'success');
+}
+function pasteCurrentLightAdjust(){
+  const item=currentItem();if(!item||state.processing)return;
+  if(!state.lightClipboard){setLightStatus('ยังไม่มีค่าที่คัดลอก','warn');return;}
+  item.lightAdjust=cloneLightAdjust(state.lightClipboard);
+  syncLightControlsFromItem();renderFiles();
+  setLightStatus(`วางค่าให้ ${item.name} แล้ว`,'success');
+}
+function applyCurrentLightTo(targets,label){
+  const item=currentItem();if(!item||state.processing)return;
+  const source=cloneLightAdjust(getLightAdjust(item));
+  const list=(targets||[]).filter(Boolean);
+  list.forEach(f=>{f.lightAdjust=cloneLightAdjust(source);if(f.status!=='error')f.status='ready';});
+  syncLightControlsFromItem();renderFiles();updateSummary();
+  setLightStatus(`ใช้ค่าจาก ${item.name} กับ ${list.length} คลิป (${label}) แล้ว`,'success');
+}
+function applyLightToSelected(){applyCurrentLightTo(selectedFiles(),'ที่เลือก Export');}
+function applyLightToAll(){applyCurrentLightTo(state.files,'ทั้งหมด');}
+function startBeforePreview(){
+  if(!currentItem()||state.processing)return;
+  state.beforePreviewActive=true;
+  els.beforeAfterBtn?.classList.add('is-previewing');
+  if(els.beforeAfterBtn)els.beforeAfterBtn.textContent='Before · ต้นฉบับ';
+  applyPreviewLightAdjustments();
+}
+function endBeforePreview(){
+  if(!state.beforePreviewActive)return;
+  state.beforePreviewActive=false;
+  els.beforeAfterBtn?.classList.remove('is-previewing');
+  if(els.beforeAfterBtn)els.beforeAfterBtn.textContent='◐ กดค้างดู Before';
+  applyPreviewLightAdjustments();
 }
 function updateLightCollapseUI(){
   const collapsed=Boolean(state.lightAdjustCollapsed);
@@ -486,7 +564,7 @@ function updateSelectionUI(){
   const selected=selectedFiles().length,total=state.files.length,fav=state.files.filter(f=>f.review==='favorite').length,reject=state.files.filter(f=>f.review==='reject').length,errors=state.files.filter(f=>f.status==='error').length;
   els.selectedCount.textContent=`${selected} / ${total} ไฟล์`; els.selectedStat.textContent=`${selected} ไฟล์`; els.queueSelected.textContent=selected; els.queueFavorite.textContent=fav; els.queueReject.textContent=reject; els.queueErrors.textContent=errors;if(els.queueWatermarks)els.queueWatermarks.textContent=state.watermarkEnabled?state.watermarks.length:0;
   els.selectAllBtn.disabled=!total||state.processing||selected===total; els.selectNoneBtn.disabled=!total||state.processing||selected===0; els.startBtn.disabled=selected===0||state.processing;
-  const hasWm=state.watermarkEnabled&&state.watermarks.length>0,hasLight=state.lightAdjustEnabled;
+  const selectedItems=selectedFiles();const hasWm=state.watermarkEnabled&&state.watermarks.length>0,hasLight=selectedItems.some(f=>getLightAdjust(f).enabled);
   els.startBtn.textContent=!selected?'เลือกไฟล์ก่อน Export':hasLight&&hasWm?`Export + ปรับแสง + ลายน้ำ (${selected})`:hasLight?`Export + ปรับแสง (${selected})`:hasWm?`Export + ลายน้ำ (${selected})`:`Export ที่เลือก (${selected})`;
   els.retryFailedBtn.classList.toggle('hidden', state.lastFailures.length===0 || state.processing); els.retryFailedBtn.textContent=`↻ Retry ที่ผิดพลาด (${state.lastFailures.length})`;
 }
@@ -652,7 +730,7 @@ async function loadFolder(){
     const dir=await window.showDirectoryPicker({mode:'readwrite',id:'sony-video-rotator-source'}); state.dirHandle=dir; state.files=[]; state.previewIndex=0; state.lastFailures=[];
     for await(const [name,handle] of dir.entries()){
       if(handle.kind!=='file'||!/\.(mp4|mov)$/i.test(name))continue; const file=await handle.getFile();
-      state.files.push({name,handle,size:file.size,lastModified:file.lastModified,currentRotation:null,rotation:(PRESETS[els.presetSelect.value]?.rotation ?? 0),review:'keep',selected:true,status:'ready',error:null,duration:null,trimStart:0,trimEnd:null,keyframes:null,keyframesLoading:false,plannedOutputName:null,inspecting:true,videoWidth:null,videoHeight:null});
+      state.files.push({name,handle,size:file.size,lastModified:file.lastModified,currentRotation:null,rotation:(PRESETS[els.presetSelect.value]?.rotation ?? 0),review:'keep',selected:true,status:'ready',error:null,duration:null,trimStart:0,trimEnd:null,keyframes:null,keyframesLoading:false,plannedOutputName:null,inspecting:true,videoWidth:null,videoHeight:null,lightAdjust:defaultLightAdjust()});
     }
     state.files.sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true,sensitivity:'base'})); updateSummary();renderFiles();resetProgress();
     if(!state.files.length){clearPreview();els.processMessage.textContent='ไม่พบ .MP4 หรือ .MOV';return;}
@@ -667,7 +745,7 @@ async function showPreview(index, { autoplay = false } = {}){
   if(!state.files.length)return clearPreview(); state.previewingSelection=false;state.previewIndex=clamp(index,0,state.files.length-1);const item=currentItem();const file=await item.handle.getFile();
   els.previewVideo.pause();state.timelineGeneration++;resetFilmstrip();if(state.previewUrl)URL.revokeObjectURL(state.previewUrl);state.previewUrl=URL.createObjectURL(file);els.previewVideo.src=state.previewUrl;els.previewVideo.style.display='block';els.emptyPreview.classList.add('hidden');
   els.previewMeta.textContent=`${item.name} · ${formatBytes(item.size)} · metadata ${rotationLabel(item.currentRotation)}`; const vis=visibleIndexes();const pos=vis.indexOf(state.previewIndex);els.previewIndex.textContent=pos>=0?`${pos+1} / ${vis.length}`:`${state.previewIndex+1} / ${state.files.length}`;els.clipName.textContent=item.name; updateFilenamePreview();
-  applyPreviewRotation();renderFiles();
+  state.beforePreviewActive=false;syncLightControlsFromItem();applyPreviewRotation();renderFiles();
   await new Promise(resolve=>{if(els.previewVideo.readyState>=1&&Number.isFinite(els.previewVideo.duration))return resolve();const done=()=>resolve();els.previewVideo.addEventListener('loadedmetadata',done,{once:true});els.previewVideo.addEventListener('error',done,{once:true});});
   if(Number.isFinite(els.previewVideo.duration)&&els.previewVideo.duration>0){item.duration=els.previewVideo.duration;item.videoWidth=Number(els.previewVideo.videoWidth)||item.videoWidth||null;item.videoHeight=Number(els.previewVideo.videoHeight)||item.videoHeight||null;if(!Number.isFinite(item.trimEnd)||item.trimEnd>item.duration)item.trimEnd=item.duration;setTrimControlsEnabled(true);updateTrimUI();generateFilmstrip(item,state.previewUrl);if(autoplay){els.previewVideo.muted=true;try{await els.previewVideo.play();}catch{}}}else{setTrimControlsEnabled(false);els.selectedDuration.textContent='อ่านความยาวไม่ได้';}
   requestAnimationFrame(()=>{syncWatermarkLayerBounds();renderWatermarks();});
@@ -684,7 +762,7 @@ async function trimLossless(file,start,end){const result=await workerRequest('tr
 
 async function renderProcessedVideo(file,start,end,item,onProgress){
   const specs=buildWatermarkExportSpecs(item);
-  const adjustments=readLightAdjustments();
+  const adjustments=readLightAdjustments(item);
   if(!specs.length&&!adjustments.enabled)return null;
   const payload={file,start,end,rotation:item.rotation||0,sourceWidth:item.videoWidth||1920,sourceHeight:item.videoHeight||1080,adjustments,watermarks:specs.map(w=>({file:w.file,name:w.name,x:w.x,y:w.y,width:w.width,height:w.height,angle:w.angle,opacity:w.opacity,fullFrame:w.fullFrame}))};
   const result=await workerRequest('watermark',payload,onProgress);
@@ -744,7 +822,7 @@ async function resolveOutputHandle(){
 }
 
 async function processQueue(queue,{retry=false}={}){
-  if(!queue.length||state.processing)return;state.processing=true;state.cancelRequested=false;state.previewingSelection=false;state.lastFailures=[];els.previewVideo.pause();els.cancelBtn.disabled=false;els.cancelBtn.textContent='ยกเลิกหลังจบไฟล์ปัจจุบัน';els.cancelBtn.classList.remove('hidden');els.startBtn.disabled=true;els.chooseFolderBtn.disabled=true;[els.watermarkEnabled,els.addWatermarkBtn,els.addKeitaWatermarkBtn,els.watermarkFileInput,els.duplicateWatermarkBtn,els.deleteWatermarkBtn,els.lightAdjustEnabled,els.videoBrightness,els.videoContrast,els.videoSaturation,els.resetLightBtn].forEach(el=>{if(el)el.disabled=true;});setTrimControlsEnabled(false);planOutputNames(queue,retry);
+  if(!queue.length||state.processing)return;state.processing=true;state.cancelRequested=false;state.previewingSelection=false;state.lastFailures=[];els.previewVideo.pause();els.cancelBtn.disabled=false;els.cancelBtn.textContent='ยกเลิกหลังจบไฟล์ปัจจุบัน';els.cancelBtn.classList.remove('hidden');els.startBtn.disabled=true;els.chooseFolderBtn.disabled=true;[els.watermarkEnabled,els.addWatermarkBtn,els.addKeitaWatermarkBtn,els.watermarkFileInput,els.duplicateWatermarkBtn,els.deleteWatermarkBtn,els.lightAdjustEnabled,els.videoBrightness,els.videoContrast,els.videoSaturation,els.resetLightBtn,els.beforeAfterBtn,els.copyLightBtn,els.pasteLightBtn,els.applyLightSelectedBtn,els.applyLightAllBtn].forEach(el=>{if(el)el.disabled=true;});setTrimControlsEnabled(false);planOutputNames(queue,retry);
   try{
     const outDir=await resolveOutputHandle();let completed=0;const failures=[];
     for(let i=0;i<queue.length;i++){
@@ -753,7 +831,7 @@ async function processQueue(queue,{retry=false}={}){
         const file=await item.handle.getFile();if(!item.duration)await readMediaDuration(item);const start=clamp(item.trimStart,0,item.duration),end=clamp(item.trimEnd,start+.05,item.duration);if(end-start<.05)throw new Error('ช่วงตัดสั้นเกินไป');
         let finalName=item.plannedOutputName;
         const itemWatermarks=buildWatermarkExportSpecs(item);
-        const needsLight=state.lightAdjustEnabled;
+        const needsLight=getLightAdjust(item).enabled;
         const needsWatermark=state.watermarkEnabled&&itemWatermarks.length>0;
         if(needsLight||needsWatermark){
           finalName=finalName.replace(/\.[^.]+$/,'.mp4');item.plannedOutputName=finalName;
@@ -776,7 +854,7 @@ async function processQueue(queue,{retry=false}={}){
     else els.processMessage.textContent=`เสร็จแล้ว · Export ${completed} ไฟล์ ไปที่ ${state.outputExplicit?state.outputDirHandle.name:`${state.dirHandle.name}/Output`}`;
     els.openOutputBtn.classList.remove('hidden');
   }catch(e){console.error(e);els.processMessage.textContent=`เกิดข้อผิดพลาด: ${e.message||e}`;}
-  finally{state.processing=false;els.chooseFolderBtn.disabled=false;[els.watermarkEnabled,els.addWatermarkBtn,els.addKeitaWatermarkBtn,els.watermarkFileInput,els.duplicateWatermarkBtn,els.deleteWatermarkBtn,els.lightAdjustEnabled,els.videoBrightness,els.videoContrast,els.videoSaturation,els.resetLightBtn].forEach(el=>{if(el)el.disabled=false;});els.cancelBtn.classList.add('hidden');setTrimControlsEnabled(!!currentItem()?.duration);updateTrimUI();renderFiles();updateSummary();renderWatermarkPanel();updateLightAdjustmentUI();}
+  finally{state.processing=false;els.chooseFolderBtn.disabled=false;[els.watermarkEnabled,els.addWatermarkBtn,els.addKeitaWatermarkBtn,els.watermarkFileInput,els.duplicateWatermarkBtn,els.deleteWatermarkBtn,els.lightAdjustEnabled,els.videoBrightness,els.videoContrast,els.videoSaturation,els.resetLightBtn,els.beforeAfterBtn,els.copyLightBtn,els.pasteLightBtn,els.applyLightSelectedBtn,els.applyLightAllBtn].forEach(el=>{if(el)el.disabled=false;});els.cancelBtn.classList.add('hidden');setTrimControlsEnabled(!!currentItem()?.duration);updateTrimUI();renderFiles();updateSummary();renderWatermarkPanel();updateLightAdjustmentUI();}
 }
 function processAll(){processQueue(selectedFiles(),{retry:false});}
 function retryFailed(){const q=state.lastFailures.filter(item=>item.status==='error');processQueue(q,{retry:true});}
@@ -826,9 +904,17 @@ els.clipSelected.addEventListener('change',()=>{const i=currentItem();if(!i||sta
 els.selectAllBtn.addEventListener('click',()=>{state.files.forEach(i=>i.selected=true);renderFiles();updateSummary();});els.selectNoneBtn.addEventListener('click',()=>{state.files.forEach(i=>i.selected=false);renderFiles();updateSummary();});
 els.filterSelect.addEventListener('change',()=>{renderFiles();updateSummary();});els.searchInput.addEventListener('input',()=>{renderFiles();updateSummary();});
 // Light / Color adjustment
-els.lightAdjustEnabled?.addEventListener('change',updateLightAdjustmentUI);
-[els.videoBrightness,els.videoContrast,els.videoSaturation].forEach(el=>el?.addEventListener('input',updateLightAdjustmentUI));
+els.lightAdjustEnabled?.addEventListener('change',commitLightControlsToCurrent);
+[els.videoBrightness,els.videoContrast,els.videoSaturation].forEach(el=>el?.addEventListener('input',commitLightControlsToCurrent));
 els.resetLightBtn?.addEventListener('click',resetLightAdjustments);
+els.copyLightBtn?.addEventListener('click',copyCurrentLightAdjust);
+els.pasteLightBtn?.addEventListener('click',pasteCurrentLightAdjust);
+els.applyLightSelectedBtn?.addEventListener('click',applyLightToSelected);
+els.applyLightAllBtn?.addEventListener('click',applyLightToAll);
+els.beforeAfterBtn?.addEventListener('pointerdown',e=>{e.preventDefault();startBeforePreview();els.beforeAfterBtn?.setPointerCapture?.(e.pointerId);});
+els.beforeAfterBtn?.addEventListener('pointerup',endBeforePreview);
+els.beforeAfterBtn?.addEventListener('pointercancel',endBeforePreview);
+els.beforeAfterBtn?.addEventListener('lostpointercapture',endBeforePreview);
 els.lightCollapseBtn?.addEventListener('click',toggleLightCollapse);
 
 // Watermarks
@@ -857,6 +943,8 @@ window.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();if(k==='k'){e.preventDefault();setReviewStatus('keep',true);}else if(k==='x'){e.preventDefault();setReviewStatus('reject',true);}else if(k==='f'){e.preventDefault();setReviewStatus('favorite',true);}else if(k==='i'){e.preventDefault();setTrimStart(els.previewVideo.currentTime);}else if(k==='o'){e.preventDefault();setTrimEnd(els.previewVideo.currentTime);}else if(k==='t'){e.preventDefault();autoTrimCurrent();}else if(k==='r'){e.preventDefault();const seq=[0,90,180,270],idx=seq.indexOf(item.rotation);setRotation(seq[(idx+1)%seq.length]);}
 });
 
+window.addEventListener('pointerup',endBeforePreview);
+window.addEventListener('blur',endBeforePreview);
 window.addEventListener('beforeunload',()=>{if(state.previewUrl)URL.revokeObjectURL(state.previewUrl);for(const w of state.watermarks)try{URL.revokeObjectURL(w.url);}catch{}state.trimWorker?.terminate();});
 
-resetFilmstrip();updatePresetLabels();renderWatermarkPanel();updateLightAdjustmentUI();updateLightCollapseUI();updateSummary();updateSelectionUI();
+resetFilmstrip();updatePresetLabels();renderWatermarkPanel();updateLightAdjustmentUI();updateLightCollapseUI();setLightStatus('แต่ละคลิปจำค่าของตัวเอง');updateSummary();updateSelectionUI();
